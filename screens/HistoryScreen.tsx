@@ -15,6 +15,7 @@ import {
   fetchPriceHistory,
   CITIES,
   City,
+  Server,
   HistoryResponse,
   formatDateForApi,
   daysAgo,
@@ -26,6 +27,7 @@ import ItemPicker from '../components/ItemPicker';
 interface Props {
   t: (key: any) => any;
   lang: Language;
+  server: Server;
 }
 
 const PERIODS = [
@@ -54,7 +56,7 @@ function formatSilver(value: number): string {
   return Math.round(value).toLocaleString();
 }
 
-export default function HistoryScreen({ t, lang }: Props) {
+export default function HistoryScreen({ t, lang, server }: Props) {
   const [selectedItems, setSelectedItems] = useState<AlbionItem[]>([]);
   const [selectedCities, setSelectedCities] = useState<Set<City>>(new Set(['Caerleon']));
   const [period, setPeriod] = useState<number>(30);
@@ -93,7 +95,7 @@ export default function HistoryScreen({ t, lang }: Props) {
 
       const allData: HistoryResponse[] = [];
       for (const item of selectedItems) {
-        const data = await fetchPriceHistory(item.id, cities, startDate, endDate, timeScale);
+        const data = await fetchPriceHistory(item.id, cities, startDate, endDate, timeScale, server);
         allData.push(...data);
       }
       setHistoryData(allData);
@@ -101,7 +103,7 @@ export default function HistoryScreen({ t, lang }: Props) {
       Alert.alert(t('error'), String(e));
     }
     setLoading(false);
-  }, [selectedItems, selectedCities, period, timeScale]);
+  }, [selectedItems, selectedCities, period, timeScale, server]);
 
   // Prepare cleaned chart data
   const chartInfo = React.useMemo(() => {
