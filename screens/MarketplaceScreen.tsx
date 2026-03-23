@@ -11,7 +11,7 @@ import * as Clipboard from 'expo-clipboard';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateMarketplaceProfit } from '../lib/calculations';
 import { Language } from '../lib/i18n';
-import { fetchCurrentPrices, CITIES, City } from '../lib/api';
+import { fetchCurrentPrices, CITIES, City, Server } from '../lib/api';
 import { AlbionItem } from '../lib/items';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
@@ -22,9 +22,10 @@ import ItemPicker from '../components/ItemPicker';
 interface Props {
   t: (key: any) => any;
   lang: Language;
+  server: Server;
 }
 
-export default function MarketplaceScreen({ t, lang }: Props) {
+export default function MarketplaceScreen({ t, lang, server }: Props) {
   const [buyPrice, setBuyPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -45,7 +46,7 @@ export default function MarketplaceScreen({ t, lang }: Props) {
   const handleFetchPrices = async (item: AlbionItem) => {
     setLoading(true);
     try {
-      const prices = await fetchCurrentPrices(item.id, [selectedCity]);
+      const prices = await fetchCurrentPrices(item.id, [selectedCity], server);
       const cityPrice = prices.find((p) => p.city === selectedCity);
       if (cityPrice) {
         if (cityPrice.buy_price_max > 0) setBuyPrice(String(cityPrice.buy_price_max));

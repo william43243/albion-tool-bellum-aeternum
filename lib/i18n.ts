@@ -98,6 +98,12 @@ export const translations = {
       'Île personnelle accessible',
     ],
 
+    // Server
+    server: 'Serveur',
+    serverAmericas: 'Amériques',
+    serverEurope: 'Europe',
+    serverAsia: 'Asie',
+
     // Cities
     cities: {
       Caerleon: 'Caerleon',
@@ -205,6 +211,12 @@ export const translations = {
       '+20 Learning Points/day',
       'Personal Island access',
     ],
+
+    // Server
+    server: 'Server',
+    serverAmericas: 'Americas',
+    serverEurope: 'Europe',
+    serverAsia: 'Asia',
 
     // Cities
     cities: {

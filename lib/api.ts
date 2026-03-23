@@ -1,7 +1,19 @@
 // Albion Online Data Project API
 // https://www.albion-online-data.com/
 
-const BASE_URL = 'https://www.albion-online-data.com/api/v2/stats';
+export const SERVERS = {
+  americas: 'https://west.albion-online-data.com/api/v2/stats',
+  europe: 'https://europe.albion-online-data.com/api/v2/stats',
+  asia: 'https://east.albion-online-data.com/api/v2/stats',
+} as const;
+
+export type Server = keyof typeof SERVERS;
+
+const DEFAULT_SERVER: Server = 'americas';
+
+function getBaseUrl(server?: Server): string {
+  return SERVERS[server || DEFAULT_SERVER];
+}
 
 export const CITIES = [
   'Caerleon',
@@ -64,14 +76,15 @@ function setCache(key: string, data: any): void {
  */
 export async function fetchCurrentPrices(
   itemId: string,
-  cities: City[] = [...CITIES]
+  cities: City[] = [...CITIES],
+  server?: Server
 ): Promise<PriceData[]> {
-  const cacheKey = `prices:${itemId}:${cities.join(',')}`;
+  const cacheKey = `prices:${server || DEFAULT_SERVER}:${itemId}:${cities.join(',')}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
   const locations = cities.join(',');
-  const url = `${BASE_URL}/prices/${encodeURIComponent(itemId)}.json?locations=${encodeURIComponent(locations)}`;
+  const url = `${getBaseUrl(server)}/prices/${encodeURIComponent(itemId)}.json?locations=${encodeURIComponent(locations)}`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -93,14 +106,15 @@ export async function fetchPriceHistory(
   cities: City[] = [...CITIES],
   startDate: string, // format: M-D-YYYY
   endDate: string,
-  timeScale: 1 | 24 = 24
+  timeScale: 1 | 24 = 24,
+  server?: Server
 ): Promise<HistoryResponse[]> {
-  const cacheKey = `history:${itemId}:${cities.join(',')}:${startDate}:${endDate}:${timeScale}`;
+  const cacheKey = `history:${server || DEFAULT_SERVER}:${itemId}:${cities.join(',')}:${startDate}:${endDate}:${timeScale}`;
   const cached = getCached(cacheKey);
   if (cached) return cached;
 
   const locations = cities.join(',');
-  const url = `${BASE_URL}/history/${encodeURIComponent(itemId)}.json?locations=${encodeURIComponent(locations)}&date=${startDate}&end_date=${endDate}&time-scale=${timeScale}`;
+  const url = `${getBaseUrl(server)}/history/${encodeURIComponent(itemId)}.json?locations=${encodeURIComponent(locations)}&date=${startDate}&end_date=${endDate}&time-scale=${timeScale}`;
 
   const response = await fetch(url);
   if (!response.ok) {

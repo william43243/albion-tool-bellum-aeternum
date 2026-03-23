@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } 
 import * as Clipboard from 'expo-clipboard';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { Language } from '../lib/i18n';
+import { Server } from '../lib/api';
 import PremiumInfoPanel from '../components/PremiumInfoPanel';
 
 const BTC_ADDRESS = 'bc1qcptkrekh335wvffcxnrzqkj5nqf72r538vey4x';
@@ -11,9 +12,17 @@ interface Props {
   t: (key: any) => any;
   lang: Language;
   onSwitchLanguage: (lang: Language) => void;
+  server: Server;
+  onSwitchServer: (server: Server) => void;
 }
 
-export default function SettingsScreen({ t, lang, onSwitchLanguage }: Props) {
+const SERVER_OPTIONS: { key: Server; flag: string }[] = [
+  { key: 'americas', flag: '\uD83C\uDDFA\uD83C\uDDF8' },
+  { key: 'europe', flag: '\uD83C\uDDEA\uD83C\uDDFA' },
+  { key: 'asia', flag: '\uD83C\uDDEF\uD83C\uDDF5' },
+];
+
+export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSwitchServer }: Props) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{t('settings')}</Text>
@@ -38,6 +47,24 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage }: Props) {
               🇬🇧 {t('english')}
             </Text>
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Server */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('server')}</Text>
+        <View style={styles.langRow}>
+          {SERVER_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.langBtn, server === opt.key && styles.langBtnActive]}
+              onPress={() => onSwitchServer(opt.key)}
+            >
+              <Text style={[styles.langBtnText, server === opt.key && styles.langBtnTextActive]}>
+                {opt.flag} {t(`server${opt.key.charAt(0).toUpperCase() + opt.key.slice(1)}` as any)}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 

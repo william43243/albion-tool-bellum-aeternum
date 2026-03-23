@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLanguage } from './hooks/useLanguage';
+import { useServer } from './hooks/useServer';
 import { COLORS, SPACING, FONT_SIZE } from './constants/theme';
 
 import MarketplaceScreen from './screens/MarketplaceScreen';
@@ -25,10 +26,11 @@ const TABS: TabKey[] = ['marketplace', 'crafting', 'flipping', 'history', 'setti
 
 function AppContent() {
   const { lang, switchLanguage, t, loaded } = useLanguage();
+  const { server, switchServer, serverLoaded } = useServer();
   const [activeTab, setActiveTab] = useState<TabKey>('marketplace');
   const insets = useSafeAreaInsets();
 
-  if (!loaded) {
+  if (!loaded || !serverLoaded) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Albion Market</Text>
@@ -39,15 +41,15 @@ function AppContent() {
   const renderScreen = () => {
     switch (activeTab) {
       case 'marketplace':
-        return <MarketplaceScreen t={t} lang={lang} />;
+        return <MarketplaceScreen t={t} lang={lang} server={server} />;
       case 'crafting':
         return <CraftingScreen t={t} lang={lang} />;
       case 'flipping':
         return <FlippingScreen t={t} lang={lang} />;
       case 'history':
-        return <HistoryScreen t={t} lang={lang} />;
+        return <HistoryScreen t={t} lang={lang} server={server} />;
       case 'settings':
-        return <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} />;
+        return <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} server={server} onSwitchServer={switchServer} />;
     }
   };
 
