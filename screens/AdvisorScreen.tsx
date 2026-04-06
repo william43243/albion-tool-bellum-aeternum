@@ -48,6 +48,7 @@ interface DownloadState {
   percent: number;
   bytesDownloaded: number;
   totalBytes: number;
+  isResuming: boolean;
 }
 
 export default function AdvisorScreen({ t, lang, server }: Props) {
@@ -121,7 +122,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
         return;
       }
 
-      setDownloading({ modelId: model.id, percent: 0, bytesDownloaded: 0, totalBytes: model.sizeBytes });
+      setDownloading({ modelId: model.id, percent: 0, bytesDownloaded: 0, totalBytes: model.sizeBytes, isResuming: false });
 
       try {
         const { promise, cancel } = LiteRT.downloadModel(
@@ -129,9 +130,17 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
           model.downloadUrl,
           model.filename,
           {
-            onProgress: (bytesDownloaded, totalBytes, percent) => {
+            onProgress: (bytesDownloaded, totalBytes, percent, status) => {
               setDownloading((prev) =>
-                prev ? { ...prev, bytesDownloaded, totalBytes, percent } : null
+                prev
+                  ? {
+                      ...prev,
+                      bytesDownloaded,
+                      totalBytes,
+                      percent,
+                      isResuming: status === 'resuming' || prev.isResuming,
+                    }
+                  : null
               );
             },
           }
@@ -549,6 +558,15 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
               {/* Download progress */}
               {isDownloading && downloading && (
                 <View style={styles.progressContainer}>
+                  {downloading.isResuming && (
+                    <Text style={styles.resumingText}>
+                      {lang === 'fr'
+                        ? `Reprise depuis ${formatBytes(downloading.bytesDownloaded)}…`
+                        : lang === 'es'
+                        ? `Reanudando desde ${formatBytes(downloading.bytesDownloaded)}…`
+                        : `Resuming from ${formatBytes(downloading.bytesDownloaded)}…`}
+                    </Text>
+                  )}
                   <View style={styles.progressBarBg}>
                     <View
                       style={[styles.progressBarFill, { width: `${Math.min(downloading.percent, 100)}%` }]}
@@ -872,6 +890,12 @@ const styles = StyleSheet.create({
   // ── Download progress ──
   progressContainer: {
     marginBottom: SPACING.sm,
+  },
+  resumingText: {
+    color: COLORS.warning,
+    fontSize: FONT_SIZE.xs,
+    fontWeight: '600',
+    marginBottom: SPACING.xs,
   },
   progressBarBg: {
     height: 6,

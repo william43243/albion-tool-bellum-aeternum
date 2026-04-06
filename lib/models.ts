@@ -21,9 +21,9 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     id: 'qwen35-08b',
     name: 'Qwen3.5 0.8B',
     description: {
-      fr: 'Léger et multimodal (texte + vision). Réponses rapides.',
-      en: 'Light and multimodal (text + vision). Fast responses.',
-      es: 'Ligero y multimodal (texto + visión). Respuestas rápidas.',
+      fr: 'Léger et multimodal (texte + vision). Réponses rapides. Nécessite un GPU Adreno/Mali compatible.',
+      en: 'Light and multimodal (text + vision). Fast responses. Requires a compatible Adreno/Mali GPU.',
+      es: 'Ligero y multimodal (texto + visión). Respuestas rápidas. Requiere GPU Adreno/Mali compatible.',
     },
     filename: 'model_multimodal.litertlm',
     downloadUrl: `${HF}/Qwen3.5-0.8B-LiteRT/resolve/main/model_multimodal.litertlm`,

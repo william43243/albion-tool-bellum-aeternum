@@ -1,11 +1,9 @@
 package com.albion.market.litert
 
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import com.facebook.react.bridge.*
@@ -23,6 +21,9 @@ import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.tool
 import kotlinx.coroutines.*
 import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 class LiteRTModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -30,6 +31,8 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
     companion object {
         const val NAME = "LiteRTModule"
         private const val TAG = "LiteRTModule"
+        private const val NOTIF_CHANNEL_ID = "ai_downloads"
+        private const val BUFFER_SIZE = 32 * 1024  // 32 KB read buffer
     }
 
     private var engine: Engine? = null
@@ -38,9 +41,9 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
     private var hasVision: Boolean = false
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val activeDownloads = mutableMapOf<Long, Triple<String, String, Promise>>()
-    private var progressPollingJob: Job? = null
-    private var downloadReceiver: BroadcastReceiver? = null
+    // Active download jobs keyed by modelId; connection refs allow immediate cancellation
+    private val activeDownloadJobs = mutableMapOf<String, Job>()
+    private val activeConnections = mutableMapOf<String, HttpURLConnection>()
 
     override fun getName(): String = NAME
 
@@ -87,49 +90,169 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         } catch (e: Exception) { promise.resolve(-1.0) }
     }
 
+    /**
+     * Download a model file with support for resuming an interrupted download.
+     *
+     * A partial download is stored as "<filename>.part" in the model directory.
+     * On the next attempt the existing partial file size is sent as an HTTP
+     * Range header so the server can continue from that offset (HTTP 206).
+     * If the server does not support Range requests (HTTP 200) the partial
+     * file is discarded and the download starts from the beginning.
+     */
     @ReactMethod
     fun downloadModel(modelId: String, url: String, filename: String, promise: Promise) {
-        try {
-            val dm = reactContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-
-            for (dir in getAllModelDirs()) {
-                File(dir, filename).let { if (it.exists()) it.delete() }
-                File(dir, "$filename.tmp").let { if (it.exists()) it.delete() }
-            }
-
-            val extDir = reactContext.getExternalFilesDir("litert-models")
-            if (extDir != null && !extDir.exists()) extDir.mkdirs()
-
-            val request = DownloadManager.Request(Uri.parse(url)).apply {
-                setTitle("AlbionMarket AI: $modelId")
-                setDescription(filename)
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-                setDestinationInExternalFilesDir(reactContext, "litert-models", filename)
-                setAllowedOverMetered(true)
-                setAllowedOverRoaming(false)
-                setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
-            }
-
-            val downloadId = dm.enqueue(request)
-            activeDownloads[downloadId] = Triple(modelId, filename, promise)
-            Log.i(TAG, "Download enqueued: $modelId (id=$downloadId)")
-            ensureDownloadReceiver()
-            startProgressPolling(dm)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start download", e)
-            promise.reject("DOWNLOAD_ERROR", "Download failed: ${e.message}", e)
+        if (activeDownloadJobs.containsKey(modelId)) {
+            promise.reject("ALREADY_DOWNLOADING", "Already downloading: $modelId")
+            return
         }
+
+        val job = scope.launch(Dispatchers.IO) {
+            var conn: HttpURLConnection? = null
+            var fos: FileOutputStream? = null
+            try {
+                val destDir = getModelDir()
+                if (!destDir.exists()) destDir.mkdirs()
+
+                val partFile = File(destDir, "$filename.part")
+                val destFile = File(destDir, filename)
+
+                // Detect a previous partial download to resume
+                val resumeFrom = if (partFile.exists() && partFile.length() > 0) partFile.length() else 0L
+
+                conn = URL(url).openConnection() as HttpURLConnection
+                activeConnections[modelId] = conn
+                conn.connectTimeout = 30_000
+                conn.readTimeout = 60_000
+                conn.setRequestProperty("User-Agent", "AlbionMarket-AI/1.0")
+                if (resumeFrom > 0) {
+                    conn.setRequestProperty("Range", "bytes=$resumeFrom-")
+                    Log.i(TAG, "Resuming $filename from byte $resumeFrom")
+                }
+                conn.connect()
+
+                val responseCode = conn.responseCode
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
+                    promise.reject("DOWNLOAD_ERROR", "HTTP error: $responseCode")
+                    return@launch
+                }
+
+                // If the server ignored the Range header and returned the full file, restart
+                val actualResumeFrom = if (responseCode == HttpURLConnection.HTTP_PARTIAL) resumeFrom else 0L
+                if (responseCode == HttpURLConnection.HTTP_OK && resumeFrom > 0) {
+                    Log.w(TAG, "Server does not support resume, restarting $filename")
+                    partFile.delete()
+                }
+
+                // Calculate total file size for progress reporting
+                val contentLength = conn.contentLengthLong
+                val totalBytes = when {
+                    responseCode == HttpURLConnection.HTTP_PARTIAL && contentLength > 0 -> actualResumeFrom + contentLength
+                    contentLength > 0 -> contentLength
+                    else -> -1L
+                }
+
+                showDownloadNotification(modelId, filename, 0)
+
+                fos = FileOutputStream(partFile, actualResumeFrom > 0)
+                var bytesWritten = actualResumeFrom
+                val buffer = ByteArray(BUFFER_SIZE)
+                val inputStream = conn.inputStream
+
+                // Emit an initial progress event so the UI shows the resume offset immediately
+                if (actualResumeFrom > 0) {
+                    val resumePct = if (totalBytes > 0) actualResumeFrom.toDouble() / totalBytes * 100 else 0.0
+                    sendEvent("onDownloadProgress", Arguments.createMap().apply {
+                        putString("modelId", modelId)
+                        putDouble("bytesDownloaded", actualResumeFrom.toDouble())
+                        putDouble("totalBytes", totalBytes.toDouble())
+                        putDouble("percent", resumePct)
+                        putString("status", "resuming")
+                    })
+                }
+
+                var bytesRead: Int
+                var cancelled = false
+                var lastNotifPercent = -1
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    if (!isActive) { cancelled = true; break }
+                    fos.write(buffer, 0, bytesRead)
+                    bytesWritten += bytesRead
+                    val percent = if (totalBytes > 0) bytesWritten.toDouble() / totalBytes * 100 else 0.0
+                    sendEvent("onDownloadProgress", Arguments.createMap().apply {
+                        putString("modelId", modelId)
+                        putDouble("bytesDownloaded", bytesWritten.toDouble())
+                        putDouble("totalBytes", totalBytes.toDouble())
+                        putDouble("percent", percent)
+                        putString("status", "downloading")
+                    })
+                    // Update the system notification every 5 percentage-points to avoid flooding
+                    val percentInt = percent.toInt()
+                    if (percentInt >= lastNotifPercent + 5) {
+                        lastNotifPercent = percentInt
+                        showDownloadNotification(modelId, filename, percentInt)
+                    }
+                }
+
+                fos.close(); fos = null
+                inputStream.close()
+
+                if (cancelled || !isActive) {
+                    dismissDownloadNotification(modelId)
+                    promise.reject("DOWNLOAD_CANCELLED", "Download cancelled")
+                    return@launch
+                }
+
+                // Verify that we received all the data we expected
+                if (totalBytes > 0 && bytesWritten < totalBytes) {
+                    dismissDownloadNotification(modelId)
+                    promise.reject("DOWNLOAD_INCOMPLETE", "Download incomplete: received $bytesWritten of $totalBytes bytes")
+                    return@launch
+                }
+
+                if (destFile.exists()) destFile.delete()
+                if (!partFile.renameTo(destFile)) {
+                    dismissDownloadNotification(modelId)
+                    promise.reject("RENAME_ERROR", "Failed to finalize download file")
+                    return@launch
+                }
+
+                sendEvent("onDownloadProgress", Arguments.createMap().apply {
+                    putString("modelId", modelId); putDouble("percent", 100.0); putString("status", "complete")
+                })
+                dismissDownloadNotification(modelId)
+                promise.resolve(Arguments.createMap().apply {
+                    putString("path", destFile.absolutePath); putDouble("sizeBytes", destFile.length().toDouble())
+                })
+                Log.i(TAG, "Download complete: $filename (${destFile.length()} bytes)")
+            } catch (e: Exception) {
+                fos?.close()
+                dismissDownloadNotification(modelId)
+                if (isActive) {
+                    Log.e(TAG, "Download failed: $filename", e)
+                    promise.reject("DOWNLOAD_FAILED", e.message ?: "Download failed", e)
+                } else {
+                    promise.reject("DOWNLOAD_CANCELLED", "Download cancelled")
+                }
+            } finally {
+                conn?.disconnect()
+                activeConnections.remove(modelId)
+                activeDownloadJobs.remove(modelId)
+            }
+        }
+        activeDownloadJobs[modelId] = job
     }
 
     @ReactMethod
     fun cancelDownload(modelId: String, promise: Promise) {
-        val dm = reactContext.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val toRemove = activeDownloads.entries.find { it.value.first == modelId }
-        if (toRemove != null) {
-            dm.remove(toRemove.key)
-            activeDownloads.remove(toRemove.key)
+        val job = activeDownloadJobs.remove(modelId)
+        // Disconnect immediately so the blocking read is interrupted
+        activeConnections.remove(modelId)?.disconnect()
+        if (job != null) {
+            job.cancel()
             promise.resolve(true)
-        } else { promise.resolve(false) }
+        } else {
+            promise.resolve(false)
+        }
     }
 
     @ReactMethod
@@ -141,82 +264,55 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 engine?.close(); engine = null
                 currentModelId = null
             }
+            // Also remove any leftover partial download
+            val partFile = File(getModelDir(), "$filename.part")
+            if (partFile.exists()) partFile.delete()
             promise.resolve(file?.delete() ?: false)
         } catch (e: Exception) { promise.reject("DELETE_ERROR", e.message, e) }
     }
 
-    // ─── Download Helpers ────────────────────────────────────────
+    // ─── Download Notification Helpers ───────────────────────────
 
-    private fun ensureDownloadReceiver() {
-        if (downloadReceiver != null) return
-        downloadReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                val entry = activeDownloads[id] ?: return
-                val (modelId, filename, promise) = entry
-                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-                val query = DownloadManager.Query().setFilterById(id)
-                val cursor = dm.query(query)
-                if (cursor != null && cursor.moveToFirst()) {
-                    val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                    cursor.close()
-                    when (status) {
-                        DownloadManager.STATUS_SUCCESSFUL -> {
-                            val destFile = File(getModelDir(), filename)
-                            sendEvent("onDownloadProgress", Arguments.createMap().apply {
-                                putString("modelId", modelId); putDouble("percent", 100.0); putString("status", "complete")
-                            })
-                            promise.resolve(Arguments.createMap().apply {
-                                putString("path", destFile.absolutePath); putDouble("sizeBytes", destFile.length().toDouble())
-                            })
-                            Log.i(TAG, "Download complete: $filename (${destFile.length()} bytes)")
-                            activeDownloads.remove(id)
-                            if (activeDownloads.isEmpty()) stopProgressPolling()
-                        }
-                        DownloadManager.STATUS_FAILED -> {
-                            promise.reject("DOWNLOAD_FAILED", "Download failed")
-                            activeDownloads.remove(id)
-                            if (activeDownloads.isEmpty()) stopProgressPolling()
-                        }
-                    }
-                } else { cursor?.close() }
-            }
-        }
-        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            reactContext.registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else { reactContext.registerReceiver(downloadReceiver, filter) }
-    }
-
-    private fun startProgressPolling(dm: DownloadManager) {
-        if (progressPollingJob?.isActive == true) return
-        progressPollingJob = scope.launch {
-            while (isActive && activeDownloads.isNotEmpty()) {
-                for ((downloadId, entry) in activeDownloads.toMap()) {
-                    val (modelId, _, _) = entry
-                    val query = DownloadManager.Query().setFilterById(downloadId)
-                    val cursor = dm.query(query)
-                    if (cursor != null && cursor.moveToFirst()) {
-                        val downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                        val total = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                        val status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                        cursor.close()
-                        if (status == DownloadManager.STATUS_RUNNING || status == DownloadManager.STATUS_PENDING) {
-                            val percent = if (total > 0) (downloaded.toDouble() / total * 100) else 0.0
-                            sendEvent("onDownloadProgress", Arguments.createMap().apply {
-                                putString("modelId", modelId); putDouble("bytesDownloaded", downloaded.toDouble())
-                                putDouble("totalBytes", total.toDouble()); putDouble("percent", percent)
-                                putString("status", if (status == DownloadManager.STATUS_RUNNING) "downloading" else "pending")
-                            })
-                        }
-                    } else { cursor?.close() }
-                }
-                delay(1000)
+    private fun ensureNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(NOTIF_CHANNEL_ID) == null) {
+                val channel = NotificationChannel(
+                    NOTIF_CHANNEL_ID,
+                    "AI Model Downloads",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply { setShowBadge(false) }
+                nm.createNotificationChannel(channel)
             }
         }
     }
 
-    private fun stopProgressPolling() { progressPollingJob?.cancel(); progressPollingJob = null }
+    private fun showDownloadNotification(modelId: String, filename: String, percent: Int) {
+        try {
+            ensureNotificationChannel()
+            val nm = reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Notification.Builder(reactContext, NOTIF_CHANNEL_ID)
+            } else {
+                @Suppress("DEPRECATION") Notification.Builder(reactContext)
+            }
+            val notif = builder
+                .setContentTitle("AlbionMarket AI: $modelId")
+                .setContentText(filename)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setProgress(100, percent, percent == 0)
+                .setOngoing(true)
+                .build()
+            nm.notify(modelId.hashCode(), notif)
+        } catch (_: Exception) {}
+    }
+
+    private fun dismissDownloadNotification(modelId: String) {
+        try {
+            val nm = reactContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.cancel(modelId.hashCode())
+        } catch (_: Exception) {}
+    }
 
     // ─── Engine Lifecycle ────────────────────────────────────────
 
@@ -233,34 +329,72 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 conversation?.close()
                 engine?.close()
 
-                val backend = try { Backend.GPU() } catch (e: Exception) {
-                    Log.w(TAG, "GPU unavailable, using CPU", e); Backend.CPU()
+                // Determine whether a GPU backend can be instantiated at all
+                var usingGpu = true
+                val gpuBackend: Backend? = try {
+                    Backend.GPU()
+                } catch (e: Exception) {
+                    Log.w(TAG, "GPU backend constructor failed, will use CPU: ${e.message}")
+                    usingGpu = false
+                    null
                 }
 
-                // Try with vision first (multimodal models), fallback to text-only
-                var newEngine: Engine
-                try {
-                    val config = EngineConfig(
-                        modelPath = modelFile.absolutePath,
-                        backend = backend,
-                        visionBackend = Backend.GPU(),
-                        cacheDir = reactContext.cacheDir.path
-                    )
-                    newEngine = Engine(config)
-                    newEngine.initialize()
-                    hasVision = true
-                    Log.i(TAG, "Engine initialized WITH vision")
-                } catch (e: Exception) {
-                    Log.w(TAG, "Vision init failed, retrying text-only: ${e.message}")
-                    val config = EngineConfig(
-                        modelPath = modelFile.absolutePath,
-                        backend = backend,
-                        cacheDir = reactContext.cacheDir.path
-                    )
-                    newEngine = Engine(config)
-                    newEngine.initialize()
-                    hasVision = false
-                    Log.i(TAG, "Engine initialized text-only")
+                var newEngine: Engine? = null
+
+                // Tier 1 — GPU + vision (best path for multimodal models)
+                if (usingGpu && gpuBackend != null) {
+                    try {
+                        val config = EngineConfig(
+                            modelPath = modelFile.absolutePath,
+                            backend = gpuBackend,
+                            visionBackend = Backend.GPU(),
+                            cacheDir = reactContext.cacheDir.path
+                        )
+                        newEngine = Engine(config).also { it.initialize() }
+                        hasVision = true
+                        Log.i(TAG, "Engine initialized WITH vision (GPU)")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "GPU+vision init failed: ${e.message}")
+                        newEngine = null
+                    }
+                }
+
+                // Tier 2 — GPU text-only
+                if (newEngine == null && usingGpu && gpuBackend != null) {
+                    try {
+                        val config = EngineConfig(
+                            modelPath = modelFile.absolutePath,
+                            backend = gpuBackend,
+                            cacheDir = reactContext.cacheDir.path
+                        )
+                        newEngine = Engine(config).also { it.initialize() }
+                        hasVision = false
+                        Log.i(TAG, "Engine initialized text-only (GPU)")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "GPU text-only init failed: ${e.message}")
+                        newEngine = null
+                    }
+                }
+
+                // Tier 3 — CPU text-only (last resort, works on all devices)
+                if (newEngine == null) {
+                    try {
+                        val config = EngineConfig(
+                            modelPath = modelFile.absolutePath,
+                            backend = Backend.CPU(),
+                            cacheDir = reactContext.cacheDir.path
+                        )
+                        newEngine = Engine(config).also { it.initialize() }
+                        hasVision = false
+                        Log.i(TAG, "Engine initialized text-only (CPU fallback)")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "CPU fallback init also failed: ${e.message}")
+                        throw Exception(
+                            "Failed to start the AI engine on this device. " +
+                            "Your chipset may not be fully supported by LiteRT yet. " +
+                            "Try a different model or check for an app update.\n\nDetails: ${e.message}"
+                        )
+                    }
                 }
 
                 engine = newEngine
@@ -274,7 +408,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                     samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.3),
                     tools = toolList,
                 )
-                conversation = newEngine.createConversation(convConfig)
+                conversation = newEngine!!.createConversation(convConfig)
 
                 promise.resolve(Arguments.createMap().apply {
                     putBoolean("success", true)
@@ -404,8 +538,11 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
 
     override fun invalidate() {
         super.invalidate()
-        stopProgressPolling()
-        try { downloadReceiver?.let { reactContext.unregisterReceiver(it) } } catch (_: Exception) {}
+        // Cancel all active downloads gracefully
+        activeConnections.values.forEach { try { it.disconnect() } catch (_: Exception) {} }
+        activeConnections.clear()
+        activeDownloadJobs.values.forEach { it.cancel() }
+        activeDownloadJobs.clear()
         scope.cancel()
         conversation?.close()
         engine?.close()

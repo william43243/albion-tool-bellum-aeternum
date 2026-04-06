@@ -16,7 +16,7 @@ export interface StreamCallbacks {
 }
 
 export interface DownloadCallbacks {
-  onProgress: (bytesDownloaded: number, totalBytes: number, percent: number) => void;
+  onProgress: (bytesDownloaded: number, totalBytes: number, percent: number, status: string) => void;
 }
 
 export interface DownloadedModel {
@@ -63,7 +63,7 @@ export function downloadModel(
 
   const sub = emitter.addListener('onDownloadProgress', (event) => {
     if (event.modelId === modelId) {
-      callbacks.onProgress(event.bytesDownloaded, event.totalBytes, event.percent);
+      callbacks.onProgress(event.bytesDownloaded, event.totalBytes, event.percent, event.status ?? 'downloading');
     }
   });
 
