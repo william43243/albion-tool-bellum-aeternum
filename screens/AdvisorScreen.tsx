@@ -24,9 +24,9 @@ import {
   MarketContext,
 } from '../lib/advisor';
 import { SERVERS } from '../lib/api';
-import * as LiteRT from '../lib/litert';
+import * as LLM from '../lib/llm';
 import * as ImagePicker from 'expo-image-picker';
-import { AVAILABLE_MODELS, ModelInfo, formatBytes } from '../lib/models';
+import { AVAILABLE_MODELS, ModelInfo, formatBytes, getModelsForPlatform, getModelFilename, getModelSizeLabel } from '../lib/models';
 import { trackAIPrompt, trackAIModelDownload, trackAIModelStart, trackAIImageSent } from '../lib/analytics';
 
 interface Props {
@@ -57,6 +57,10 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
   const [downloading, setDownloading] = useState<DownloadState | null>(null);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [freeDisk, setFreeDisk] = useState<number>(-1);
+  const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(
+    Platform.OS !== 'web' ? null : null
+  );
+  const isWeb = Platform.OS === 'web';
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -83,12 +87,17 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
   // Load downloaded models on mount + refresh when app comes back to foreground
   useEffect(() => {
     refreshDownloadedModels();
-    LiteRT.getFreeDiskSpace().then(setFreeDisk);
+    LLM.getFreeDiskSpace().then(setFreeDisk);
+
+    // Check WebGPU on web
+    if (Platform.OS === 'web') {
+      LLM.isWebGPUAvailable().then(setWebGPUSupported);
+    }
 
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         refreshDownloadedModels();
-        LiteRT.getFreeDiskSpace().then(setFreeDisk);
+        LLM.getFreeDiskSpace().then(setFreeDisk);
       }
     });
     return () => sub.remove();
@@ -99,9 +108,21 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
   }, [messages, streamBuffer]);
 
   const refreshDownloadedModels = async () => {
-    const models = await LiteRT.getDownloadedModels();
-    const filenames = new Set(models.map((m) => m.filename));
-    setDownloadedFilenames(filenames);
+    if (isWeb) {
+      // On web, check each model individually via WebLLM cache
+      const platformMods = getModelsForPlatform('web');
+      const cached = new Set<string>();
+      for (const m of platformMods) {
+        const webId = getModelFilename(m, 'web');
+        const inCache = await LLM.isModelDownloaded(webId);
+        if (inCache) cached.add(webId);
+      }
+      setDownloadedFilenames(cached);
+    } else {
+      const models = await LLM.getDownloadedModels();
+      const filenames = new Set(models.map((m) => m.filename || m.id));
+      setDownloadedFilenames(filenames);
+    }
   };
 
   // ─── Model Download ──────────────────────────────────────────
@@ -124,10 +145,11 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
       setDownloading({ modelId: model.id, percent: 0, bytesDownloaded: 0, totalBytes: model.sizeBytes });
 
       try {
-        const { promise, cancel } = LiteRT.downloadModel(
+        const dlFilename = getModelFilename(model, Platform.OS);
+        const { promise, cancel } = LLM.downloadModel(
           model.id,
           model.downloadUrl,
-          model.filename,
+          dlFilename,
           {
             onProgress: (bytesDownloaded, totalBytes, percent) => {
               setDownloading((prev) =>
@@ -144,7 +166,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
             setDownloading(null);
             cancelDownloadRef.current = null;
             refreshDownloadedModels();
-            LiteRT.getFreeDiskSpace().then(setFreeDisk);
+            LLM.getFreeDiskSpace().then(setFreeDisk);
             trackAIModelDownload(model.id);
           })
           .catch((err: any) => {
@@ -180,14 +202,14 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
             style: 'destructive',
             onPress: async () => {
               if (activeModelId === model.id) {
-                await LiteRT.destroy();
+                await LLM.destroy();
                 setEngineState('idle');
                 setActiveModelId(null);
                 setScreen('models');
               }
-              await LiteRT.deleteModel(model.filename);
+              await LLM.deleteModel(getModelFilename(model, Platform.OS));
               refreshDownloadedModels();
-              LiteRT.getFreeDiskSpace().then(setFreeDisk);
+              LLM.getFreeDiskSpace().then(setFreeDisk);
             },
           },
         ]
@@ -205,7 +227,8 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
       try {
         const systemPrompt = buildSystemPrompt(lang, server);
         const serverUrl = SERVERS[server];
-        await LiteRT.initialize(model.filename, systemPrompt, serverUrl);
+        const filename = getModelFilename(model, Platform.OS);
+        await LLM.initialize(filename, systemPrompt, serverUrl);
         setEngineState('ready');
         setMessages([
           {
@@ -265,7 +288,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
 
       trackAIPrompt(activeModelId || 'unknown');
 
-      cleanupRef.current = LiteRT.sendMessage(prompt, {
+      cleanupRef.current = LLM.sendMessage(prompt, {
         onToken: (token) => {
           fullResponse += token;
           setStreamBuffer(fullResponse);
@@ -289,7 +312,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
             });
 
             // Reset conversation on native side, keep messages in UI for reference
-            LiteRT.resetConversation(buildSystemPrompt(lang, server)).catch(() => {});
+            LLM.resetConversation(buildSystemPrompt(lang, server)).catch(() => {});
             setTokenCount(SYSTEM_PROMPT_TOKENS);
           }
           // Warning at 75%
@@ -385,7 +408,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
 
       trackAIImageSent(activeModelId || 'unknown');
 
-      cleanupRef.current = LiteRT.sendMessageWithImage(prompt, imagePath, {
+      cleanupRef.current = LLM.sendMessageWithImage(prompt, imagePath, {
         onToken: (token) => {
           fullResponse += token;
           setStreamBuffer(fullResponse);
@@ -406,7 +429,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
                 ? `Context plein (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Reset auto.`
                 : `Context full (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Auto-reset.`,
             });
-            LiteRT.resetConversation(buildSystemPrompt(lang, server)).catch(() => {});
+            LLM.resetConversation(buildSystemPrompt(lang, server)).catch(() => {});
             setTokenCount(SYSTEM_PROMPT_TOKENS);
           }
 
@@ -438,7 +461,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
     setSelectedItem(null);
     setTokenCount(SYSTEM_PROMPT_TOKENS);
     try {
-      await LiteRT.resetConversation(buildSystemPrompt(lang, server));
+      await LLM.resetConversation(buildSystemPrompt(lang, server));
     } catch {}
   }, [lang]);
 
@@ -449,7 +472,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
     setMessages([]);
     setMarketCtx(null);
     setSelectedItem(null);
-    await LiteRT.destroy();
+    await LLM.destroy();
     setEngineState('idle');
     setActiveModelId(null);
     setScreen('models');
@@ -473,6 +496,9 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
       excellent: { fr: 'Excellent', en: 'Excellent', es: 'Excelente' },
     };
 
+    const platformModels = getModelsForPlatform(Platform.OS);
+    const webGPUBlocked = isWeb && webGPUSupported === false;
+
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.modelsContent}>
         <Text style={styles.title}>{t('advisor')}</Text>
@@ -483,6 +509,34 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
             ? 'Elige un modelo IA para analizar el mercado'
             : 'Choose an AI model to analyze the market'}
         </Text>
+
+        {/* WebGPU compatibility banner */}
+        {isWeb && webGPUSupported === false && (
+          <View style={styles.webGPUBanner}>
+            <Text style={styles.webGPUBannerTitle}>
+              {lang === 'fr' ? 'WebGPU non disponible' : lang === 'es' ? 'WebGPU no disponible' : 'WebGPU not available'}
+            </Text>
+            <Text style={styles.webGPUBannerText}>
+              {lang === 'fr'
+                ? "Ton navigateur ne supporte pas WebGPU. Utilise Chrome 113+ ou Edge 113+ pour l'IA dans le navigateur. Sur mobile, telecharge l'APK Android."
+                : lang === 'es'
+                ? 'Tu navegador no soporta WebGPU. Usa Chrome 113+ o Edge 113+ para IA en el navegador. En movil, descarga el APK Android.'
+                : "Your browser doesn't support WebGPU. Use Chrome 113+ or Edge 113+ for in-browser AI. On mobile, download the Android APK."}
+            </Text>
+          </View>
+        )}
+
+        {isWeb && webGPUSupported === true && (
+          <View style={styles.webGPUBannerOk}>
+            <Text style={styles.webGPUBannerOkText}>
+              {lang === 'fr'
+                ? 'WebGPU detecte — IA dans le navigateur disponible'
+                : lang === 'es'
+                ? 'WebGPU detectado — IA en el navegador disponible'
+                : 'WebGPU detected — in-browser AI available'}
+            </Text>
+          </View>
+        )}
 
         {freeDisk > 0 && (
           <Text style={styles.diskInfo}>
@@ -499,8 +553,9 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
           </View>
         )}
 
-        {AVAILABLE_MODELS.map((model) => {
-          const isDownloaded = downloadedFilenames.has(model.filename);
+        {platformModels.map((model) => {
+          const modelFile = getModelFilename(model, Platform.OS);
+          const isDownloaded = downloadedFilenames.has(modelFile);
           const isDownloading = downloading?.modelId === model.id;
           const isActive = activeModelId === model.id;
           const color = qualityColors[model.quality];
@@ -526,7 +581,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
               <View style={styles.specsRow}>
                 <View style={styles.specItem}>
                   <Text style={styles.specLabel}>{lang === 'fr' ? 'Taille' : 'Size'}</Text>
-                  <Text style={styles.specValue}>{model.sizeLabel}</Text>
+                  <Text style={styles.specValue}>{getModelSizeLabel(model, Platform.OS)}</Text>
                 </View>
                 <View style={styles.specItem}>
                   <Text style={styles.specLabel}>RAM</Text>
@@ -575,9 +630,9 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
                 <View style={styles.modelActions}>
                   {!isDownloaded ? (
                     <TouchableOpacity
-                      style={[styles.actionBtn, styles.downloadBtn]}
+                      style={[styles.actionBtn, styles.downloadBtn, webGPUBlocked && { opacity: 0.3 }]}
                       onPress={() => handleDownload(model)}
-                      disabled={!!downloading}
+                      disabled={!!downloading || webGPUBlocked}
                     >
                       <Text style={styles.downloadBtnText}>
                         {lang === 'fr' ? 'Télécharger' : lang === 'es' ? 'Descargar' : 'Download'}
@@ -586,9 +641,9 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
                   ) : (
                     <>
                       <TouchableOpacity
-                        style={[styles.actionBtn, styles.startBtn]}
+                        style={[styles.actionBtn, styles.startBtn, webGPUBlocked && { opacity: 0.3 }]}
                         onPress={() => handleStartModel(model)}
-                        disabled={engineState === 'loading'}
+                        disabled={engineState === 'loading' || webGPUBlocked}
                       >
                         <Text style={styles.startBtnText}>
                           {lang === 'fr' ? 'Démarrer' : lang === 'es' ? 'Iniciar' : 'Start'}
@@ -614,9 +669,15 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
             {lang === 'fr' ? 'Comment ça marche ?' : 'How does it work?'}
           </Text>
           <Text style={styles.infoText}>
-            {lang === 'fr'
-              ? "L'IA tourne entièrement sur ton téléphone grâce à LiteRT-LM avec accélération GPU. Aucune donnée n'est envoyée à un serveur externe. Le modèle analyse les prix du marché Albion en temps réel."
-              : 'The AI runs entirely on your phone using LiteRT-LM with GPU acceleration. No data is sent to external servers. The model analyzes Albion market prices in real-time.'}
+            {isWeb
+              ? (lang === 'fr'
+                ? "L'IA tourne dans ton navigateur grace a WebLLM + WebGPU. Aucune donnee n'est envoyee a un serveur externe. Le modele est telecharge et cache localement. Chrome 113+ ou Edge 113+ requis."
+                : lang === 'es'
+                ? 'La IA corre en tu navegador con WebLLM + WebGPU. No se envian datos a servidores externos. El modelo se descarga y almacena localmente. Chrome 113+ o Edge 113+ requerido.'
+                : 'The AI runs in your browser using WebLLM + WebGPU. No data is sent to external servers. The model is downloaded and cached locally. Chrome 113+ or Edge 113+ required.')
+              : (lang === 'fr'
+                ? "L'IA tourne entièrement sur ton téléphone grâce à LiteRT-LM avec accélération GPU. Aucune donnée n'est envoyée à un serveur externe. Le modèle analyse les prix du marché Albion en temps réel."
+                : 'The AI runs entirely on your phone using LiteRT-LM with GPU acceleration. No data is sent to external servers. The model analyzes Albion market prices in real-time.')}
           </Text>
         </View>
       </ScrollView>
@@ -719,20 +780,24 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
 
       {/* Input bar */}
       <View style={styles.inputBar}>
-        <TouchableOpacity
-          style={styles.imageBtn}
-          onPress={handlePickImage}
-          disabled={streaming}
-        >
-          <Text style={styles.imageBtnText}>{'\u{1F5BC}'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.imageBtn}
-          onPress={handleTakePhoto}
-          disabled={streaming}
-        >
-          <Text style={styles.imageBtnText}>{'\u{1F4F7}'}</Text>
-        </TouchableOpacity>
+        {!isWeb && (
+          <>
+            <TouchableOpacity
+              style={styles.imageBtn}
+              onPress={handlePickImage}
+              disabled={streaming}
+            >
+              <Text style={styles.imageBtnText}>{'\u{1F5BC}'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.imageBtn}
+              onPress={handleTakePhoto}
+              disabled={streaming}
+            >
+              <Text style={styles.imageBtnText}>{'\u{1F4F7}'}</Text>
+            </TouchableOpacity>
+          </>
+        )}
         <TextInput
           style={styles.textInput}
           value={input}
@@ -791,6 +856,38 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
     marginBottom: SPACING.md,
+  },
+  webGPUBanner: {
+    backgroundColor: COLORS.loss + '15',
+    borderWidth: 1,
+    borderColor: COLORS.loss + '40',
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  webGPUBannerTitle: {
+    color: COLORS.loss,
+    fontSize: FONT_SIZE.md,
+    fontWeight: '700',
+    marginBottom: SPACING.xs,
+  },
+  webGPUBannerText: {
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 20,
+  },
+  webGPUBannerOk: {
+    backgroundColor: COLORS.profit + '15',
+    borderWidth: 1,
+    borderColor: COLORS.profit + '40',
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  webGPUBannerOkText: {
+    color: COLORS.profit,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: '600',
   },
   loadingCard: {
     backgroundColor: COLORS.card,

@@ -1,0 +1,8 @@
+node_modules
+dist
+.expo
+android/app/build/outputs/apk/debug
+android/.gradle
+android/.idea
+.git
+analytics/node_modules

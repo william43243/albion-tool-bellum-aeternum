@@ -1,0 +1,193 @@
+// Landing page i18n
+(function() {
+  'use strict';
+
+  var translations = {
+    fr: {
+      nav_features: 'Fonctionnalités',
+      nav_screenshots: 'Aperçu',
+      nav_guide: 'Guide',
+      nav_download: 'Télécharger',
+      nav_app: "Lancer l'App",
+      hero_guild: 'Outils de Marché',
+      hero_desc: 'Consultez les prix du marché, calculez vos profits de craft et trouvez les meilleures opportunités de flipping sur Albion Online.',
+      download_apk: "Télécharger l'APK",
+      use_online: 'Utiliser en ligne',
+      discover: 'Découvrir',
+      features_title: 'Vos Armes de Commerce',
+      features_desc: "Trois outils essentiels pour dominer le marché d'Albion Online.",
+      feat_market_desc: 'Suivez les prix de tous les objets à travers toutes les villes. Comparez, analysez et identifiez les tendances du marché.',
+      feat_craft_title: 'Calculateur de Craft',
+      feat_craft_desc: 'Calculez instantanément le coût de fabrication et le profit potentiel de chaque recette. Prenez en compte les taux de retour et la taxe.',
+      feat_flip_title: 'Outil de Flipping',
+      feat_flip_desc: "Trouvez les meilleures opportunités d'achat-revente entre les villes. Maximisez votre argent avec les données du marché.",
+      stat_cities: 'Villes couvertes',
+      stat_items: 'Objets suivis',
+      stat_free: 'Gratuit',
+      screenshots_title: "Aperçu de l'Application",
+      screenshots_desc: "Découvrez l'interface d'Albion Market en images.",
+      guide_title: 'Guide de Démarrage',
+      guide_desc: 'Apprenez à utiliser chaque outil pour maximiser vos profits.',
+      cta_title: 'Prêt à conquérir le marché ?',
+      cta_desc: 'Disponible sur Android ou directement dans votre navigateur. Gratuit, sans inscription.',
+      formulas_title: 'Formules de Calcul',
+      formulas_desc: "Les formules exactes utilisées par l'application, identiques au jeu.",
+      formula_market: 'Frais de Marché',
+      formula_craft: 'Frais de Craft',
+      footer_copy: '© 2026 Albion Market — Bellum Aeternum. Tous droits réservés.',
+      footer_note: 'Albion Online est une marque de Sandbox Interactive GmbH. Ce site n\'est pas affilié à Sandbox Interactive.',
+      footer_contact: 'Contact',
+      footer_terms: "Conditions d'utilisation",
+      footer_privacy: 'Politique de confidentialité',
+      guide_step1_title: 'Marché — Calculer vos profits',
+      guide_step1_desc: "L'outil Marché calcule votre profit net en tenant compte de tous les frais du marché d'Albion.",
+      guide_step2_title: 'Craft — Calculer les frais de station',
+      guide_step2_desc: 'Le calculateur de Craft vous donne le coût exact d\'utilisation d\'une station de craft ou de raffinage.',
+      guide_step3_title: 'Flipping — Achat, Craft et Revente',
+      guide_step3_desc: "L'outil Flipping combine le marketplace et le craft pour calculer le profit complet d'une opération d'achat de matériaux, craft et revente.",
+      guide_step4_title: 'Historique — Suivre les tendances',
+      guide_step4_desc: "Consultez l'évolution des prix sur 7 jours, 30 jours, 90 jours ou 1 an avec des graphiques interactifs.",
+      guide_step5_title: 'Réglages',
+      guide_step5_desc: "Configurez l'application selon vos besoins.",
+      screenshot_market: 'Marché',
+      screenshot_market_result: 'Résultat Marché',
+      screenshot_craft: 'Craft',
+      screenshot_flipping: 'Flipping',
+      screenshot_flipping_result: 'Résultat Flipping',
+      screenshot_history: 'Historique'
+    },
+    en: {
+      nav_features: 'Features',
+      nav_screenshots: 'Preview',
+      nav_guide: 'Guide',
+      nav_download: 'Download',
+      nav_app: 'Launch App',
+      hero_guild: 'Market Tools',
+      hero_desc: 'Check market prices, calculate your crafting profits and find the best flipping opportunities on Albion Online.',
+      download_apk: 'Download APK',
+      use_online: 'Use Online',
+      discover: 'Discover',
+      features_title: 'Your Trading Arsenal',
+      features_desc: "Three essential tools to dominate Albion Online's market.",
+      feat_market_desc: 'Track prices of all items across all cities. Compare, analyze and identify market trends.',
+      feat_craft_title: 'Crafting Calculator',
+      feat_craft_desc: 'Instantly calculate crafting costs and potential profit for each recipe. Factor in return rates and taxes.',
+      feat_flip_title: 'Flipping Tool',
+      feat_flip_desc: 'Find the best buy-and-resell opportunities between cities. Maximize your silver with market data.',
+      stat_cities: 'Cities covered',
+      stat_items: 'Items tracked',
+      stat_free: 'Free',
+      screenshots_title: 'Application Preview',
+      screenshots_desc: 'Discover the Albion Market interface in screenshots.',
+      guide_title: 'Getting Started',
+      guide_desc: 'Learn how to use each tool to maximize your profits.',
+      cta_title: 'Ready to conquer the market?',
+      cta_desc: 'Available on Android or directly in your browser. Free, no registration required.',
+      formulas_title: 'Calculation Formulas',
+      formulas_desc: 'The exact formulas used by the application, identical to the game.',
+      formula_market: 'Market Fees',
+      formula_craft: 'Crafting Fees',
+      footer_copy: '© 2026 Albion Market — Bellum Aeternum. All rights reserved.',
+      footer_note: 'Albion Online is a trademark of Sandbox Interactive GmbH. This site is not affiliated with Sandbox Interactive.',
+      footer_contact: 'Contact',
+      footer_terms: 'Terms of Use',
+      footer_privacy: 'Privacy Policy',
+      guide_step1_title: 'Market — Calculate your profits',
+      guide_step1_desc: "The Market tool calculates your net profit taking into account all Albion's marketplace fees.",
+      guide_step2_title: 'Craft — Calculate station fees',
+      guide_step2_desc: 'The Crafting calculator gives you the exact cost of using a crafting or refining station.',
+      guide_step3_title: 'Flipping — Buy, Craft and Sell',
+      guide_step3_desc: 'The Flipping tool combines marketplace and crafting to calculate the complete profit of a buy materials, craft and sell operation.',
+      guide_step4_title: 'History — Track trends',
+      guide_step4_desc: 'View price evolution over 7 days, 30 days, 90 days or 1 year with interactive charts.',
+      guide_step5_title: 'Settings',
+      guide_step5_desc: 'Configure the application to your needs.',
+      screenshot_market: 'Market',
+      screenshot_market_result: 'Market Result',
+      screenshot_craft: 'Craft',
+      screenshot_flipping: 'Flipping',
+      screenshot_flipping_result: 'Flipping Result',
+      screenshot_history: 'History'
+    },
+    es: {
+      nav_features: 'Funciones',
+      nav_screenshots: 'Vista previa',
+      nav_guide: 'Guía',
+      nav_download: 'Descargar',
+      nav_app: 'Abrir App',
+      hero_guild: 'Herramientas de Mercado',
+      hero_desc: 'Consulta los precios del mercado, calcula tus ganancias de fabricación y encuentra las mejores oportunidades de flipping en Albion Online.',
+      download_apk: 'Descargar APK',
+      use_online: 'Usar en línea',
+      discover: 'Descubrir',
+      features_title: 'Tu Arsenal de Comercio',
+      features_desc: 'Tres herramientas esenciales para dominar el mercado de Albion Online.',
+      feat_market_desc: 'Sigue los precios de todos los objetos en todas las ciudades. Compara, analiza e identifica las tendencias del mercado.',
+      feat_craft_title: 'Calculadora de Fabricación',
+      feat_craft_desc: 'Calcula instantáneamente el coste de fabricación y el beneficio potencial de cada receta. Ten en cuenta las tasas de retorno e impuestos.',
+      feat_flip_title: 'Herramienta de Flipping',
+      feat_flip_desc: 'Encuentra las mejores oportunidades de compra-reventa entre ciudades. Maximiza tu plata con los datos del mercado.',
+      stat_cities: 'Ciudades cubiertas',
+      stat_items: 'Objetos rastreados',
+      stat_free: 'Gratis',
+      screenshots_title: 'Vista Previa de la Aplicación',
+      screenshots_desc: 'Descubre la interfaz de Albion Market en imágenes.',
+      guide_title: 'Guía de Inicio',
+      guide_desc: 'Aprende a usar cada herramienta para maximizar tus ganancias.',
+      cta_title: '¿Listo para conquistar el mercado?',
+      cta_desc: 'Disponible en Android o directamente en tu navegador. Gratis, sin registro.',
+      formulas_title: 'Fórmulas de Cálculo',
+      formulas_desc: 'Las fórmulas exactas utilizadas por la aplicación, idénticas al juego.',
+      formula_market: 'Comisiones de Mercado',
+      formula_craft: 'Costes de Fabricación',
+      footer_copy: '© 2026 Albion Market — Bellum Aeternum. Todos los derechos reservados.',
+      footer_note: 'Albion Online es una marca de Sandbox Interactive GmbH. Este sitio no está afiliado a Sandbox Interactive.',
+      footer_contact: 'Contacto',
+      footer_terms: 'Condiciones de uso',
+      footer_privacy: 'Política de privacidad',
+      guide_step1_title: 'Mercado — Calcula tus ganancias',
+      guide_step1_desc: 'La herramienta de Mercado calcula tu ganancia neta teniendo en cuenta todas las comisiones del mercado de Albion.',
+      guide_step2_title: 'Fabricación — Calcula las tasas de estación',
+      guide_step2_desc: 'La calculadora de Fabricación te da el coste exacto de usar una estación de fabricación o refinado.',
+      guide_step3_title: 'Flipping — Compra, Fabrica y Vende',
+      guide_step3_desc: 'La herramienta de Flipping combina el mercado y la fabricación para calcular el beneficio completo de una operación de compra, fabricación y venta.',
+      guide_step4_title: 'Historial — Sigue las tendencias',
+      guide_step4_desc: 'Consulta la evolución de precios en 7 días, 30 días, 90 días o 1 año con gráficos interactivos.',
+      guide_step5_title: 'Ajustes',
+      guide_step5_desc: 'Configura la aplicación según tus necesidades.',
+      screenshot_market: 'Mercado',
+      screenshot_market_result: 'Resultado Mercado',
+      screenshot_craft: 'Fabricación',
+      screenshot_flipping: 'Flipping',
+      screenshot_flipping_result: 'Resultado Flipping',
+      screenshot_history: 'Historial'
+    }
+  };
+
+  function t(lang, key) {
+    return (translations[lang] || translations.fr)[key] || key;
+  }
+
+  function applyLang(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      el.textContent = t(lang, el.getAttribute('data-i18n'));
+    });
+    document.querySelectorAll('.lang-switch .lang-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    document.documentElement.lang = lang;
+    localStorage.setItem('site_lang', lang);
+  }
+
+  // Init
+  var savedLang = localStorage.getItem('site_lang') || 'fr';
+  document.addEventListener('DOMContentLoaded', function() {
+    applyLang(savedLang);
+
+    document.querySelectorAll('.lang-switch .lang-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        applyLang(btn.dataset.lang);
+      });
+    });
+  });
+})();
