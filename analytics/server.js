@@ -236,6 +236,29 @@ app.get('/api/stats/events', checkAdmin, (req, res) => {
   res.json({ period: events, all_time: allTimeEvents });
 });
 
+// Public stats endpoint (no auth, all-time counters only — for the landing page)
+app.get('/api/stats/public', (req, res) => {
+  const allTimePrompts = db.prepare(
+    `SELECT COUNT(*) as count FROM events WHERE name = 'ai_prompt'`
+  ).get();
+  const allTimeFlips = db.prepare(
+    `SELECT COUNT(*) as count FROM events WHERE name = 'flip_calc'`
+  ).get();
+  const allTimePageViews = db.prepare('SELECT COUNT(*) as count FROM page_views').get();
+  const uniqueVisitors = db.prepare('SELECT COUNT(DISTINCT ip) as count FROM page_views').get();
+  const aiDownloads = db.prepare(
+    `SELECT COUNT(*) as count FROM events WHERE name = 'ai_model_download'`
+  ).get();
+
+  res.json({
+    ai_prompts: allTimePrompts.count,
+    flip_calculations: allTimeFlips.count,
+    page_views: allTimePageViews.count,
+    unique_visitors: uniqueVisitors.count,
+    ai_model_downloads: aiDownloads.count,
+  });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`Analytics server running on port ${PORT}`);

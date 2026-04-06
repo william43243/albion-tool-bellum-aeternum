@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Albion Market — Bellum Aeternum</title>
+<meta name="description" content="Outils de marché pour Albion Online. Calculateur de profit, calculateur de craft, outil de flipping, historique des prix.">
+<link rel="icon" href="/assets/favicon.png?v=2" type="image/png">
+<link rel="apple-touch-icon" href="/assets/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface-light: #21262d;
+  --gold: #c8a84e;
+  --gold-dark: #a08030;
+  --gold-light: #e0c872;
+  --gold-glow: rgba(200, 168, 78, 0.15);
+  --text: #e6edf3;
+  --text-sec: #8b949e;
+  --text-muted: #6e7681;
+  --border: #30363d;
+  --profit: #4CAF50;
+  --loss: #F44336;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Crimson Text', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ── Noise Overlay ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Decorative Border Pattern ── */
+.ornament {
+  display: block;
+  width: 200px;
+  height: 2px;
+  margin: 0 auto;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  position: relative;
+}
+.ornament::before {
+  content: '◆';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--gold);
+  font-size: 10px;
+  background: var(--bg);
+  padding: 0 12px;
+}
+
+/* ── Navigation ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(13,17,23,0.95), rgba(13,17,23,0.0));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.3s;
+}
+nav .logo-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+nav .logo-group img {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--gold-dark);
+}
+nav .logo-group span {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+nav .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+nav .nav-links {
+  display: flex;
+  gap: 28px;
+  list-style: none;
+}
+nav .nav-links a {
+  color: var(--text-sec);
+  text-decoration: none;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: color 0.25s;
+}
+nav .nav-links a:hover { color: var(--gold); }
+
+/* ── Hero ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Radial gold glow behind hero */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(ellipse, rgba(200,168,78,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Subtle grid lines */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(200,168,78,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200,168,78,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+}
+
+.hero-icon {
+  width: 100px;
+  height: 100px;
+  border-radius: 24px;
+  border: 2px solid var(--gold-dark);
+  box-shadow: 0 0 60px rgba(200,168,78,0.2), 0 0 120px rgba(200,168,78,0.08);
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+  animation: floatIn 1s ease-out;
+}
+
+.hero-subtitle-top {
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.8s ease-out 0.2s both;
+}
+
+.hero h1 {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: clamp(36px, 7vw, 72px);
+  line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 8px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.8s ease-out 0.3s both;
+}
+.hero h1 .gold { color: var(--gold); }
+
+.hero-guild {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: clamp(16px, 3vw, 24px);
+  color: var(--gold);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.8s ease-out 0.4s both;
+}
+
+.hero p {
+  font-size: 20px;
+  color: var(--text-sec);
+  max-width: 520px;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.8s ease-out 0.5s both;
+}
+
+.hero-buttons {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.8s ease-out 0.6s both;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 32px;
+  border-radius: 6px;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  position: relative;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: #0d1117;
+  box-shadow: 0 4px 24px rgba(200,168,78,0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(200,168,78,0.45);
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid var(--gold-dark);
+  box-shadow: 0 0 20px rgba(200,168,78,0.05);
+}
+.btn-secondary:hover {
+  transform: translateY(-2px);
+  background: rgba(200,168,78,0.08);
+  border-color: var(--gold);
+  box-shadow: 0 4px 24px rgba(200,168,78,0.15);
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Scroll indicator ── */
+.scroll-hint {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  animation: fadeUp 0.8s ease-out 1s both;
+}
+.scroll-arrow {
+  width: 20px;
+  height: 20px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: rotate(45deg);
+  animation: bounceDown 2s ease-in-out infinite;
+}
+
+/* ── Features ── */
+.features {
+  padding: 100px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.section-header h2 {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: clamp(24px, 4vw, 40px);
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.section-header p {
+  font-size: 18px;
+  color: var(--text-sec);
+  max-width: 480px;
+  margin: 16px auto 0;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px 28px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s ease;
+}
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+.feature-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--gold-dark);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 40px rgba(200,168,78,0.06);
+}
+.feature-card:hover::before { opacity: 1; }
+
+.feature-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  font-size: 26px;
+  background: var(--gold-glow);
+  border: 1px solid rgba(200,168,78,0.15);
+}
+
+.feature-card h3 {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.feature-card p {
+  font-size: 16px;
+  color: var(--text-sec);
+  line-height: 1.7;
+}
+
+.feature-tag {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.tag-live {
+  background: rgba(76,175,80,0.12);
+  color: var(--profit);
+  border: 1px solid rgba(76,175,80,0.2);
+}
+.tag-calc {
+  background: rgba(200,168,78,0.1);
+  color: var(--gold);
+  border: 1px solid rgba(200,168,78,0.2);
+}
+.tag-flip {
+  background: rgba(33,150,243,0.1);
+  color: #74b9ff;
+  border: 1px solid rgba(33,150,243,0.2);
+}
+
+/* ── Stats Band ── */
+.stats-band {
+  padding: 80px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.stats-band::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(ellipse, rgba(200,168,78,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.stats-title {
+  text-align: center;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 1;
+}
+.stats-title h2 {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: clamp(20px, 3.5vw, 32px);
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.stats-title p {
+  font-size: 15px;
+  color: var(--text-muted);
+  font-family: 'Crimson Text', serif;
+}
+.stats-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+.stat-item {
+  padding: 24px 12px;
+  border-radius: 12px;
+  background: rgba(13, 17, 23, 0.6);
+  border: 1px solid var(--border);
+  transition: all 0.4s ease;
+}
+.stat-item:hover {
+  border-color: var(--gold-dark);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(200,168,78,0.1);
+}
+.stat-item h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: clamp(24px, 3vw, 36px);
+  color: var(--gold);
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+.stat-item h3 .counter {
+  display: inline-block;
+  min-width: 2ch;
+}
+.stat-item .stat-icon {
+  font-size: 24px;
+  display: block;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+.stat-item p {
+  color: var(--text-sec);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.stat-item .stat-platform {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.stat-platform.android { background: rgba(76,175,80,0.15); color: #4CAF50; }
+.stat-platform.web { background: rgba(33,150,243,0.15); color: #74b9ff; }
+.stats-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--profit);
+  margin-right: 6px;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(76,175,80,0.4); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(76,175,80,0); }
+}
+
+@media (max-width: 768px) {
+  .stats-inner { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 480px) {
+  .stats-inner { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── CTA Section ── */
+.cta-section {
+  padding: 100px 24px;
+  text-align: center;
+  position: relative;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(200,168,78,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-section h2 {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: clamp(24px, 4vw, 36px);
+  margin-bottom: 16px;
+}
+.cta-section p {
+  font-size: 18px;
+  color: var(--text-sec);
+  margin-bottom: 40px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.cta-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Footer ── */
+footer {
+  padding: 40px 24px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+footer a {
+  color: var(--gold-dark);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+footer a:hover { color: var(--gold); }
+footer .footer-note {
+  font-size: 12px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+footer .footer-links {
+  margin-top: 12px;
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  font-size: 13px;
+}
+footer .footer-links a {
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+footer .footer-links a:hover { color: var(--gold); }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes floatIn {
+  from { opacity: 0; transform: translateY(32px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes bounceDown {
+  0%, 100% { transform: rotate(45deg) translateY(0); opacity: 0.4; }
+  50% { transform: rotate(45deg) translateY(6px); opacity: 1; }
+}
+
+/* ── Scroll Reveal ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  nav { padding: 12px 16px; }
+  nav .nav-links { display: none; }
+  nav .nav-right { gap: 0; }
+  .features-grid { grid-template-columns: 1fr; gap: 16px; }
+  .stats-inner { grid-template-columns: 1fr; gap: 24px; }
+  .hero { padding: 100px 20px 80px; }
+  .hero p { font-size: 17px; }
+  .btn { padding: 14px 24px; font-size: 14px; }
+  .feature-card { padding: 28px 20px; }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ── Screenshots ── */
+.screenshots {
+  padding: 100px 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.screenshots-scroll {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 20px 0 32px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-dark) var(--surface);
+}
+.screenshots-scroll::-webkit-scrollbar { height: 6px; }
+.screenshots-scroll::-webkit-scrollbar-track { background: var(--surface); border-radius: 3px; }
+.screenshots-scroll::-webkit-scrollbar-thumb { background: var(--gold-dark); border-radius: 3px; }
+.screenshot-item {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  text-align: center;
+}
+.screenshot-item img {
+  width: 260px;
+  height: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.screenshot-item img:hover {
+  transform: scale(1.03);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6), 0 0 20px rgba(200,168,78,0.1);
+}
+.screenshot-item p {
+  margin-top: 12px;
+  font-family: 'Cinzel', serif;
+  font-size: 13px;
+  color: var(--text-sec);
+  letter-spacing: 1px;
+}
+
+/* ── Guide ── */
+.guide {
+  padding: 100px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  margin-top: 48px;
+}
+.guide-step {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  transition: border-color 0.3s;
+}
+.guide-step:hover { border-color: var(--gold-dark); }
+.step-number {
+  flex: 0 0 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: var(--gold-glow);
+  border: 1px solid rgba(200,168,78,0.2);
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: 20px;
+  color: var(--gold);
+}
+.step-content h3 {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.step-content p {
+  font-size: 16px;
+  color: var(--text-sec);
+  line-height: 1.7;
+}
+.step-content ul {
+  margin-top: 8px;
+  padding-left: 20px;
+}
+.step-content li {
+  font-size: 15px;
+  color: var(--text-sec);
+  line-height: 1.7;
+  margin-bottom: 4px;
+}
+.step-content .tip {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: rgba(200,168,78,0.06);
+  border-left: 3px solid var(--gold-dark);
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+  color: var(--text-sec);
+}
+.step-content .tip strong { color: var(--gold); }
+
+/* ── Formulas ── */
+.formula-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-top: 48px;
+}
+.formula-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+.formula-card h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.formula-card code {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-sec);
+  line-height: 1.8;
+}
+
+@media (max-width: 768px) {
+  .guide-step { flex-direction: column; gap: 16px; padding: 20px; }
+  .screenshot-item img { width: 220px; }
+  .formula-grid { grid-template-columns: 1fr; }
+}
+
+.lang-switch {
+  display: flex;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-left: 12px;
+}
+.lang-switch .lang-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.lang-switch .lang-btn:hover { color: var(--text-sec); background: var(--surface-light); }
+.lang-switch .lang-btn.active { color: var(--gold); background: var(--surface-light); }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="logo-group">
+    <img src="/assets/icon.png" alt="Albion Market">
+    <span>Albion Market</span>
+  </div>
+  <div class="nav-right">
+    <ul class="nav-links">
+      <li><a href="#features" data-i18n="nav_features">Fonctionnalités</a></li>
+      <li><a href="#screenshots" data-i18n="nav_screenshots">Aperçu</a></li>
+      <li><a href="#guide" data-i18n="nav_guide">Guide</a></li>
+      <li><a href="#download" data-i18n="nav_download">Télécharger</a></li>
+      <li><a href="/app/" data-i18n="nav_app">Lancer l'App</a></li>
+    </ul>
+    <div class="lang-switch">
+      <button class="lang-btn active" data-lang="fr">FR</button>
+      <button class="lang-btn" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="es">ES</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <img src="/assets/icon.png" alt="Albion Market" class="hero-icon">
+  <div class="hero-subtitle-top">Bellum Aeternum</div>
+  <h1><span class="gold">Albion</span> Market</h1>
+  <div class="hero-guild" data-i18n="hero_guild">Outils de Marché</div>
+  <p data-i18n="hero_desc">Consultez les prix du marché, calculez vos profits de craft et trouvez les meilleures opportunités de flipping sur Albion Online.</p>
+  <div class="hero-buttons">
+    <a href="/downloads/albion-market.apk" class="btn btn-primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span data-i18n="download_apk">Télécharger l'APK</span>
+    </a>
+    <a href="/app/" class="btn btn-secondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <span data-i18n="use_online">Utiliser en ligne</span>
+    </a>
+  </div>
+  <div class="scroll-hint">
+    <span data-i18n="discover">Découvrir</span>
+    <div class="scroll-arrow"></div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="section-header reveal">
+    <span class="ornament"></span>
+    <h2 style="margin-top: 24px;" data-i18n="features_title">Vos Armes de Commerce</h2>
+    <p data-i18n="features_desc">Trois outils essentiels pour dominer le marché d'Albion Online.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card reveal">
+      <div class="feature-icon">📊</div>
+      <h3>Marketplace</h3>
+      <p data-i18n="feat_market_desc">Suivez les prix de tous les objets à travers toutes les villes. Comparez, analysez et identifiez les tendances du marché.</p>
+      <span class="feature-tag tag-live">Marketplace</span>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">⚒️</div>
+      <h3 data-i18n="feat_craft_title">Calculateur de Craft</h3>
+      <p data-i18n="feat_craft_desc">Calculez instantanément le coût de fabrication et le profit potentiel de chaque recette. Prenez en compte les taux de retour et la taxe.</p>
+      <span class="feature-tag tag-calc">Calculateur</span>
+    </div>
+    <div class="feature-card reveal">
+      <div class="feature-icon">💰</div>
+      <h3 data-i18n="feat_flip_title">Outil de Flipping</h3>
+      <p data-i18n="feat_flip_desc">Trouvez les meilleures opportunités d'achat-revente entre les villes. Maximisez votre argent avec les données du marché.</p>
+      <span class="feature-tag tag-flip">Flipping</span>
+    </div>
+  </div>
+</section>
+
+<!-- Live Stats -->
+<section class="stats-band reveal" id="stats">
+  <div class="stats-title">
+    <span class="ornament"></span>
+    <h2 style="margin-top: 24px;"><span class="stats-live-dot"></span>Live Stats</h2>
+    <p data-i18n="stats_subtitle">Activite en temps reel de la communaute</p>
+  </div>
+  <div class="stats-inner">
+    <div class="stat-item">
+      <span class="stat-icon">🧠</span>
+      <h3><span class="counter" data-target="ai_prompts">0</span></h3>
+      <p data-i18n="stat_prompts">Prompts IA</p>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">💰</span>
+      <h3><span class="counter" data-target="flip_calculations">0</span></h3>
+      <p data-i18n="stat_flips">Calculs de flip</p>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">📊</span>
+      <h3><span class="counter" data-target="page_views">0</span></h3>
+      <p data-i18n="stat_views">Pages vues</p>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">👥</span>
+      <h3><span class="counter" data-target="unique_visitors">0</span></h3>
+      <p data-i18n="stat_users">Utilisateurs</p>
+    </div>
+    <div class="stat-item">
+      <span class="stat-icon">📥</span>
+      <h3><span class="counter" data-target="ai_model_downloads">0</span></h3>
+      <p data-i18n="stat_downloads">Modeles IA</p>
+    </div>
+  </div>
+</section>
+
+<!-- Screenshots -->
+<section class="screenshots" id="screenshots">
+  <div class="section-header reveal">
+    <span class="ornament"></span>
+    <h2 style="margin-top: 24px;" data-i18n="screenshots_title">Aperçu de l'Application</h2>
+    <p data-i18n="screenshots_desc">Découvrez l'interface d'Albion Market en images.</p>
+  </div>
+  <div class="screenshots-scroll reveal">
+    <div class="screenshot-item">
+      <img src="/screenshots/marche.jpg" alt="Calculateur Marché" loading="lazy">
+      <p data-i18n="screenshot_market">Marché</p>
+    </div>
+    <div class="screenshot-item">
+      <img src="/screenshots/marche-resultat.jpg" alt="Résultat Marché" loading="lazy">
+      <p data-i18n="screenshot_market_result">Résultat Marché</p>
+    </div>
+    <div class="screenshot-item">
+      <img src="/screenshots/craft.jpg" alt="Calculateur de Craft" loading="lazy">
+      <p data-i18n="screenshot_craft">Craft</p>
+    </div>
+    <div class="screenshot-item">
+      <img src="/screenshots/flipping.jpg" alt="Outil de Flipping" loading="lazy">
+      <p>Flipping</p>
+    </div>
+    <div class="screenshot-item">
+      <img src="/screenshots/flipping-resultat.jpg" alt="Résultat Flipping" loading="lazy">
+      <p data-i18n="screenshot_flipping_result">Résultat Flipping</p>
+    </div>
+    <div class="screenshot-item">
+      <img src="/screenshots/historique.jpg" alt="Historique des prix" loading="lazy">
+      <p data-i18n="screenshot_history">Historique</p>
+    </div>
+  </div>
+</section>
+
+<!-- Guide -->
+<section class="guide" id="guide">
+  <div class="section-header reveal">
+    <span class="ornament"></span>
+    <h2 style="margin-top: 24px;" data-i18n="guide_title">Guide de Démarrage</h2>
+    <p data-i18n="guide_desc">Apprenez à utiliser chaque outil pour maximiser vos profits.</p>
+  </div>
+
+  <div class="guide-steps">
+    <div class="guide-step reveal">
+      <div class="step-number">1</div>
+      <div class="step-content">
+        <h3 data-i18n="guide_step1_title">Marché — Calculer vos profits</h3>
+        <p data-i18n="guide_step1_desc">L'outil Marché calcule votre profit net en tenant compte de tous les frais du marché d'Albion.</p>
+        <ul>
+          <li>Choisissez <strong>Premium</strong> ou <strong>Non-Premium</strong> (la taxe de vente passe de 8% à 4% avec Premium)</li>
+          <li>Sélectionnez <strong>Buy/Sell Orders</strong> (ordres limités avec Setup Fee de 2.5%) ou <strong>Achat/Vente direct</strong> (instant, sans Setup Fee)</li>
+          <li>Entrez le <strong>prix d'achat</strong>, le <strong>prix de vente</strong> et la <strong>quantité</strong></li>
+          <li>Utilisez <strong>Prix live</strong> pour récupérer automatiquement les prix actuels depuis l'API Albion Online Data Project</li>
+        </ul>
+        <div class="tip"><strong>Astuce :</strong> Sélectionnez votre ville dans la barre pour obtenir les prix spécifiques à Caerleon, Bridgewatch, Fort Sterling, Lymhurst, Thetford, Martlock ou Brecilien.</div>
+      </div>
+    </div>
+
+    <div class="guide-step reveal">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h3 data-i18n="guide_step2_title">Craft — Calculer les frais de station</h3>
+        <p data-i18n="guide_step2_desc">Le calculateur de Craft vous donne le coût exact d'utilisation d'une station de craft ou de raffinage.</p>
+        <ul>
+          <li>Utilisez <strong>Sélectionner un item</strong> pour parcourir la base de données (~10 000 objets) et remplir automatiquement la valeur</li>
+          <li>Entrez la <strong>Taxe station</strong> affichée en jeu (le prix par 100 nutrition)</li>
+          <li>Le résultat affiche la <strong>nutrition consommée</strong> et le <strong>coût total en silver</strong></li>
+        </ul>
+        <div class="tip"><strong>Formule :</strong> Nutrition = Valeur item x 0.1125 — Frais = (Nutrition x Taxe station) / 100</div>
+      </div>
+    </div>
+
+    <div class="guide-step reveal">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h3 data-i18n="guide_step3_title">Flipping — Achat, Craft et Revente</h3>
+        <p data-i18n="guide_step3_desc">L'outil Flipping combine le marketplace et le craft pour calculer le profit complet d'une opération d'achat de matériaux, craft et revente.</p>
+        <ul>
+          <li><strong>Étape 1 :</strong> Entrez le coût des matériaux</li>
+          <li><strong>Étape 2 :</strong> Entrez la valeur de l'item crafté et la taxe de la station</li>
+          <li><strong>Étape 3 :</strong> Entrez le prix de vente du produit fini</li>
+          <li>Le résultat montre le <strong>profit net</strong>, le détail de tous les frais et le <strong>ROI</strong> (retour sur investissement)</li>
+        </ul>
+        <div class="tip"><strong>Astuce :</strong> Comparez Premium vs Non-Premium pour voir combien le statut Premium vous fait économiser sur une opération.</div>
+      </div>
+    </div>
+
+    <div class="guide-step reveal">
+      <div class="step-number">4</div>
+      <div class="step-content">
+        <h3 data-i18n="guide_step4_title">Historique — Suivre les tendances</h3>
+        <p data-i18n="guide_step4_desc">Consultez l'évolution des prix sur 7 jours, 30 jours, 90 jours ou 1 an avec des graphiques interactifs.</p>
+        <ul>
+          <li>Recherchez un objet et sélectionnez les <strong>villes à comparer</strong></li>
+          <li>Choisissez entre l'affichage <strong>Journalier</strong> ou <strong>Horaire</strong></li>
+          <li>Le graphique affiche les prix moyens avec un code couleur par ville</li>
+          <li>Les statistiques montrent le prix <strong>min, moyen, max</strong> et la <strong>tendance</strong> (hausse/baisse)</li>
+        </ul>
+        <div class="tip"><strong>Source :</strong> Les données proviennent de l'API Albion Online Data Project, avec un cache de 30 minutes.</div>
+      </div>
+    </div>
+
+    <div class="guide-step reveal">
+      <div class="step-number">5</div>
+      <div class="step-content">
+        <h3 data-i18n="guide_step5_title">Réglages</h3>
+        <p data-i18n="guide_step5_desc">Configurez l'application selon vos besoins.</p>
+        <ul>
+          <li><strong>Langue :</strong> Français ou English</li>
+          <li><strong>Serveur :</strong> Amériques, Europe ou Asie — affecte les données de prix récupérées</li>
+          <li>Consultez le résumé des <strong>bonus Premium</strong> et les <strong>formules de calcul</strong> utilisées</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulas Reference -->
+  <div class="section-header reveal" style="margin-top: 80px;">
+    <span class="ornament"></span>
+    <h2 style="margin-top: 24px;" data-i18n="formulas_title">Formules de Calcul</h2>
+    <p data-i18n="formulas_desc">Les formules exactes utilisées par l'application, identiques au jeu.</p>
+  </div>
+  <div class="formula-grid reveal">
+    <div class="formula-card">
+      <h3 data-i18n="formula_market">Frais de Marché</h3>
+      <code>
+        Setup Fee = ⌈prix x 2.5%⌉<br>
+        Taxe vente (Premium) = ⌈prix x 4%⌉<br>
+        Taxe vente (Normal) = ⌈prix x 8%⌉
+      </code>
+    </div>
+    <div class="formula-card">
+      <h3 data-i18n="formula_craft">Frais de Craft</h3>
+      <code>
+        Nutrition = Valeur x 0.1125<br>
+        Frais = ⌈(Nutrition x Taxe) / 100⌉
+      </code>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="download">
+  <div class="reveal">
+    <span class="ornament"></span>
+    <h2 style="margin-top: 24px;" data-i18n="cta_title">Prêt à conquérir le marché ?</h2>
+    <p data-i18n="cta_desc">Disponible sur Android ou directement dans votre navigateur. Gratuit, sans inscription.</p>
+    <div class="cta-buttons">
+      <a href="/downloads/albion-market.apk" class="btn btn-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Télécharger l'APK
+      </a>
+      <a href="/app/" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <span data-i18n="use_online">Utiliser en ligne</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p data-i18n="footer_copy">&copy; 2026 Albion Market — Bellum Aeternum. Tous droits réservés.</p>
+  <p class="footer-note" data-i18n="footer_note">Albion Online est une marque de Sandbox Interactive GmbH. Ce site n'est pas affilié à Sandbox Interactive.</p>
+  <div class="footer-links">
+    <a href="mailto:albion-tool-bellum-aeternum@proton.me" data-i18n="footer_contact">Contact</a>
+    <a href="/cgu.html" data-i18n="footer_terms">Conditions d'utilisation</a>
+    <a href="/confidentialite.html" data-i18n="footer_privacy">Politique de confidentialité</a>
+  </div>
+</footer>
+
+<!-- i18n -->
+<script src="/js/i18n-landing.js"></script>
+
+<!-- Analytics -->
+<script src="/js/analytics.js"></script>
+
+<!-- Scroll Reveal + Live Stats -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 120);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  reveals.forEach(el => observer.observe(el));
+
+  // Animated counter
+  function animateCounter(el, target) {
+    const duration = 2000;
+    const start = performance.now();
+    const from = 0;
+    function tick(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - progress, 3);
+      const current = Math.floor(from + (target - from) * ease);
+      el.textContent = current.toLocaleString();
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Fetch live stats and animate
+  let statsAnimated = false;
+  function loadStats() {
+    fetch('/api/stats/public')
+      .then(r => r.json())
+      .then(data => {
+        const map = {
+          ai_prompts: data.ai_prompts || 0,
+          flip_calculations: data.flip_calculations || 0,
+          page_views: data.page_views || 0,
+          unique_visitors: data.unique_visitors || 0,
+          ai_model_downloads: data.ai_model_downloads || 0,
+        };
+
+        document.querySelectorAll('.counter').forEach(el => {
+          const key = el.dataset.target;
+          const value = map[key] || 0;
+          if (!statsAnimated) {
+            animateCounter(el, value);
+          } else {
+            el.textContent = value.toLocaleString();
+          }
+        });
+        statsAnimated = true;
+      })
+      .catch(() => {
+        // Fallback: show static values
+        document.querySelectorAll('.counter').forEach(el => {
+          if (el.textContent === '0') el.textContent = '--';
+        });
+      });
+  }
+
+  // Load stats when section is visible
+  const statsSection = document.getElementById('stats');
+  if (statsSection) {
+    const statsObserver = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadStats();
+        // Refresh every 30s
+        setInterval(loadStats, 30000);
+        statsObserver.disconnect();
+      }
+    }, { threshold: 0.1 });
+    statsObserver.observe(statsSection);
+  }
+});
+</script>
+</body>
+</html>
