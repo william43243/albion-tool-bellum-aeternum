@@ -27,6 +27,7 @@ import { SERVERS } from '../lib/api';
 import * as LiteRT from '../lib/litert';
 import * as ImagePicker from 'expo-image-picker';
 import { AVAILABLE_MODELS, ModelInfo, formatBytes } from '../lib/models';
+import { trackAIPrompt, trackAIModelDownload, trackAIModelStart, trackAIImageSent } from '../lib/analytics';
 
 interface Props {
   t: (key: any) => any;
@@ -144,6 +145,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
             cancelDownloadRef.current = null;
             refreshDownloadedModels();
             LiteRT.getFreeDiskSpace().then(setFreeDisk);
+            trackAIModelDownload(model.id);
           })
           .catch((err: any) => {
             setDownloading(null);
@@ -212,6 +214,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
           },
         ]);
         setScreen('chat');
+        trackAIModelStart(model.id);
       } catch (e: any) {
         setEngineState('error');
         setActiveModelId(null);
@@ -259,6 +262,8 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
       setStreaming(true);
       setStreamBuffer('');
       let fullResponse = '';
+
+      trackAIPrompt(activeModelId || 'unknown');
 
       cleanupRef.current = LiteRT.sendMessage(prompt, {
         onToken: (token) => {
@@ -377,6 +382,8 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
       // Convert content:// or file:// URI to path
       const imagePath = imageUri.replace('file://', '');
       const promptTokens = estimateTokens(prompt) + 500; // ~500 tokens for image
+
+      trackAIImageSent(activeModelId || 'unknown');
 
       cleanupRef.current = LiteRT.sendMessageWithImage(prompt, imagePath, {
         onToken: (token) => {

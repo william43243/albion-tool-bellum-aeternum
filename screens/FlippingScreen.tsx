@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
 import { calculateFlippingProfit } from '../lib/calculations';
 import { Language } from '../lib/i18n';
+import { trackFlipCalculation } from '../lib/analytics';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
 import ResultCard from '../components/ResultCard';
@@ -28,6 +29,7 @@ export default function FlippingScreen({ t, lang }: Props) {
     const tax = parseFloat(stationTax) || 0;
     const qty = parseInt(quantity) || 1;
     if (matBuy <= 0 && prodSell <= 0) return null;
+    trackFlipCalculation();
     return calculateFlippingProfit(matBuy, prodSell, craftIV, tax, qty, isPremium, useOrders);
   }, [materialBuyPrice, productSellPrice, craftingItemValue, stationTax, quantity, isPremium, useOrders]);
 

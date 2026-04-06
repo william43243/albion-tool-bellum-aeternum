@@ -12,6 +12,7 @@ import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateMarketplaceProfit } from '../lib/calculations';
 import { Language } from '../lib/i18n';
 import { fetchCurrentPrices, CITIES, City, Server, formatDataAge, PriceData } from '../lib/api';
+import { trackMarketCalculation, trackPriceFetch } from '../lib/analytics';
 import { AlbionItem } from '../lib/items';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
@@ -52,6 +53,8 @@ export default function MarketplaceScreen({ t, lang, server }: Props) {
       if (cityPrice) {
         if (cityPrice.buy_price_max > 0) setBuyPrice(String(cityPrice.buy_price_max));
         if (cityPrice.sell_price_min > 0) setSellPrice(String(cityPrice.sell_price_min));
+        trackPriceFetch(item.id, selectedCity);
+        trackMarketCalculation();
         setPriceDate({
           sell: cityPrice.sell_price_min_date || '',
           buy: cityPrice.buy_price_max_date || '',
