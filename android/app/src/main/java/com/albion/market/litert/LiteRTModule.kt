@@ -233,34 +233,72 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 conversation?.close()
                 engine?.close()
 
-                val backend = try { Backend.GPU() } catch (e: Exception) {
-                    Log.w(TAG, "GPU unavailable, using CPU", e); Backend.CPU()
+                // Determine whether a GPU backend can be instantiated at all
+                var usingGpu = true
+                val gpuBackend: Backend? = try {
+                    Backend.GPU()
+                } catch (e: Exception) {
+                    Log.w(TAG, "GPU backend constructor failed, will use CPU: ${e.message}")
+                    usingGpu = false
+                    null
                 }
 
-                // Try with vision first (multimodal models), fallback to text-only
-                var newEngine: Engine
-                try {
-                    val config = EngineConfig(
-                        modelPath = modelFile.absolutePath,
-                        backend = backend,
-                        visionBackend = Backend.GPU(),
-                        cacheDir = reactContext.cacheDir.path
-                    )
-                    newEngine = Engine(config)
-                    newEngine.initialize()
-                    hasVision = true
-                    Log.i(TAG, "Engine initialized WITH vision")
-                } catch (e: Exception) {
-                    Log.w(TAG, "Vision init failed, retrying text-only: ${e.message}")
-                    val config = EngineConfig(
-                        modelPath = modelFile.absolutePath,
-                        backend = backend,
-                        cacheDir = reactContext.cacheDir.path
-                    )
-                    newEngine = Engine(config)
-                    newEngine.initialize()
-                    hasVision = false
-                    Log.i(TAG, "Engine initialized text-only")
+                var newEngine: Engine? = null
+
+                // Tier 1 — GPU + vision (best path for multimodal models)
+                if (usingGpu && gpuBackend != null) {
+                    try {
+                        val config = EngineConfig(
+                            modelPath = modelFile.absolutePath,
+                            backend = gpuBackend,
+                            visionBackend = Backend.GPU(),
+                            cacheDir = reactContext.cacheDir.path
+                        )
+                        newEngine = Engine(config).also { it.initialize() }
+                        hasVision = true
+                        Log.i(TAG, "Engine initialized WITH vision (GPU)")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "GPU+vision init failed: ${e.message}")
+                        newEngine = null
+                    }
+                }
+
+                // Tier 2 — GPU text-only
+                if (newEngine == null && usingGpu && gpuBackend != null) {
+                    try {
+                        val config = EngineConfig(
+                            modelPath = modelFile.absolutePath,
+                            backend = gpuBackend,
+                            cacheDir = reactContext.cacheDir.path
+                        )
+                        newEngine = Engine(config).also { it.initialize() }
+                        hasVision = false
+                        Log.i(TAG, "Engine initialized text-only (GPU)")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "GPU text-only init failed: ${e.message}")
+                        newEngine = null
+                    }
+                }
+
+                // Tier 3 — CPU text-only (last resort, works on all devices)
+                if (newEngine == null) {
+                    try {
+                        val config = EngineConfig(
+                            modelPath = modelFile.absolutePath,
+                            backend = Backend.CPU(),
+                            cacheDir = reactContext.cacheDir.path
+                        )
+                        newEngine = Engine(config).also { it.initialize() }
+                        hasVision = false
+                        Log.i(TAG, "Engine initialized text-only (CPU fallback)")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "CPU fallback init also failed: ${e.message}")
+                        throw Exception(
+                            "Failed to start the AI engine on this device. " +
+                            "Your chipset may not be fully supported by LiteRT yet. " +
+                            "Try a different model or check for an app update.\n\nDetails: ${e.message}"
+                        )
+                    }
                 }
 
                 engine = newEngine
@@ -274,7 +312,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                     samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.3),
                     tools = toolList,
                 )
-                conversation = newEngine.createConversation(convConfig)
+                conversation = newEngine!!.createConversation(convConfig)
 
                 promise.resolve(Arguments.createMap().apply {
                     putBoolean("success", true)
