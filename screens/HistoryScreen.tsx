@@ -19,6 +19,7 @@ import {
   HistoryResponse,
   formatDateForApi,
   daysAgo,
+  formatDataAge,
 } from '../lib/api';
 import { AlbionItem } from '../lib/items';
 import { Language } from '../lib/i18n';
@@ -286,6 +287,20 @@ export default function HistoryScreen({ t, lang, server }: Props) {
             {' \u2022 '}
             {periodLabels[PERIODS.find((p) => p.days === period)?.key || '30d']}
           </Text>
+          {/* Show most recent data point timestamp */}
+          {historyData.length > 0 && (() => {
+            const allTimestamps = historyData
+              .flatMap((h) => h.data.map((d) => d.timestamp))
+              .filter(Boolean)
+              .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+            const latest = allTimestamps[0];
+            if (!latest) return null;
+            return (
+              <Text style={styles.dataTimestamp}>
+                {lang === 'fr' ? 'Dernières données' : 'Latest data'}: {formatDataAge(latest, lang)}
+              </Text>
+            );
+          })()}
 
           {/* Chart */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -596,6 +611,12 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
     marginBottom: SPACING.md,
+  },
+  dataTimestamp: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
+    marginBottom: SPACING.sm,
+    fontStyle: 'italic',
   },
   chart: {
     borderRadius: BORDER_RADIUS.md,

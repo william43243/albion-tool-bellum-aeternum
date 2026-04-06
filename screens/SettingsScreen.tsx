@@ -47,6 +47,14 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
               🇬🇧 {t('english')}
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langBtn, lang === 'es' && styles.langBtnActive]}
+            onPress={() => onSwitchLanguage('es')}
+          >
+            <Text style={[styles.langBtnText, lang === 'es' && styles.langBtnTextActive]}>
+              🇪🇸 {t('spanish')}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -74,7 +82,7 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
       {/* Formulas Reference */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
-          {lang === 'fr' ? 'Formules de référence' : 'Reference Formulas'}
+          {t('referenceFormulas')}
         </Text>
 
         <View style={styles.formulaCard}>
@@ -124,30 +132,25 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
       {/* Donate */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
-          {lang === 'fr' ? 'Faire un don' : 'Donate'}
+          {t('donate')}
         </Text>
         <View style={styles.donateCard}>
           <Text style={styles.donateIcon}>₿</Text>
           <Text style={styles.donateText}>
-            {lang === 'fr'
-              ? "Si cette app t'aide, tu peux soutenir le développement avec un don BTC :"
-              : 'If this app helps you, you can support development with a BTC donation:'}
+            {t('donateText')}
           </Text>
           <TouchableOpacity
             style={styles.btcAddressBox}
             onPress={async () => {
               await Clipboard.setStringAsync(BTC_ADDRESS);
-              Alert.alert(
-                lang === 'fr' ? 'Copié !' : 'Copied!',
-                lang === 'fr' ? 'Adresse BTC copiée dans le presse-papier' : 'BTC address copied to clipboard'
-              );
+              Alert.alert(t('copiedAlert'), t('copiedMsg'));
             }}
           >
             <Text style={styles.btcAddress} numberOfLines={1} ellipsizeMode="middle">
               {BTC_ADDRESS}
             </Text>
             <Text style={styles.btcCopyHint}>
-              {lang === 'fr' ? 'Appuie pour copier' : 'Tap to copy'}
+              {t('tapToCopy')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -158,14 +161,10 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
         <Text style={styles.versionText}>Albion Market</Text>
         <Text style={styles.versionNumber}>v1.0.0</Text>
         <Text style={styles.versionSub}>
-          {lang === 'fr'
-            ? 'Données de prix : Albion Online Data Project'
-            : 'Price data: Albion Online Data Project'}
+          {t('priceData')}
         </Text>
         <Text style={styles.versionSub}>
-          {lang === 'fr'
-            ? "Non affilié à Sandbox Interactive"
-            : 'Not affiliated with Sandbox Interactive'}
+          {t('notAffiliated')}
         </Text>
       </View>
     </ScrollView>

@@ -141,3 +141,43 @@ export function daysAgo(days: number): Date {
   d.setDate(d.getDate() - days);
   return d;
 }
+
+/**
+ * Format an API date string to a human-readable relative time + absolute time
+ * e.g. "il y a 3h (14:32)" or "3h ago (14:32)"
+ */
+export function formatDataAge(dateStr: string, lang: string = 'en'): string {
+  if (!dateStr) return '?';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '?';
+
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  const time = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  const dateShort = `${date.getDate()}/${date.getMonth() + 1}`;
+
+  let relative: string;
+  if (mins < 1) relative = lang === 'fr' ? '<1min' : lang === 'es' ? '<1min' : '<1min';
+  else if (mins < 60) relative = `${mins}min`;
+  else if (hours < 24) relative = `${hours}h`;
+  else relative = `${days}d`;
+
+  if (days >= 1) return `${relative} (${dateShort} ${time})`;
+  return `${relative} (${time})`;
+}
+
+/**
+ * Get the most recent date from a PriceData object
+ */
+export function getMostRecentPriceDate(price: PriceData): string {
+  const dates = [
+    price.sell_price_min_date,
+    price.buy_price_max_date,
+  ].filter(Boolean);
+  if (dates.length === 0) return '';
+  return dates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+}

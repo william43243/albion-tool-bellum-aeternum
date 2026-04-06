@@ -5,30 +5,44 @@ import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-cont
 import { useLanguage } from './hooks/useLanguage';
 import { useServer } from './hooks/useServer';
 import { COLORS, SPACING, FONT_SIZE } from './constants/theme';
+import { trackPageView, trackToolUse } from './lib/analytics';
 
 import MarketplaceScreen from './screens/MarketplaceScreen';
 import CraftingScreen from './screens/CraftingScreen';
 import FlippingScreen from './screens/FlippingScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import AdvisorScreen from './screens/AdvisorScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
-type TabKey = 'marketplace' | 'crafting' | 'flipping' | 'history' | 'settings';
+type TabKey = 'marketplace' | 'crafting' | 'flipping' | 'history' | 'advisor' | 'settings';
 
 const TAB_ICONS: Record<TabKey, string> = {
   marketplace: '\u{1F4B0}',
   crafting: '\u{1F528}',
   flipping: '\u{1F504}',
   history: '\u{1F4C8}',
+  advisor: '\u{1F9E0}',
   settings: '\u{2699}\uFE0F',
 };
 
-const TABS: TabKey[] = ['marketplace', 'crafting', 'flipping', 'history', 'settings'];
+const TABS: TabKey[] = ['marketplace', 'crafting', 'flipping', 'history', 'advisor', 'settings'];
 
 function AppContent() {
   const { lang, switchLanguage, t, loaded } = useLanguage();
   const { server, switchServer, serverLoaded } = useServer();
   const [activeTab, setActiveTab] = useState<TabKey>('marketplace');
   const insets = useSafeAreaInsets();
+
+  // Track initial page view
+  useEffect(() => {
+    trackPageView('/marketplace');
+  }, []);
+
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    trackPageView('/' + tab);
+    trackToolUse(tab);
+  };
 
   if (!loaded || !serverLoaded) {
     return (
@@ -48,6 +62,8 @@ function AppContent() {
         return <FlippingScreen t={t} lang={lang} />;
       case 'history':
         return <HistoryScreen t={t} lang={lang} server={server} />;
+      case 'advisor':
+        return <AdvisorScreen t={t} lang={lang} server={server} />;
       case 'settings':
         return <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} server={server} onSwitchServer={switchServer} />;
     }
@@ -76,7 +92,7 @@ function AppContent() {
             <TouchableOpacity
               key={tab}
               style={styles.tabItem}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => handleTabChange(tab)}
               activeOpacity={0.7}
             >
               <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>

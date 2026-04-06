@@ -11,7 +11,7 @@ import * as Clipboard from 'expo-clipboard';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateMarketplaceProfit } from '../lib/calculations';
 import { Language } from '../lib/i18n';
-import { fetchCurrentPrices, CITIES, City, Server } from '../lib/api';
+import { fetchCurrentPrices, CITIES, City, Server, formatDataAge, PriceData } from '../lib/api';
 import { AlbionItem } from '../lib/items';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
@@ -34,6 +34,7 @@ export default function MarketplaceScreen({ t, lang, server }: Props) {
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedCity, setSelectedCity] = useState<City>('Caerleon');
+  const [priceDate, setPriceDate] = useState<{ sell: string; buy: string } | null>(null);
 
   const result = useMemo(() => {
     const buy = parseFloat(buyPrice) || 0;
@@ -51,6 +52,10 @@ export default function MarketplaceScreen({ t, lang, server }: Props) {
       if (cityPrice) {
         if (cityPrice.buy_price_max > 0) setBuyPrice(String(cityPrice.buy_price_max));
         if (cityPrice.sell_price_min > 0) setSellPrice(String(cityPrice.sell_price_min));
+        setPriceDate({
+          sell: cityPrice.sell_price_min_date || '',
+          buy: cityPrice.buy_price_max_date || '',
+        });
       } else {
         Alert.alert(t('error'), t('noData'));
       }
@@ -131,6 +136,22 @@ export default function MarketplaceScreen({ t, lang, server }: Props) {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Price data timestamp */}
+      {priceDate && (
+        <View style={styles.dataAge}>
+          {priceDate.sell ? (
+            <Text style={styles.dataAgeText}>
+              Sell: {formatDataAge(priceDate.sell, lang)}
+            </Text>
+          ) : null}
+          {priceDate.buy ? (
+            <Text style={styles.dataAgeText}>
+              Buy: {formatDataAge(priceDate.buy, lang)}
+            </Text>
+          ) : null}
+        </View>
+      )}
 
       {/* Inputs */}
       <NumberInput
@@ -350,6 +371,16 @@ const styles = StyleSheet.create({
   barFill: {
     height: '100%',
     borderRadius: BORDER_RADIUS.sm,
+  },
+  dataAge: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.xs,
+  },
+  dataAgeText: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
   },
   copyBtn: {
     backgroundColor: COLORS.surfaceLight,
