@@ -26,9 +26,18 @@ export interface MarketContext {
 /**
  * System prompt — strict format rules to keep responses short and factual
  */
-export function buildSystemPrompt(lang: Language): string {
+export function buildSystemPrompt(lang: Language, server?: string): string {
+  const serverNames: Record<string, string> = {
+    americas: 'Americas (US West)',
+    europe: 'Europe',
+    asia: 'Asia',
+  };
+  const serverInfo = server ? serverNames[server] || server : 'unknown';
+
   const prompts: Record<Language, string> = {
     fr: `Tu es un pote qui connait bien le marché d'Albion Online. Tu parles de façon décontractée et tu vas droit au but. Reste court, quelques lignes max.
+
+Le joueur est sur le serveur ${serverInfo}. Tes outils API utilisent les données de ce serveur.
 
 Tu as des outils. Quand le joueur parle d'un item, fais TOUJOURS ça dans cet ordre :
 1. search_item("nom de l'item") pour trouver l'ID exact
@@ -44,6 +53,8 @@ Réponds en français.`,
 
     en: `You're a buddy who knows the Albion Online market well. You talk casually and get straight to the point. Keep it short, a few lines max.
 
+The player is on the ${serverInfo} server. Your API tools use data from this server.
+
 You have tools. When the player mentions an item, ALWAYS do this in order:
 1. search_item("item name") to find the exact ID
 2. get_prices("FOUND_ID") for current prices
@@ -57,6 +68,8 @@ Other tools available:
 Reply in English.`,
 
     es: `Eres un colega que conoce bien el mercado de Albion Online. Hablas relajado y vas al grano. Sé breve, unas pocas líneas.
+
+El jugador esta en el servidor ${serverInfo}. Tus herramientas API usan datos de este servidor.
 
 Tienes herramientas. Cuando el jugador menciona un item, SIEMPRE haz esto en orden:
 1. search_item("nombre del item") para encontrar el ID exacto

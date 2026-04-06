@@ -203,7 +203,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
       setEngineState('loading');
       setActiveModelId(model.id);
       try {
-        const systemPrompt = buildSystemPrompt(lang);
+        const systemPrompt = buildSystemPrompt(lang, server);
         const serverUrl = SERVERS[server];
         await LiteRT.initialize(model.filename, systemPrompt, serverUrl);
         setEngineState('ready');
@@ -289,7 +289,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
             });
 
             // Reset conversation on native side, keep messages in UI for reference
-            LiteRT.resetConversation(buildSystemPrompt(lang)).catch(() => {});
+            LiteRT.resetConversation(buildSystemPrompt(lang, server)).catch(() => {});
             setTokenCount(SYSTEM_PROMPT_TOKENS);
           }
           // Warning at 75%
@@ -406,7 +406,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
                 ? `Context plein (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Reset auto.`
                 : `Context full (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Auto-reset.`,
             });
-            LiteRT.resetConversation(buildSystemPrompt(lang)).catch(() => {});
+            LiteRT.resetConversation(buildSystemPrompt(lang, server)).catch(() => {});
             setTokenCount(SYSTEM_PROMPT_TOKENS);
           }
 
@@ -438,7 +438,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
     setSelectedItem(null);
     setTokenCount(SYSTEM_PROMPT_TOKENS);
     try {
-      await LiteRT.resetConversation(buildSystemPrompt(lang));
+      await LiteRT.resetConversation(buildSystemPrompt(lang, server));
     } catch {}
   }, [lang]);
 
