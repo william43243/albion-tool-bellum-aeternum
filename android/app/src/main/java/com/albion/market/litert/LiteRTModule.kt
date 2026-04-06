@@ -36,7 +36,17 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
     private var conversation: Conversation? = null
     private var currentModelId: String? = null
     private var hasVision: Boolean = false
+    private var backendUsed: String = "unknown"
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private fun isMediaTekChipset(): Boolean {
+        val soc = Build.HARDWARE.lowercase()
+        val board = Build.BOARD.lowercase()
+        return soc.contains("mt") || soc.contains("mediatek") ||
+               board.contains("mt") || board.contains("mediatek")
+    }
+
+    private fun getChipsetInfo(): String = "${Build.HARDWARE} (${Build.BOARD})"
 
     private val activeDownloads = mutableMapOf<Long, Triple<String, String, Promise>>()
     private var progressPollingJob: Job? = null
@@ -233,25 +243,27 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 conversation?.close()
                 engine?.close()
 
+                val isMediaTek = isMediaTekChipset()
+                if (isMediaTek) Log.i(TAG, "MediaTek chipset detected: ${getChipsetInfo()}")
+
                 // Determine whether a GPU backend can be instantiated at all
-                var usingGpu = true
                 val gpuBackend: Backend? = try {
                     Backend.GPU()
                 } catch (e: Exception) {
-                    Log.w(TAG, "GPU backend constructor failed, will use CPU: ${e.message}")
-                    usingGpu = false
+                    Log.w(TAG, "GPU backend constructor failed (chipset=${getChipsetInfo()}), will use CPU: ${e.message}")
                     null
                 }
+                backendUsed = if (gpuBackend != null) "gpu" else "cpu"
 
                 var newEngine: Engine? = null
 
                 // Tier 1 — GPU + vision (best path for multimodal models)
-                if (usingGpu && gpuBackend != null) {
+                if (gpuBackend != null) {
                     try {
                         val config = EngineConfig(
                             modelPath = modelFile.absolutePath,
                             backend = gpuBackend,
-                            visionBackend = Backend.GPU(),
+                            visionBackend = gpuBackend,
                             cacheDir = reactContext.cacheDir.path
                         )
                         newEngine = Engine(config).also { it.initialize() }
@@ -264,7 +276,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 }
 
                 // Tier 2 — GPU text-only
-                if (newEngine == null && usingGpu && gpuBackend != null) {
+                if (newEngine == null && gpuBackend != null) {
                     try {
                         val config = EngineConfig(
                             modelPath = modelFile.absolutePath,
@@ -277,11 +289,13 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                     } catch (e: Exception) {
                         Log.w(TAG, "GPU text-only init failed: ${e.message}")
                         newEngine = null
+                        backendUsed = "cpu"
                     }
                 }
 
                 // Tier 3 — CPU text-only (last resort, works on all devices)
                 if (newEngine == null) {
+                    backendUsed = "cpu"
                     try {
                         val config = EngineConfig(
                             modelPath = modelFile.absolutePath,
@@ -295,8 +309,8 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                         Log.e(TAG, "CPU fallback init also failed: ${e.message}")
                         throw Exception(
                             "Failed to start the AI engine on this device. " +
-                            "Your chipset may not be fully supported by LiteRT yet. " +
-                            "Try a different model or check for an app update.\n\nDetails: ${e.message}"
+                            "Your chipset (${getChipsetInfo()}) may not be fully supported by LiteRT yet. " +
+                            "Try a smaller model or check for an app update.\n\nDetails: ${e.message}"
                         )
                     }
                 }
@@ -317,6 +331,9 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 promise.resolve(Arguments.createMap().apply {
                     putBoolean("success", true)
                     putBoolean("hasVision", hasVision)
+                    putString("backendUsed", backendUsed)
+                    putBoolean("isMediaTek", isMediaTek)
+                    putString("chipset", getChipsetInfo())
                 })
                 Log.i(TAG, "Engine ready: ${modelFile.name}, vision=$hasVision, tools=${toolList.size}")
             } catch (e: Exception) {

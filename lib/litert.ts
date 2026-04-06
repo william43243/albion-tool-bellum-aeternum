@@ -94,7 +94,15 @@ export async function deleteModel(filename: string): Promise<boolean> {
 
 // ─── Engine Lifecycle ────────────────────────────���───────────
 
-export async function initialize(modelFilename: string, systemPrompt: string, serverBaseUrl: string): Promise<boolean> {
+export interface InitResult {
+  success: boolean;
+  hasVision: boolean;
+  backendUsed: 'gpu' | 'cpu' | 'unknown';
+  isMediaTek: boolean;
+  chipset: string;
+}
+
+export async function initialize(modelFilename: string, systemPrompt: string, serverBaseUrl: string): Promise<InitResult> {
   if (Platform.OS !== 'android' || !LiteRTModule) {
     throw new Error('LiteRT-LM is only available on Android');
   }

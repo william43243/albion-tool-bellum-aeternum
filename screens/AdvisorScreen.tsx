@@ -60,6 +60,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(
     Platform.OS !== 'web' ? null : null
   );
+  const [backendInfo, setBackendInfo] = useState<{ backendUsed: string; isMediaTek: boolean } | null>(null);
   const isWeb = Platform.OS === 'web';
 
   // Chat state
@@ -228,7 +229,8 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
         const systemPrompt = buildSystemPrompt(lang, server);
         const serverUrl = SERVERS[server];
         const filename = getModelFilename(model, Platform.OS);
-        await LLM.initialize(filename, systemPrompt, serverUrl);
+        const initResult = await LLM.initialize(filename, systemPrompt, serverUrl);
+        setBackendInfo({ backendUsed: initResult.backendUsed, isMediaTek: initResult.isMediaTek });
         setEngineState('ready');
         setMessages([
           {
@@ -534,6 +536,21 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
                 : lang === 'es'
                 ? 'WebGPU detectado — IA en el navegador disponible'
                 : 'WebGPU detected — in-browser AI available'}
+            </Text>
+          </View>
+        )}
+
+        {backendInfo?.isMediaTek && backendInfo.backendUsed === 'cpu' && (
+          <View style={[styles.webGPUBanner, { backgroundColor: '#4a3500' }]}>
+            <Text style={styles.webGPUBannerTitle}>
+              {lang === 'fr' ? 'Chipset MediaTek détecté' : lang === 'es' ? 'Chipset MediaTek detectado' : 'MediaTek chipset detected'}
+            </Text>
+            <Text style={styles.webGPUBannerText}>
+              {lang === 'fr'
+                ? "L'accélération GPU n'est pas encore supportée sur MediaTek. L'IA tourne en mode CPU — les petits modèles (Qwen 0.8B) sont recommandés."
+                : lang === 'es'
+                ? 'La aceleración GPU aún no es compatible con MediaTek. La IA funciona en modo CPU — se recomiendan modelos pequeños (Qwen 0.8B).'
+                : 'GPU acceleration is not yet supported on MediaTek. AI runs in CPU mode — smaller models (Qwen 0.8B) are recommended.'}
             </Text>
           </View>
         )}
