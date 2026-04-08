@@ -52,23 +52,6 @@ function AppContent() {
     );
   }
 
-  const renderScreen = () => {
-    switch (activeTab) {
-      case 'marketplace':
-        return <MarketplaceScreen t={t} lang={lang} server={server} />;
-      case 'crafting':
-        return <CraftingScreen t={t} lang={lang} />;
-      case 'flipping':
-        return <FlippingScreen t={t} lang={lang} />;
-      case 'history':
-        return <HistoryScreen t={t} lang={lang} server={server} />;
-      case 'advisor':
-        return <AdvisorScreen t={t} lang={lang} server={server} />;
-      case 'settings':
-        return <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} server={server} onSwitchServer={switchServer} />;
-    }
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
@@ -76,8 +59,25 @@ function AppContent() {
       {/* Top safe area spacer */}
       <View style={{ height: insets.top, backgroundColor: COLORS.background }} />
 
-      {/* Screen content */}
-      <View style={styles.screenContainer}>{renderScreen()}</View>
+      {/* All screens stay mounted; hidden via display:'none' to preserve state */}
+      <View style={[styles.screenContainer, activeTab !== 'marketplace' && { display: 'none' }]}>
+        <MarketplaceScreen t={t} lang={lang} server={server} />
+      </View>
+      <View style={[styles.screenContainer, activeTab !== 'crafting' && { display: 'none' }]}>
+        <CraftingScreen t={t} lang={lang} />
+      </View>
+      <View style={[styles.screenContainer, activeTab !== 'flipping' && { display: 'none' }]}>
+        <FlippingScreen t={t} lang={lang} />
+      </View>
+      <View style={[styles.screenContainer, activeTab !== 'history' && { display: 'none' }]}>
+        <HistoryScreen t={t} lang={lang} server={server} />
+      </View>
+      <View style={[styles.screenContainer, activeTab !== 'advisor' && { display: 'none' }]}>
+        <AdvisorScreen t={t} lang={lang} server={server} />
+      </View>
+      <View style={[styles.screenContainer, activeTab !== 'settings' && { display: 'none' }]}>
+        <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} server={server} onSwitchServer={switchServer} />
+      </View>
 
       {/* Tab bar with bottom safe area */}
       <View

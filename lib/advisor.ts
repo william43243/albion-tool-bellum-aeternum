@@ -175,20 +175,48 @@ export function buildAnalysisPrompt(ctx: MarketContext, lang: Language): string 
   const now = new Date();
   const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  return `Voici les données pour ${item.n} (T${item.t}, ${item.c}), récupérées le ${nowStr} :
+  const templates: Record<Language, {
+    header: string; prices: string; trend: string; noData: string;
+    noFlip: string; safe: string; allRed: string; opinion: string;
+  }> = {
+    fr: {
+      header: `Voici les données pour ${item.n} (T${item.t}, ${item.c}), récupérées le ${nowStr} :`,
+      prices: 'Prix actuels :', trend: 'Tendance 7 jours :', noData: 'Aucune donnée',
+      noFlip: 'Pas assez de données pour un flip.',
+      safe: 'Routes safe (0 zone rouge)', allRed: 'Toutes les autres routes passent par des zones rouges.',
+      opinion: "Qu'est-ce que t'en penses ?",
+    },
+    en: {
+      header: `Here is the data for ${item.n} (T${item.t}, ${item.c}), retrieved on ${nowStr}:`,
+      prices: 'Current prices:', trend: '7-day trend:', noData: 'No data',
+      noFlip: 'Not enough data for a flip.',
+      safe: 'Safe routes (0 red zones)', allRed: 'All other routes pass through red zones.',
+      opinion: 'What do you think?',
+    },
+    es: {
+      header: `Aquí están los datos para ${item.n} (T${item.t}, ${item.c}), obtenidos el ${nowStr}:`,
+      prices: 'Precios actuales:', trend: 'Tendencia 7 días:', noData: 'Sin datos',
+      noFlip: 'No hay suficientes datos para un flip.',
+      safe: 'Rutas seguras (0 zonas rojas)', allRed: 'Todas las otras rutas pasan por zonas rojas.',
+      opinion: '¿Qué opinas?',
+    },
+  };
+  const tpl = templates[lang];
 
-Prix actuels :
-${priceList || 'Aucune donnée'}
+  return `${tpl.header}
 
-Tendance 7 jours :
-${trendList || 'Aucune donnée'}
+${tpl.prices}
+${priceList || tpl.noData}
 
-${flipInfo || 'Pas assez de données pour un flip.'}
+${tpl.trend}
+${trendList || tpl.noData}
 
-Routes safe (0 zone rouge) : ${safeRoutes}
-Toutes les autres routes passent par des zones rouges.
+${flipInfo || tpl.noFlip}
 
-Qu'est-ce que t'en penses ?`;
+${tpl.safe} : ${safeRoutes}
+${tpl.allRed}
+
+${tpl.opinion}`;
 }
 
 /**

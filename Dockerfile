@@ -34,11 +34,14 @@ COPY assets/icon.png /usr/share/nginx/html/assets/icon.png
 COPY assets/favicon.png /usr/share/nginx/html/assets/favicon.png
 COPY assets/icon-192.png /usr/share/nginx/html/assets/icon-192.png
 
-# Copy APK explicitly
-COPY android/app/build/outputs/apk/release/app-release.apk /usr/share/nginx/html/downloads/albion-market.apk
+# APKs are NOT baked into the image — they live in the /data/apks/ bind mount
+# and nginx serves them via `alias /data/apks/;` on the /downloads/ location.
+# To publish a new version: copy the APK to /root/albion-market-data/apks/ on the
+# host, then run `docker exec albion-market node /opt/analytics/scripts/publish.js`.
 
 # Copy analytics server
 COPY analytics/server.js /opt/analytics/server.js
+COPY analytics/scripts/ /opt/analytics/scripts/
 COPY --from=builder /analytics/node_modules/ /opt/analytics/node_modules/
 
 # Create data directory for SQLite

@@ -92,8 +92,8 @@ android {
         applicationId 'com.albion.market'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "2.0.3"
+        versionCode 7
+        versionName "2.0.4"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -104,15 +104,26 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            // Production signing. Credentials are loaded from gradle.properties
+            // (ALBION_UPLOAD_*) which is gitignored — never commit the keystore or passwords.
+            if (project.hasProperty('ALBION_UPLOAD_STORE_FILE')) {
+                storeFile file(ALBION_UPLOAD_STORE_FILE)
+                storePassword ALBION_UPLOAD_STORE_PASSWORD
+                keyAlias ALBION_UPLOAD_KEY_ALIAS
+                keyPassword ALBION_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Signed with the production keystore (see signingConfigs.release above).
+            // REQUIRES ALBION_UPLOAD_* properties in android/gradle.properties — build
+            // will fail at install time otherwise, which is intentional.
+            signingConfig signingConfigs.release
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

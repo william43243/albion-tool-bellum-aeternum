@@ -6,3 +6,5 @@ android/.gradle
 android/.idea
 .git
 analytics/node_modules
+# APKs are served from the /data/apks/ bind mount, not baked into the image
+site/downloads/*.apk

@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as Application from 'expo-application';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { Language } from '../lib/i18n';
 import { Server } from '../lib/api';
 import PremiumInfoPanel from '../components/PremiumInfoPanel';
+import UpdateSection from '../components/UpdateSection';
 
 const BTC_ADDRESS = 'bc1qcptkrekh335wvffcxnrzqkj5nqf72r538vey4x';
 
@@ -75,6 +77,9 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
           ))}
         </View>
       </View>
+
+      {/* In-app updates (Android only — component renders null otherwise) */}
+      <UpdateSection t={t} lang={lang} />
 
       {/* Premium Bonuses */}
       <PremiumInfoPanel title={t('premiumBonuses')} bonuses={t('premiumBonusList')} />
@@ -159,7 +164,9 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
       {/* Version */}
       <View style={styles.versionBox}>
         <Text style={styles.versionText}>Albion Market</Text>
-        <Text style={styles.versionNumber}>v1.0.0</Text>
+        <Text style={styles.versionNumber}>
+          v{Application.nativeApplicationVersion ?? '2.0.4'}
+        </Text>
         <Text style={styles.versionSub}>
           {t('priceData')}
         </Text>

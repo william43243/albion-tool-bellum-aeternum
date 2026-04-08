@@ -130,6 +130,23 @@ export const translations = {
     serverEurope: 'Europe',
     serverAsia: 'Asie',
 
+    // In-app updater
+    updates: 'Mises à jour',
+    installedVersion: 'Version installée',
+    checkForUpdates: 'Vérifier les mises à jour',
+    checking: 'Vérification en cours…',
+    upToDate: 'Vous êtes à jour.',
+    checkAgain: 'Vérifier à nouveau',
+    updateAvailable: 'Mise à jour disponible',
+    downloadUpdate: 'Télécharger et installer',
+    downloading: 'Téléchargement…',
+    readyToInstall: 'prêt à installer',
+    installNow: 'Installer maintenant',
+    installing: 'Installation en cours…',
+    updateError: 'Erreur de mise à jour',
+    uninstallOldVersionWarning:
+      'Si vous aviez installé une ancienne version depuis Google Play, désinstallez-la avant de lancer cette mise à jour, sinon Android refusera l\'installation.',
+
     // Cities
     cities: {
       Caerleon: 'Caerleon',
@@ -270,6 +287,23 @@ export const translations = {
     serverEurope: 'Europe',
     serverAsia: 'Asia',
 
+    // In-app updater
+    updates: 'Updates',
+    installedVersion: 'Installed version',
+    checkForUpdates: 'Check for updates',
+    checking: 'Checking…',
+    upToDate: 'You\'re up to date.',
+    checkAgain: 'Check again',
+    updateAvailable: 'Update available',
+    downloadUpdate: 'Download and install',
+    downloading: 'Downloading…',
+    readyToInstall: 'ready to install',
+    installNow: 'Install now',
+    installing: 'Installing…',
+    updateError: 'Update error',
+    uninstallOldVersionWarning:
+      'If you previously installed an older version from Google Play, uninstall it before running this update — Android will otherwise reject the install.',
+
     // Cities
     cities: {
       Caerleon: 'Caerleon',
@@ -384,6 +418,23 @@ export const translations = {
     serverAmericas: 'Américas',
     serverEurope: 'Europa',
     serverAsia: 'Asia',
+
+    // In-app updater
+    updates: 'Actualizaciones',
+    installedVersion: 'Versión instalada',
+    checkForUpdates: 'Buscar actualizaciones',
+    checking: 'Comprobando…',
+    upToDate: 'Estás al día.',
+    checkAgain: 'Comprobar de nuevo',
+    updateAvailable: 'Actualización disponible',
+    downloadUpdate: 'Descargar e instalar',
+    downloading: 'Descargando…',
+    readyToInstall: 'lista para instalar',
+    installNow: 'Instalar ahora',
+    installing: 'Instalando…',
+    updateError: 'Error de actualización',
+    uninstallOldVersionWarning:
+      'Si instalaste una versión anterior desde Google Play, desinstálala antes de ejecutar esta actualización — de lo contrario, Android rechazará la instalación.',
 
     // Cities
     cities: {

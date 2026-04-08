@@ -2,7 +2,7 @@
   "expo": {
     "name": "Albion Market",
     "slug": "albion-market",
-    "version": "2.0.3",
+    "version": "2.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "com.albion.market",
+      "versionCode": 7,
       "softwareKeyboardLayoutMode": "pan",
       "backgroundColor": "#0d1117",
       "navigationBar": {
@@ -28,6 +29,9 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "REQUEST_INSTALL_PACKAGES"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "platforms": ["ios", "android", "web"],

@@ -1,11 +1,16 @@
 import { Platform } from 'react-native';
+import * as Application from 'expo-application';
 
 // Analytics server URL — web uses relative path, APK uses absolute
 const ANALYTICS_URL = Platform.OS === 'web'
   ? '/api/track'
   : 'https://albion-tool-bellum-aeternum.com/api/track';
 
-const APP_VERSION = '2.0.0';
+// Read the installed app's version at runtime instead of a hardcoded string,
+// so analytics and the in-app updater always agree about which build is
+// running. On web, nativeApplicationVersion is null — fall back to the
+// current bundled version.
+const APP_VERSION = Application.nativeApplicationVersion ?? '2.0.4';
 const APP_PLATFORM = Platform.OS; // 'android' | 'web' | 'ios'
 
 function send(endpoint: string, data: Record<string, unknown>): void {

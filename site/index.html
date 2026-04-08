@@ -125,6 +125,114 @@ nav .nav-links a {
 }
 nav .nav-links a:hover { color: var(--gold); }
 
+/* Discord link special styling */
+nav .nav-links .discord-link,
+footer .footer-links .discord-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+nav .nav-links .discord-link svg,
+footer .footer-links .discord-link svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+nav .nav-links .discord-link:hover,
+footer .footer-links .discord-link:hover {
+  color: #5865F2;
+}
+
+/* ── Hamburger Menu ── */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  z-index: 102;
+}
+.hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* Mobile menu overlay */
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  z-index: 101;
+  padding: 80px 24px 32px;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+}
+.mobile-menu.open {
+  right: 0;
+}
+.mobile-menu ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mobile-menu a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-sec);
+  text-decoration: none;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.mobile-menu a:hover,
+.mobile-menu a:focus-visible {
+  color: var(--gold);
+  background: var(--gold-glow);
+}
+.mobile-menu .discord-link:hover {
+  color: #5865F2;
+  background: rgba(88, 101, 242, 0.1);
+}
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.mobile-overlay.open {
+  opacity: 1;
+}
+
 /* ── Hero ── */
 .hero {
   min-height: 100vh;
@@ -676,11 +784,35 @@ footer .footer-links a:hover { color: var(--gold); }
   transform: translateY(0);
 }
 
+/* ── Focus Visible (Accessibility) ── */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 3px;
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   nav { padding: 12px 16px; }
   nav .nav-links { display: none; }
   nav .nav-right { gap: 0; }
+  .hamburger { display: flex; }
+  .mobile-menu { display: block; }
+  .mobile-overlay { display: block; }
   .features-grid { grid-template-columns: 1fr; gap: 16px; }
   .stats-inner { grid-template-columns: 1fr; gap: 24px; }
   .hero { padding: 100px 20px 80px; }
@@ -860,6 +992,64 @@ footer .footer-links a:hover { color: var(--gold); }
 }
 .lang-switch .lang-btn:hover { color: var(--text-sec); background: var(--surface-light); }
 .lang-switch .lang-btn.active { color: var(--gold); background: var(--surface-light); }
+
+/* Signing key warning banner */
+.signing-warning {
+  position: relative;
+  background: linear-gradient(90deg, rgba(220, 68, 52, 0.15), rgba(240, 150, 50, 0.15));
+  border-top: 1px solid rgba(240, 150, 50, 0.35);
+  border-bottom: 1px solid rgba(240, 150, 50, 0.35);
+  color: var(--text-pri);
+  z-index: 9;
+  font-family: var(--font-body);
+}
+.signing-warning.hidden { display: none; }
+.signing-warning-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 14px 28px 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.signing-warning-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.signing-warning-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.signing-warning-text strong {
+  color: #f7b441;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.signing-warning-text span { color: var(--text-sec); }
+.signing-warning-close {
+  background: transparent;
+  border: none;
+  color: var(--text-sec);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 10px;
+  margin-left: 8px;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.signing-warning-close:hover { color: var(--text-pri); }
+@media (max-width: 640px) {
+  .signing-warning-inner { padding: 12px 16px; gap: 10px; }
+  .signing-warning-text { font-size: 12.5px; }
+  .signing-warning-icon { font-size: 18px; }
+}
 </style>
 </head>
 <body>
@@ -877,14 +1067,45 @@ footer .footer-links a:hover { color: var(--gold); }
       <li><a href="#guide" data-i18n="nav_guide">Guide</a></li>
       <li><a href="#download" data-i18n="nav_download">Télécharger</a></li>
       <li><a href="/app/" data-i18n="nav_app">Lancer l'App</a></li>
+      <li><a href="https://discord.gg/y8NmDgWJr" target="_blank" rel="noopener noreferrer" class="discord-link"><svg viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg><span data-i18n="nav_discord">Discord</span></a></li>
     </ul>
     <div class="lang-switch">
       <button class="lang-btn active" data-lang="fr">FR</button>
       <button class="lang-btn" data-lang="en">EN</button>
       <button class="lang-btn" data-lang="es">ES</button>
     </div>
+    <button class="hamburger" aria-label="Menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
   </div>
 </nav>
+
+<!-- Signing key change warning banner (v2.0.3 -> v2.0.4) -->
+<div class="signing-warning" id="signingWarning">
+  <div class="signing-warning-inner">
+    <span class="signing-warning-icon">⚠️</span>
+    <div class="signing-warning-text">
+      <strong data-i18n="signing_warning_title">Mise à jour importante — v2.0.4</strong>
+      <span data-i18n="signing_warning_body">La v2.0.4 est signée avec une nouvelle clé de production. Si vous avez la v2.0.3, désinstallez-la avant d'installer la v2.0.4 (Android refuse une mise à jour avec une signature différente).</span>
+    </div>
+    <button class="signing-warning-close" id="signingWarningClose" aria-label="Close">×</button>
+  </div>
+</div>
+
+<!-- Mobile Menu -->
+<div class="mobile-overlay" id="mobileOverlay"></div>
+<div class="mobile-menu" id="mobileMenu">
+  <ul>
+    <li><a href="#features" data-i18n="nav_features">Fonctionnalités</a></li>
+    <li><a href="#screenshots" data-i18n="nav_screenshots">Aperçu</a></li>
+    <li><a href="#guide" data-i18n="nav_guide">Guide</a></li>
+    <li><a href="#download" data-i18n="nav_download">Télécharger</a></li>
+    <li><a href="/app/" data-i18n="nav_app">Lancer l'App</a></li>
+    <li><a href="https://discord.gg/y8NmDgWJr" target="_blank" rel="noopener noreferrer" class="discord-link"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg><span data-i18n="nav_discord">Discord</span></a></li>
+  </ul>
+</div>
 
 <!-- Hero -->
 <section class="hero">
@@ -894,7 +1115,7 @@ footer .footer-links a:hover { color: var(--gold); }
   <div class="hero-guild" data-i18n="hero_guild">Outils de Marché</div>
   <p data-i18n="hero_desc">Consultez les prix du marché, calculez vos profits de craft et trouvez les meilleures opportunités de flipping sur Albion Online.</p>
   <div class="hero-buttons">
-    <a href="https://github.com/william43243/albion-tool-bellum-aeternum/releases/latest/download/AlbionMarket-v2.0.2.apk" class="btn btn-primary">
+    <a href="https://github.com/william43243/albion-tool-bellum-aeternum/releases/latest/download/AlbionMarket-v2.0.4.apk" class="btn btn-primary">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span data-i18n="download_apk">Télécharger l'APK</span>
     </a>
@@ -949,7 +1170,7 @@ footer .footer-links a:hover { color: var(--gold); }
 <section class="stats-band reveal" id="stats">
   <div class="stats-title">
     <span class="ornament"></span>
-    <h2 style="margin-top: 24px;"><span class="stats-live-dot"></span>Live Stats</h2>
+    <h2 style="margin-top: 24px;"><span class="stats-live-dot"></span><span data-i18n="live_stats_title">Live Stats</span></h2>
     <p data-i18n="stats_subtitle">Activite en temps reel de la communaute</p>
   </div>
   <div class="stats-inner">
@@ -1003,7 +1224,7 @@ footer .footer-links a:hover { color: var(--gold); }
     </div>
     <div class="screenshot-item">
       <img src="/screenshots/flipping.jpg" alt="Outil de Flipping" loading="lazy">
-      <p>Flipping</p>
+      <p data-i18n="screenshot_flipping">Flipping</p>
     </div>
     <div class="screenshot-item">
       <img src="/screenshots/flipping-resultat.jpg" alt="Résultat Flipping" loading="lazy">
@@ -1130,7 +1351,7 @@ footer .footer-links a:hover { color: var(--gold); }
     <h2 style="margin-top: 24px;" data-i18n="cta_title">Prêt à conquérir le marché ?</h2>
     <p data-i18n="cta_desc">Disponible sur Android ou directement dans votre navigateur. Gratuit, sans inscription.</p>
     <div class="cta-buttons">
-      <a href="https://github.com/william43243/albion-tool-bellum-aeternum/releases/latest/download/AlbionMarket-v2.0.2.apk" class="btn btn-primary">
+      <a href="https://github.com/william43243/albion-tool-bellum-aeternum/releases/latest/download/AlbionMarket-v2.0.4.apk" class="btn btn-primary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Télécharger l'APK
       </a>
@@ -1148,6 +1369,7 @@ footer .footer-links a:hover { color: var(--gold); }
   <p class="footer-note" data-i18n="footer_note">Albion Online est une marque de Sandbox Interactive GmbH. Ce site n'est pas affilié à Sandbox Interactive.</p>
   <div class="footer-links">
     <a href="mailto:albion-tool-bellum-aeternum@proton.me" data-i18n="footer_contact">Contact</a>
+    <a href="https://discord.gg/y8NmDgWJr" target="_blank" rel="noopener noreferrer" class="discord-link"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg><span data-i18n="footer_discord">Discord</span></a>
     <a href="/cgu.html" data-i18n="footer_terms">Conditions d'utilisation</a>
     <a href="/confidentialite.html" data-i18n="footer_privacy">Politique de confidentialité</a>
   </div>
@@ -1162,6 +1384,23 @@ footer .footer-links a:hover { color: var(--gold); }
 <!-- Scroll Reveal + Live Stats -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  // Signing key warning — dismissable, persists via localStorage keyed on the
+  // warning version so future banners (e.g. 2.0.5+) can be shown again.
+  const warningKey = 'signing_warning_dismissed_v2.0.4';
+  const warning = document.getElementById('signingWarning');
+  if (warning) {
+    if (localStorage.getItem(warningKey) === '1') {
+      warning.classList.add('hidden');
+    }
+    const close = document.getElementById('signingWarningClose');
+    if (close) {
+      close.addEventListener('click', () => {
+        warning.classList.add('hidden');
+        localStorage.setItem(warningKey, '1');
+      });
+    }
+  }
+
   // Scroll reveal
   const reveals = document.querySelectorAll('.reveal');
   const observer = new IntersectionObserver((entries) => {
@@ -1230,12 +1469,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const statsObserver = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) {
         loadStats();
-        // Refresh every 30s
-        setInterval(loadStats, 30000);
+        // Refresh every 30s, store ref for cleanup
+        var statsInterval = setInterval(loadStats, 30000);
+        // Stop polling when page is hidden to save resources
+        document.addEventListener('visibilitychange', function() {
+          if (document.hidden) {
+            clearInterval(statsInterval);
+          } else {
+            loadStats();
+            statsInterval = setInterval(loadStats, 30000);
+          }
+        });
         statsObserver.disconnect();
       }
     }, { threshold: 0.1 });
     statsObserver.observe(statsSection);
+  }
+  // Hamburger menu
+  const hamburger = document.querySelector('.hamburger');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const mobileOverlay = document.getElementById('mobileOverlay');
+
+  function toggleMobileMenu() {
+    const isOpen = mobileMenu.classList.toggle('open');
+    mobileOverlay.classList.toggle('open', isOpen);
+    hamburger.classList.toggle('active', isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  }
+
+  function closeMobileMenu() {
+    mobileMenu.classList.remove('open');
+    mobileOverlay.classList.remove('open');
+    hamburger.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  if (hamburger) {
+    hamburger.addEventListener('click', toggleMobileMenu);
+    mobileOverlay.addEventListener('click', closeMobileMenu);
+    mobileMenu.querySelectorAll('a').forEach(function(link) {
+      link.addEventListener('click', closeMobileMenu);
+    });
   }
 });
 </script>

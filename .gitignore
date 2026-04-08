@@ -49,3 +49,17 @@ site/downloads/*.apk
 # AI models (downloaded at runtime, too large for git)
 *.litertlm
 *.gguf
+
+# Claude Code local settings
+.claude/
+
+# Local automation / emulator test harness (not part of the app source)
+tools/
+
+# Legacy Android backup (kept locally only)
+androidv1/
+
+# Personal screenshots and generated bundles
+Screenshot_*.jpg
+Screenshot_*.png
+android/app/src/main/assets/index.android.bundle
