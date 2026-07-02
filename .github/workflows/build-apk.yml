@@ -45,6 +45,16 @@ jobs:
             -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
 
+      - name: Configure CI release signing
+        working-directory: android
+        run: |
+          cat >> gradle.properties <<EOF
+          ALBION_UPLOAD_STORE_FILE=debug.keystore
+          ALBION_UPLOAD_STORE_PASSWORD=android
+          ALBION_UPLOAD_KEY_ALIAS=androiddebugkey
+          ALBION_UPLOAD_KEY_PASSWORD=android
+          EOF
+
       - name: Make Gradle wrapper executable
         run: chmod +x android/gradlew
 
