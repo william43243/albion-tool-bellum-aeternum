@@ -63,3 +63,7 @@ androidv1/
 Screenshot_*.jpg
 Screenshot_*.png
 android/app/src/main/assets/index.android.bundle
+
+# Local agent/session files
+.hermes/
+*.local.json
