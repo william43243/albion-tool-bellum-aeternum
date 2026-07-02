@@ -28,7 +28,7 @@ function send(endpoint: string, data: Record<string, unknown>): void {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
-      }).catch(() => {});
+      }).catch((e) => { if (__DEV__) console.warn('[analytics]', e); });
     }
   } catch {
     // Silent fail — analytics should never break the app

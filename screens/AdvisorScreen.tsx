@@ -33,6 +33,7 @@ interface Props {
   t: (key: any) => any;
   lang: Language;
   server: Server;
+  isPremium: boolean;
 }
 
 interface ChatMessage {
@@ -50,7 +51,7 @@ interface DownloadState {
   totalBytes: number;
 }
 
-export default function AdvisorScreen({ t, lang, server }: Props) {
+export default function AdvisorScreen({ t, lang, server, isPremium }: Props) {
   const [screen, setScreen] = useState<Screen>('models');
   const [engineState, setEngineState] = useState<EngineState>('idle');
   const [downloadedFilenames, setDownloadedFilenames] = useState<Set<string>>(new Set());
@@ -58,7 +59,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [freeDisk, setFreeDisk] = useState<number>(-1);
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(
-    Platform.OS !== 'web' ? null : null
+    Platform.OS === 'web' ? false : null
   );
   const [backendInfo, setBackendInfo] = useState<{ backendUsed: string; isMediaTek: boolean } | null>(null);
   const isWeb = Platform.OS === 'web';
@@ -76,6 +77,7 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const cancelDownloadRef = useRef<(() => void) | null>(null);
+  const previousServerRef = useRef<Server>(server);
 
   // ~4 chars per token is a rough estimate for English/French
   const MAX_TOKENS = 4096;
@@ -230,7 +232,11 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
         const serverUrl = SERVERS[server];
         const filename = getModelFilename(model, Platform.OS);
         const initResult = await LLM.initialize(filename, systemPrompt, serverUrl);
-        setBackendInfo({ backendUsed: initResult.backendUsed, isMediaTek: initResult.isMediaTek });
+        setBackendInfo(
+          typeof initResult === 'object' && initResult !== null
+            ? { backendUsed: initResult.backendUsed, isMediaTek: initResult.isMediaTek }
+            : null
+        );
         setEngineState('ready');
         setMessages([
           {
@@ -246,31 +252,10 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
         Alert.alert(t('error'), e.message);
       }
     },
-    [lang, t]
+    [lang, server, t]
   );
 
   // ─── Chat Logic ──────────────────────────────────────────────
-
-  const handleItemSelect = useCallback(
-    async (item: AlbionItem) => {
-      setSelectedItem(item);
-      setShowItemPicker(false);
-      setFetchingData(true);
-
-      try {
-        const ctx = await fetchMarketContext(item, server);
-        setMarketCtx(ctx);
-        if (engineState === 'ready') {
-          const prompt = buildAnalysisPrompt(ctx, lang);
-          sendToLLM(prompt, `${t('advisorAnalyzing')} ${item.n}...`);
-        }
-      } catch (e: any) {
-        Alert.alert(t('error'), e.message);
-      }
-      setFetchingData(false);
-    },
-    [server, engineState, lang, t]
-  );
 
   const sendToLLM = useCallback(
     (prompt: string, userDisplay?: string) => {
@@ -343,8 +328,30 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
         },
       });
     },
-    [streaming, tokenCount, lang]
+    [streaming, tokenCount, lang, server, activeModelId]
   );
+  const handleItemSelect = useCallback(
+    async (item: AlbionItem) => {
+      setSelectedItem(item);
+      setShowItemPicker(false);
+      setFetchingData(true);
+
+      try {
+        const ctx = await fetchMarketContext(item, server);
+        setMarketCtx(ctx);
+        if (engineState === 'ready') {
+          const prompt = buildAnalysisPrompt(ctx, lang, isPremium);
+          sendToLLM(prompt, `${t('advisorAnalyzing')} ${item.n}...`);
+        }
+      } catch (e: any) {
+        Alert.alert(t('error'), e.message);
+      }
+      setFetchingData(false);
+    },
+    [server, engineState, lang, t, isPremium, sendToLLM]
+  );
+
+
 
   const handleSend = useCallback(() => {
     const text = input.trim();
@@ -355,37 +362,6 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
   }, [input, streaming, engineState, marketCtx, lang, sendToLLM]);
 
   // ─── Image / Vision ──────────────────────────────────────────
-
-  const handlePickImage = useCallback(async () => {
-    if (streaming || engineState !== 'ready') return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-      allowsEditing: false,
-    });
-
-    if (result.canceled || !result.assets?.[0]) return;
-    sendImageToLLM(result.assets[0].uri);
-  }, [streaming, engineState]);
-
-  const handleTakePhoto = useCallback(async () => {
-    if (streaming || engineState !== 'ready') return;
-
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert(t('error'), lang === 'fr' ? 'Permission caméra refusée' : 'Camera permission denied');
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.8,
-      allowsEditing: false,
-    });
-
-    if (result.canceled || !result.assets?.[0]) return;
-    sendImageToLLM(result.assets[0].uri);
-  }, [streaming, engineState]);
 
   const sendImageToLLM = useCallback(
     (imageUri: string) => {
@@ -451,8 +427,39 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
         },
       });
     },
-    [streaming, input, tokenCount, lang]
+    [streaming, input, tokenCount, lang, server, activeModelId]
   );
+
+  const handlePickImage = useCallback(async () => {
+    if (streaming || engineState !== 'ready') return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+    sendImageToLLM(result.assets[0].uri);
+  }, [streaming, engineState, sendImageToLLM]);
+
+  const handleTakePhoto = useCallback(async () => {
+    if (streaming || engineState !== 'ready') return;
+
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(t('error'), lang === 'fr' ? 'Permission caméra refusée' : 'Camera permission denied');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+    sendImageToLLM(result.assets[0].uri);
+  }, [streaming, engineState]);
 
   const handleReset = useCallback(async () => {
     cleanupRef.current?.();
@@ -465,7 +472,28 @@ export default function AdvisorScreen({ t, lang, server }: Props) {
     try {
       await LLM.resetConversation(buildSystemPrompt(lang, server));
     } catch {}
-  }, [lang]);
+  }, [lang, server]);
+
+  useEffect(() => {
+    if (engineState !== 'ready' || previousServerRef.current === server) return;
+    previousServerRef.current = server;
+    cleanupRef.current?.();
+    setStreaming(false);
+    setStreamBuffer('');
+    setTokenCount(SYSTEM_PROMPT_TOKENS);
+    LLM.resetConversation(buildSystemPrompt(lang, server)).catch((err) => {
+      if (__DEV__) console.warn('[advisor] failed to reset server context', err);
+    });
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'system',
+        content: lang === 'fr'
+          ? `Serveur changé: ${server}. Contexte IA mis à jour.`
+          : `Server changed: ${server}. AI context updated.`,
+      },
+    ]);
+  }, [server, lang, engineState]);
 
   const handleBackToModels = useCallback(async () => {
     cleanupRef.current?.();

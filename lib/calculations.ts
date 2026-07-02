@@ -1,6 +1,22 @@
 // Albion Online Tax & Fee Calculator - Core Formulas
 // Sources: wiki.albiononline.com/wiki/Marketplace, wiki.albiononline.com/wiki/Margin
 
+/**
+ * Defensive input sanitizer: coerces any value into a finite number >= 0.
+ * Guards against NaN / Infinity / negative inputs that would otherwise
+ * propagate into the UI as "NaN" or "-∞".
+ */
+function sanitizeAmount(value: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 0;
+  return value;
+}
+
+/** Sanitizes a quantity into a finite, non-negative integer. */
+function sanitizeQuantity(value: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 0;
+  return Math.floor(value);
+}
+
 export interface MarketplaceResult {
   buyPrice: number;
   sellPrice: number;
@@ -46,6 +62,11 @@ export function calculateMarketplaceProfit(
   isPremium: boolean,
   useOrders: boolean
 ): MarketplaceResult {
+  // Defensive: reject NaN/Infinity/negative inputs before any math.
+  buyPrice = sanitizeAmount(buyPrice);
+  sellPrice = sanitizeAmount(sellPrice);
+  quantity = sanitizeQuantity(quantity);
+
   const taxRate = isPremium ? 0.04 : 0.08;
 
   const setupFeeBuyPerUnit = useOrders ? Math.ceil(buyPrice * 0.025) : 0;
@@ -92,6 +113,11 @@ export function calculateCraftingFee(
   stationTax: number,
   quantity: number
 ): CraftingResult {
+  // Defensive: reject NaN/Infinity/negative inputs before any math.
+  itemValue = sanitizeAmount(itemValue);
+  stationTax = sanitizeAmount(stationTax);
+  quantity = sanitizeQuantity(quantity);
+
   const nutritionPerItem = itemValue * 0.1125;
   const feePerItem = (itemValue * 0.1125 * stationTax) / 100;
   const totalNutrition = nutritionPerItem * quantity;
@@ -121,6 +147,11 @@ export function calculateFlippingProfit(
   isPremium: boolean,
   useOrders: boolean
 ): FlippingResult {
+  // Defensive: sanitize the inputs used directly here (roi denominator);
+  // the delegated calls sanitize their own inputs independently.
+  materialBuyPrice = sanitizeAmount(materialBuyPrice);
+  quantity = sanitizeQuantity(quantity);
+
   const marketplace = calculateMarketplaceProfit(
     materialBuyPrice,
     productSellPrice,
@@ -133,7 +164,7 @@ export function calculateFlippingProfit(
 
   const totalProfit = marketplace.netProfit - crafting.totalFee;
   const totalFees = marketplace.totalFees + crafting.totalFee;
-  const totalInvestment = materialBuyPrice * quantity + crafting.totalFee;
+  const totalInvestment = materialBuyPrice * quantity + totalFees;
   const roi = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
 
   return {

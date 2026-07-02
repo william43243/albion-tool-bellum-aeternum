@@ -24,13 +24,14 @@ interface Props {
   t: (key: any) => any;
   lang: Language;
   server: Server;
+  isPremium: boolean;
+  onPremiumChange: (value: boolean) => void;
 }
 
-export default function MarketplaceScreen({ t, lang, server }: Props) {
+export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiumChange }: Props) {
   const [buyPrice, setBuyPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
-  const [isPremium, setIsPremium] = useState(true);
   const [useOrders, setUseOrders] = useState(true);
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -82,7 +83,7 @@ export default function MarketplaceScreen({ t, lang, server }: Props) {
       {/* Premium Toggle */}
       <PremiumToggle
         isPremium={isPremium}
-        onToggle={setIsPremium}
+        onToggle={onPremiumChange}
         labelOn={t('premium')}
         labelOff={t('nonPremium')}
       />

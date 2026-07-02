@@ -8,6 +8,8 @@ export type { StreamCallbacks, DownloadCallbacks, DownloadedModel, InitResult } 
 
 const isWeb = Platform.OS === 'web';
 
+type CancelToken = { cancelled: boolean; cleanup?: () => void };
+
 // Lazy-load WebLLM only on web — metro.config.js excludes @mlc-ai/web-llm on Android
 let _webllm: typeof import('./webllm') | null = null;
 async function getWebLLMModule() {
@@ -38,18 +40,21 @@ export function downloadModel(
   callbacks: LiteRT.DownloadCallbacks
 ) {
   if (isWeb) {
-    // For web, we need sync return of { promise, cancel } — use a deferred pattern
-    let resolveModule: (m: typeof import('./webllm')) => void;
-    const moduleReady = new Promise<typeof import('./webllm')>((r) => { resolveModule = r; });
-    getWebLLMModule().then((m) => resolveModule!(m));
-
-    let cancelFn = () => {};
-    const promise = moduleReady.then((wllm) => {
+    const token: CancelToken = { cancelled: false };
+    const promise = getWebLLMModule().then((wllm) => {
+      if (token.cancelled) throw new Error('cancelled');
       const result = wllm.downloadModel(modelId, url, filename, callbacks);
-      cancelFn = result.cancel;
+      token.cleanup = result.cancel;
+      if (token.cancelled) result.cancel();
       return result.promise;
     });
-    return { promise, cancel: () => cancelFn() };
+    return {
+      promise,
+      cancel: () => {
+        token.cancelled = true;
+        token.cleanup?.();
+      },
+    };
   }
   return LiteRT.downloadModel(modelId, url, filename, callbacks);
 }
@@ -66,18 +71,40 @@ export async function initialize(modelFilename: string, systemPrompt: string, se
 
 export function sendMessage(message: string, callbacks: LiteRT.StreamCallbacks) {
   if (isWeb) {
-    let cleanup = () => {};
-    getWebLLMModule().then((wllm) => { cleanup = wllm.sendMessage(message, callbacks); });
-    return () => cleanup();
+    const token: CancelToken = { cancelled: false };
+    getWebLLMModule()
+      .then((wllm) => {
+        if (token.cancelled) return;
+        token.cleanup = wllm.sendMessage(message, callbacks);
+        if (token.cancelled) token.cleanup?.();
+      })
+      .catch((err) => {
+        if (!token.cancelled) callbacks.onError(err?.message || String(err));
+      });
+    return () => {
+      token.cancelled = true;
+      token.cleanup?.();
+    };
   }
   return LiteRT.sendMessage(message, callbacks);
 }
 
 export function sendMessageWithImage(message: string, imagePath: string, callbacks: LiteRT.StreamCallbacks) {
   if (isWeb) {
-    let cleanup = () => {};
-    getWebLLMModule().then((wllm) => { cleanup = wllm.sendMessageWithImage(message, imagePath, callbacks); });
-    return () => cleanup();
+    const token: CancelToken = { cancelled: false };
+    getWebLLMModule()
+      .then((wllm) => {
+        if (token.cancelled) return;
+        token.cleanup = wllm.sendMessageWithImage(message, imagePath, callbacks);
+        if (token.cancelled) token.cleanup?.();
+      })
+      .catch((err) => {
+        if (!token.cancelled) callbacks.onError(err?.message || String(err));
+      });
+    return () => {
+      token.cancelled = true;
+      token.cleanup?.();
+    };
   }
   return LiteRT.sendMessageWithImage(message, imagePath, callbacks);
 }

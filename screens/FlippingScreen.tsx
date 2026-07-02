@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
 import { calculateFlippingProfit } from '../lib/calculations';
@@ -11,17 +11,19 @@ import ResultCard from '../components/ResultCard';
 interface Props {
   t: (key: any) => any;
   lang: Language;
+  isPremium: boolean;
+  onPremiumChange: (value: boolean) => void;
 }
 
-export default function FlippingScreen({ t, lang }: Props) {
+export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: Props) {
   const [materialBuyPrice, setMaterialBuyPrice] = useState('');
   const [productSellPrice, setProductSellPrice] = useState('');
   const [craftingItemValue, setCraftingItemValue] = useState('');
   const [stationTax, setStationTax] = useState('');
   const [quantity, setQuantity] = useState('1');
-  const [isPremium, setIsPremium] = useState(true);
   const [useOrders, setUseOrders] = useState(true);
 
+  // Pure calculation — no side effects. Recomputes in real time on every input.
   const result = useMemo(() => {
     const matBuy = parseFloat(materialBuyPrice) || 0;
     const prodSell = parseFloat(productSellPrice) || 0;
@@ -29,9 +31,25 @@ export default function FlippingScreen({ t, lang }: Props) {
     const tax = parseFloat(stationTax) || 0;
     const qty = parseInt(quantity) || 1;
     if (matBuy <= 0 && prodSell <= 0) return null;
-    trackFlipCalculation();
     return calculateFlippingProfit(matBuy, prodSell, craftIV, tax, qty, isPremium, useOrders);
   }, [materialBuyPrice, productSellPrice, craftingItemValue, stationTax, quantity, isPremium, useOrders]);
+
+  const trackedFirstValidRef = useRef(false);
+
+  // Track one completed calculation per valid scenario entry, not every
+  // keystroke/recalculation while the user is still typing.
+  useEffect(() => {
+    if (!result) {
+      trackedFirstValidRef.current = false;
+      return;
+    }
+    if (trackedFirstValidRef.current) return;
+    const id = setTimeout(() => {
+      trackFlipCalculation();
+      trackedFirstValidRef.current = true;
+    }, 1000);
+    return () => clearTimeout(id);
+  }, [result]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -43,7 +61,7 @@ export default function FlippingScreen({ t, lang }: Props) {
 
       <PremiumToggle
         isPremium={isPremium}
-        onToggle={setIsPremium}
+        onToggle={onPremiumChange}
         labelOn={t('premium')}
         labelOff={t('nonPremium')}
       />

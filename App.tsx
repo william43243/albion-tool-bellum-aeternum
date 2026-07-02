@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from '
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLanguage } from './hooks/useLanguage';
 import { useServer } from './hooks/useServer';
-import { COLORS, SPACING, FONT_SIZE } from './constants/theme';
+import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from './constants/theme';
 import { trackPageView, trackToolUse } from './lib/analytics';
 
 import MarketplaceScreen from './screens/MarketplaceScreen';
@@ -31,6 +31,7 @@ function AppContent() {
   const { lang, switchLanguage, t, loaded } = useLanguage();
   const { server, switchServer, serverLoaded } = useServer();
   const [activeTab, setActiveTab] = useState<TabKey>('marketplace');
+  const [isPremium, setIsPremium] = useState(true);
   const insets = useSafeAreaInsets();
 
   // Track initial page view
@@ -61,19 +62,19 @@ function AppContent() {
 
       {/* All screens stay mounted; hidden via display:'none' to preserve state */}
       <View style={[styles.screenContainer, activeTab !== 'marketplace' && { display: 'none' }]}>
-        <MarketplaceScreen t={t} lang={lang} server={server} />
+        <MarketplaceScreen t={t} lang={lang} server={server} isPremium={isPremium} onPremiumChange={setIsPremium} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'crafting' && { display: 'none' }]}>
         <CraftingScreen t={t} lang={lang} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'flipping' && { display: 'none' }]}>
-        <FlippingScreen t={t} lang={lang} />
+        <FlippingScreen t={t} lang={lang} isPremium={isPremium} onPremiumChange={setIsPremium} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'history' && { display: 'none' }]}>
         <HistoryScreen t={t} lang={lang} server={server} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'advisor' && { display: 'none' }]}>
-        <AdvisorScreen t={t} lang={lang} server={server} />
+        <AdvisorScreen t={t} lang={lang} server={server} isPremium={isPremium} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'settings' && { display: 'none' }]}>
         <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} server={server} onSwitchServer={switchServer} />
@@ -95,9 +96,12 @@ function AppContent() {
               onPress={() => handleTabChange(tab)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>
-                {TAB_ICONS[tab]}
-              </Text>
+              <View style={[styles.tabIndicator, isActive && styles.tabIndicatorActive]} />
+              <View style={[styles.tabIconWrap, isActive && styles.tabIconWrapActive]}>
+                <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>
+                  {TAB_ICONS[tab]}
+                </Text>
+              </View>
               <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
                 {t(tab)}
               </Text>
@@ -138,10 +142,11 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.backgroundElevated,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 8,
+    borderTopColor: COLORS.borderStrong,
+    paddingTop: 6,
+    ...SHADOWS.lg,
   },
   tabItem: {
     flex: 1,
@@ -149,9 +154,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 4,
   },
+  tabIndicator: {
+    height: 3,
+    width: 24,
+    borderRadius: BORDER_RADIUS.pill,
+    backgroundColor: 'transparent',
+    marginBottom: 4,
+  },
+  tabIndicatorActive: {
+    backgroundColor: COLORS.primary,
+  },
+  tabIconWrap: {
+    width: 40,
+    height: 30,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  tabIconWrapActive: {
+    backgroundColor: COLORS.primarySoft,
+  },
   tabIcon: {
-    fontSize: 22,
-    opacity: 0.4,
+    fontSize: 21,
+    opacity: 0.45,
   },
   tabIconActive: {
     opacity: 1,

@@ -88,6 +88,12 @@ export default function HistoryScreen({ t, lang, server }: Props) {
       Alert.alert(t('error'), t('selectItems'));
       return;
     }
+    // Defensive: toggleCity already prevents removing the last city, but never
+    // fire a request with an empty locations list.
+    if (selectedCities.size === 0) {
+      Alert.alert(t('error'), t('selectCities'));
+      return;
+    }
     setLoading(true);
     try {
       const startDate = formatDateForApi(daysAgo(period));
@@ -116,19 +122,27 @@ export default function HistoryScreen({ t, lang, server }: Props) {
     );
     if (validEntries.length === 0) return null;
 
-    // Find the entry with most data points for labels
-    const refEntry = validEntries.reduce((a, b) =>
-      a.data.length >= b.data.length ? a : b
-    );
+    const validSeries = validEntries.map((entry) => ({
+      entry,
+      points: entry.data.filter((d) => d.avg_price > 0),
+    })).filter((series) => series.points.length > 0);
+    if (validSeries.length === 0) return null;
 
-    // Max 5 labels for readability
+    const longestSeries = validSeries.reduce((a, b) =>
+      a.points.length >= b.points.length ? a : b
+    );
+    const minSeriesLength = Math.min(...validSeries.map((series) => series.points.length));
+    const hasTruncatedSeries = validSeries.some((series) => series.points.length !== longestSeries.points.length);
+
+    // Max 5 labels for readability. Use only the common overlap so sparse
+    // cities do not get fake flatlines from repeated last-known prices.
     const maxLabels = 5;
-    const totalPoints = refEntry.data.length;
+    const totalPoints = minSeriesLength;
     const labelStep = Math.max(1, Math.floor(totalPoints / maxLabels));
 
     const labels: string[] = [];
     for (let i = 0; i < totalPoints; i += labelStep) {
-      const d = new Date(refEntry.data[i].timestamp);
+      const d = new Date(longestSeries.points[i].timestamp);
       labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
     }
 
@@ -140,18 +154,16 @@ export default function HistoryScreen({ t, lang, server }: Props) {
 
     const legendEntries: { label: string; color: string; min: number; max: number; avg: number; last: number }[] = [];
 
-    for (const entry of validEntries) {
+    for (const { entry, points } of validSeries) {
       const color = CITY_COLORS[entry.location] || '#FFFFFF';
 
-      // Sample data points to match labels length
+      // Sample only real data points in the shared overlap. Do not pad shorter
+      // series by repeating their last point; that looks like a frozen price.
       const sampled: number[] = [];
       for (let i = 0; i < totalPoints; i += labelStep) {
-        const idx = Math.min(i, entry.data.length - 1);
-        sampled.push(entry.data[idx]?.avg_price || 0);
+        sampled.push(points[i]?.avg_price || 0);
       }
 
-      // Ensure same length as labels
-      while (sampled.length < labels.length) sampled.push(sampled[sampled.length - 1] || 0);
       while (sampled.length > labels.length) sampled.pop();
 
       // Skip if all zeros
@@ -180,7 +192,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
 
     if (datasets.length === 0) return null;
 
-    return { labels, datasets, legendEntries };
+    return { labels, datasets, legendEntries, hasTruncatedSeries };
   }, [historyData, selectedItems]);
 
   return (
@@ -287,6 +299,14 @@ export default function HistoryScreen({ t, lang, server }: Props) {
             {' \u2022 '}
             {periodLabels[PERIODS.find((p) => p.days === period)?.key || '30d']}
           </Text>
+          {chartInfo.hasTruncatedSeries && (
+            <Text style={styles.dataTimestamp}>
+              {lang === 'fr'
+                ? 'Certaines villes ont moins de donnees; le graphique montre seulement la periode commune.'
+                : 'Some cities have fewer data points; chart shows only the shared period.'}
+            </Text>
+          )}
+
           {/* Show most recent data point timestamp */}
           {historyData.length > 0 && (() => {
             const allTimestamps = historyData

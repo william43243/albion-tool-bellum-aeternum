@@ -12,13 +12,23 @@ app.set('trust proxy', 1);
 // Request size limit
 app.use(express.json({ limit: '10kb', strict: true }));
 
-// Rate limiters
+// Rate limiters.
+// Behind TWO nginx hops (host + container) every request reaches Express from
+// 172.17.0.1, so req.ip is useless as a bucket key — all visitors would share
+// a single global quota. The host nginx resolves the real client IP (from
+// CF-Connecting-IP) into X-Real-IP and the container nginx forwards it; key on
+// that, falling back to req.ip when the header is absent (direct hits).
+function clientIpKey(req) {
+  return String(req.headers['x-real-ip'] || req.ip || 'unknown');
+}
+
 const trackingLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
   message: { error: 'Too many requests' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIpKey,
 });
 
 const adminLimiter = rateLimit({
@@ -27,6 +37,7 @@ const adminLimiter = rateLimit({
   message: { error: 'Too many requests' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIpKey,
 });
 
 const publicLimiter = rateLimit({
@@ -35,6 +46,7 @@ const publicLimiter = rateLimit({
   message: { error: 'Too many requests' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: clientIpKey,
 });
 
 // Database setup
@@ -133,7 +145,7 @@ app.post('/api/track/pageview', trackingLimiter, (req, res) => {
       return res.status(400).json({ error: 'invalid page' });
     }
 
-    const ip = req.ip || 'unknown';
+    const ip = clientIpKey(req);
     const referrer = String(req.body.referrer || req.headers['referer'] || '').slice(0, MAX_REFERRER_LENGTH);
     const userAgent = String(req.headers['user-agent'] || '').slice(0, MAX_REFERRER_LENGTH);
 
@@ -156,7 +168,7 @@ app.post('/api/track/event', trackingLimiter, (req, res) => {
       return res.status(400).json({ error: 'invalid category' });
     }
 
-    const ip = req.ip || 'unknown';
+    const ip = clientIpKey(req);
 
     // Merge version/platform into metadata for tracking
     const fullMetadata = { ...(metadata || {}), _version, _platform };
@@ -178,9 +190,11 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
 
 function checkAdmin(req, res, next) {
   if (!ADMIN_TOKEN) {
-    return next();
+    return res.status(503).json({ error: 'admin auth not configured' });
   }
-  const provided = String(req.query.token || '');
+  const auth = String(req.get('authorization') || '');
+  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7) : '';
+  const provided = String(bearer || req.query.token || '');
   if (provided.length !== ADMIN_TOKEN.length) {
     return res.status(403).json({ error: 'forbidden' });
   }
@@ -419,7 +433,7 @@ app.get('/api/version', publicLimiter, (req, res) => {
         target: row ? row.version : null,
       });
       if (meta.length <= MAX_METADATA_LENGTH) {
-        insertEvent.run('update_check', 'updates', meta, req.ip || 'unknown');
+        insertEvent.run('update_check', 'updates', meta, clientIpKey(req));
       }
     } catch (logErr) {
       console.error('update_check audit failed:', logErr.message);

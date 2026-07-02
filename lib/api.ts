@@ -54,20 +54,42 @@ export interface HistoryResponse {
   data: HistoryDataPoint[];
 }
 
-// Simple in-memory cache
+// Simple bounded in-memory cache
 const cache: Record<string, { data: any; timestamp: number }> = {};
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const MAX_CACHE_ENTRIES = 200;
+
+function pruneCache(now = Date.now()): void {
+  for (const [key, entry] of Object.entries(cache)) {
+    if (now - entry.timestamp >= CACHE_TTL) {
+      delete cache[key];
+    }
+  }
+
+  const entries = Object.entries(cache);
+  if (entries.length <= MAX_CACHE_ENTRIES) return;
+
+  entries
+    .sort((a, b) => a[1].timestamp - b[1].timestamp)
+    .slice(0, entries.length - MAX_CACHE_ENTRIES)
+    .forEach(([key]) => delete cache[key]);
+}
 
 function getCached(key: string): any | null {
+  pruneCache();
   const entry = cache[key];
-  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
-    return entry.data;
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp >= CACHE_TTL) {
+    delete cache[key];
+    return null;
   }
-  return null;
+  return entry.data;
 }
 
 function setCache(key: string, data: any): void {
+  pruneCache();
   cache[key] = { data, timestamp: Date.now() };
+  pruneCache();
 }
 
 /**
@@ -176,6 +198,8 @@ export function formatDataAge(dateStr: string, lang: string = 'en'): string {
 export function getMostRecentPriceDate(price: PriceData): string {
   const dates = [
     price.sell_price_min_date,
+    price.sell_price_max_date,
+    price.buy_price_min_date,
     price.buy_price_max_date,
   ].filter(Boolean);
   if (dates.length === 0) return '';

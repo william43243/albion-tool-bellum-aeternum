@@ -27,6 +27,8 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Application from 'expo-application';
 import nacl from 'tweetnacl';
 
+const FileSystemCompat = FileSystem as any;
+
 // ─────────────────────────────────────────────────────────────
 // Compile-time constants
 // ─────────────────────────────────────────────────────────────
@@ -51,7 +53,7 @@ const MANIFEST_URL = 'https://albion-tool-bellum-aeternum.com/api/version';
  * can reclaim cacheDirectory under memory pressure, which would break the
  * install flow if it happens between download and install.
  */
-const UPDATES_DIR = FileSystem.documentDirectory + 'updates/';
+const UPDATES_DIR = FileSystemCompat.documentDirectory + 'updates/';
 
 /**
  * The set of fields that make up the signed manifest. This list must match
@@ -340,12 +342,16 @@ export async function downloadUpdate(
   // phone) and hash it. expo-crypto.digest() takes a BufferSource and runs
   // natively, so the only cost in JS is the base64 decode.
   const base64 = await FileSystem.readAsStringAsync(result.uri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: FileSystemCompat.EncodingType.Base64,
   });
   const fileBytes = base64ToBytes(base64);
+  const hashInput = fileBytes.buffer.slice(
+    fileBytes.byteOffset,
+    fileBytes.byteOffset + fileBytes.byteLength
+  ) as ArrayBuffer;
   const hashBuffer = await Crypto.digest(
     Crypto.CryptoDigestAlgorithm.SHA256,
-    fileBytes
+    hashInput
   );
   const computed = bytesToHex(new Uint8Array(hashBuffer));
 

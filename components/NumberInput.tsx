@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
+import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, FONT_WEIGHT } from '../constants/theme';
 
 interface Props {
   label: string;
@@ -11,20 +11,24 @@ interface Props {
 }
 
 export default function NumberInput({ label, value, onChangeText, placeholder, info }: Props) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, focused && styles.labelFocused]}>{label}</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, focused && styles.inputFocused]}
         value={value}
         onChangeText={(text) => {
           // Allow only numbers and dots
           const cleaned = text.replace(/[^0-9.]/g, '');
           onChangeText(cleaned);
         }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         keyboardType="numeric"
         placeholder={placeholder || '0'}
         placeholderTextColor={COLORS.textMuted}
+        selectionColor={COLORS.primary}
       />
       {info && <Text style={styles.info}>{info}</Text>}
     </View>
@@ -39,18 +43,26 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: FONT_SIZE.sm,
     marginBottom: SPACING.xs,
-    fontWeight: '500',
+    fontWeight: FONT_WEIGHT.medium,
+    letterSpacing: 0.2,
+  },
+  labelFocused: {
+    color: COLORS.primaryLight,
   },
   input: {
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.sm,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm + 2,
+    paddingVertical: SPACING.sm + 3,
     color: COLORS.text,
     fontSize: FONT_SIZE.lg,
-    fontWeight: '600',
+    fontWeight: FONT_WEIGHT.semibold,
+  },
+  inputFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface2,
   },
   info: {
     color: COLORS.textMuted,

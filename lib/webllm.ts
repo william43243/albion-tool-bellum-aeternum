@@ -228,7 +228,10 @@ export function sendMessage(
     }
   })();
 
-  return () => { cancelled = true; };
+  return () => {
+    cancelled = true;
+    try { engine?.interruptGenerate?.(); } catch {}
+  };
 }
 
 /**
