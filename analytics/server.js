@@ -1,25 +1,24 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const Database = require('better-sqlite3');
 const path = require('path');
 
 const app = express();
+app.disable('x-powered-by');
 
-// Trust reverse proxy (nginx)
+// Trust exactly the container nginx hop. That proxy overwrites
+// X-Forwarded-For, so req.ip cannot be selected from a client-supplied chain.
 app.set('trust proxy', 1);
 
 // Request size limit
 app.use(express.json({ limit: '10kb', strict: true }));
 
-// Rate limiters.
-// Behind TWO nginx hops (host + container) every request reaches Express from
-// 172.17.0.1, so req.ip is useless as a bucket key — all visitors would share
-// a single global quota. The host nginx resolves the real client IP (from
-// CF-Connecting-IP) into X-Real-IP and the container nginx forwards it; key on
-// that, falling back to req.ip when the header is absent (direct hits).
+// Rate limiters. Express derives req.ip only from the single trusted container
+// proxy; never read forwarding headers directly here.
 function clientIpKey(req) {
-  return String(req.headers['x-real-ip'] || req.ip || 'unknown');
+  return String(req.ip || 'unknown');
 }
 
 const trackingLimiter = rateLimit({
@@ -51,7 +50,13 @@ const publicLimiter = rateLimit({
 
 // Database setup
 const DB_PATH = process.env.DB_PATH || '/data/analytics.db';
+process.umask(0o077);
 const db = new Database(DB_PATH);
+try {
+  fs.chmodSync(DB_PATH, 0o600);
+} catch (err) {
+  console.error('database permissions warning:', err.message);
+}
 db.pragma('journal_mode = WAL');
 db.pragma('busy_timeout = 5000');
 
@@ -186,7 +191,17 @@ app.post('/api/track/event', trackingLimiter, (req, res) => {
 });
 
 // Admin stats API
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
+const ADMIN_TOKEN_FILE = process.env.ADMIN_TOKEN_FILE || '/data/admin-token';
+let ADMIN_TOKEN = '';
+try {
+  ADMIN_TOKEN = fs.readFileSync(ADMIN_TOKEN_FILE, 'utf8').trim();
+  if (ADMIN_TOKEN.length < 32) {
+    throw new Error('admin token must contain at least 32 characters');
+  }
+} catch (err) {
+  ADMIN_TOKEN = '';
+  console.error('admin authentication disabled:', err.message);
+}
 
 function checkAdmin(req, res, next) {
   if (!ADMIN_TOKEN) {
@@ -194,7 +209,7 @@ function checkAdmin(req, res, next) {
   }
   const auth = String(req.get('authorization') || '');
   const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7) : '';
-  const provided = String(bearer || req.query.token || '');
+  const provided = String(bearer || '');
   if (provided.length !== ADMIN_TOKEN.length) {
     return res.status(403).json({ error: 'forbidden' });
   }
@@ -209,6 +224,7 @@ function checkAdmin(req, res, next) {
   } catch {
     return res.status(403).json({ error: 'forbidden' });
   }
+  res.set('Cache-Control', 'no-store');
   next();
 }
 

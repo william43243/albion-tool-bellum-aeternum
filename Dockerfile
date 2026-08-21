@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22.17.0-alpine3.22 AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -12,7 +12,7 @@ COPY analytics/package.json ./
 RUN npm install --omit=dev
 
 # ── Production ──
-FROM node:20-alpine
+FROM node:22.17.0-alpine3.22
 
 # Install nginx and supervisor
 RUN apk add --no-cache nginx supervisor
@@ -44,15 +44,23 @@ COPY analytics/server.js /opt/analytics/server.js
 COPY analytics/scripts/ /opt/analytics/scripts/
 COPY --from=builder /analytics/node_modules/ /opt/analytics/node_modules/
 
+# Migration archives use restrictive host modes. Runtime code remains
+# immutable but must be readable by the unprivileged nginx analytics worker.
+RUN chmod -R a=rX /opt/analytics /usr/share/nginx/html
+
 # Create data directory for SQLite
 RUN mkdir -p /data
 
 # Supervisor config to run both nginx and analytics
 RUN mkdir -p /etc/supervisor.d
 COPY supervisord.conf /etc/supervisord.conf
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
 
 VOLUME ["/data"]
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]

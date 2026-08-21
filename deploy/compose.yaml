@@ -1,0 +1,131 @@
+services:
+  gateway:
+    image: nginx:alpine
+    container_name: migrated-web-gateway
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:80:80"
+      - "127.0.0.1:2053:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /srv/migrated-sites/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /srv/migrated-sites/gateway/ssl:/etc/nginx/ssl:ro
+      - /srv/migrated-sites/xmr/var-www:/var/www:ro
+    depends_on:
+      - albion
+      - xmr
+      - goblin
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE]
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=16m
+      - /var/run:rw,noexec,nosuid,size=1m
+      - /var/log/nginx:rw,noexec,nosuid,size=16m
+      - /tmp:rw,noexec,nosuid,size=8m
+    security_opt:
+      - no-new-privileges:true
+
+  albion:
+    image: albion-market:security-20260821
+    container_name: migrated-albion-market
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:18080:80"
+    volumes:
+      - /srv/migrated-sites/albion/data:/data
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, NET_BIND_SERVICE]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /run:rw,noexec,nosuid,size=4m
+      - /var/run:rw,noexec,nosuid,size=4m
+      - /var/cache/nginx:rw,noexec,nosuid,size=16m
+      - /var/lib/nginx:rw,noexec,nosuid,size=16m
+      - /var/log/nginx:rw,noexec,nosuid,size=16m
+      - /var/log/supervisor:rw,noexec,nosuid,size=16m
+    security_opt:
+      - no-new-privileges:true
+
+  xmr:
+    image: nginx:alpine
+    container_name: migrated-xmr-site
+    restart: unless-stopped
+    user: "101:101"
+    ports:
+      - "127.0.0.1:18181:80"
+    volumes:
+      - /srv/migrated-sites/xmr/site:/usr/share/nginx/html:ro
+      - /srv/migrated-sites/xmr/default.conf:/etc/nginx/conf.d/default.conf:ro
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=16m,uid=101,gid=101
+      - /var/run:rw,noexec,nosuid,size=1m,uid=101,gid=101
+      - /var/log/nginx:rw,noexec,nosuid,size=16m,uid=101,gid=101
+      - /tmp:rw,noexec,nosuid,size=8m,uid=101,gid=101
+    security_opt:
+      - no-new-privileges:true
+
+  goblin:
+    image: nginx:alpine
+    container_name: migrated-goblin-site
+    restart: unless-stopped
+    user: "101:101"
+    ports:
+      - "127.0.0.1:18082:80"
+    volumes:
+      - /srv/migrated-sites/goblin/source/dist:/usr/share/nginx/html:ro
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=16m,uid=101,gid=101
+      - /var/run:rw,noexec,nosuid,size=1m,uid=101,gid=101
+      - /var/log/nginx:rw,noexec,nosuid,size=16m,uid=101,gid=101
+      - /tmp:rw,noexec,nosuid,size=8m,uid=101,gid=101
+    security_opt:
+      - no-new-privileges:true
+
+  tsx:
+    build:
+      context: /srv/migrated-sites/tsx/source/backend
+      dockerfile: /srv/migrated-sites/tsx/Dockerfile
+    image: migrated-tsx-seasonality:local
+    container_name: migrated-tsx-seasonality
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,mode=1777,uid=10001,gid=10001
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      TSX_DATA_DIR: /data
+      TSX_STATE_DIR: /state
+      MARKETSTACK_KEY_FILE: /run/secrets/marketstack_key
+    command:
+      - uvicorn
+      - main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8011"
+      - --ssl-keyfile
+      - /run/tls/server.key
+      - --ssl-certfile
+      - /run/tls/server.crt
+    working_dir: /app
+    ports:
+      - "0.0.0.0:8011:8011"
+    volumes:
+      - /srv/migrated-sites/tsx/source/backend/data:/data
+      - /srv/migrated-sites/tsx/runtime/state:/state
+      - /srv/migrated-sites/tsx/runtime/secrets/marketstack_key:/run/secrets/marketstack_key:ro
+      - /srv/migrated-sites/tsx/runtime/tls:/run/tls:ro
+    security_opt:
+      - no-new-privileges:true
