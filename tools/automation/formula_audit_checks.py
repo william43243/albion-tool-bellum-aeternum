@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Formula audit checks for Albion marketplace/crafting math.
-
-Sources checked by search snippets/pages:
-- Albion Online Wiki / Marketplace: setup fee 2.5%, transaction tax 8%, Premium 4%.
-- Albion Online Wiki / Building: usage fee = ((Item Value * 0.1125) * Tax Fee) / 100; nutrition = Item Value * 0.1125.
-"""
+"""Executable regression checks for Albion market and crafting formulas."""
 from pathlib import Path
 import subprocess
 import textwrap
@@ -14,82 +9,126 @@ OUT = Path('/tmp/albion-formula-audit')
 OUT.mkdir(parents=True, exist_ok=True)
 
 subprocess.run([
-    'npx', 'tsc', 'lib/calculations.ts',
-    '--target', 'es2020',
-    '--module', 'commonjs',
-    '--outDir', str(OUT),
-    '--skipLibCheck',
+    'npx', 'tsc', 'lib/calculations.ts', '--target', 'es2020',
+    '--module', 'commonjs', '--outDir', str(OUT), '--skipLibCheck',
     '--esModuleInterop',
 ], cwd=ROOT, check=True)
 
 node_check = OUT / 'check.js'
 node_check.write_text(textwrap.dedent(f'''
 const calc = require({str((OUT / 'calculations.js')).__repr__()});
-function assertEq(actual, expected, label) {{
-  if (actual !== expected) {{
-    throw new Error(`${{label}}: expected ${{expected}}, got ${{actual}}`);
-  }}
+function eq(actual, expected, label) {{
+  if (actual !== expected) throw new Error(`${{label}}: expected ${{expected}}, got ${{actual}}`);
 }}
-function assertClose(actual, expected, label) {{
-  if (Math.abs(actual - expected) > 1e-9) {{
-    throw new Error(`${{label}}: expected ${{expected}}, got ${{actual}}`);
-  }}
+function close(actual, expected, label) {{
+  if (Math.abs(actual - expected) > 1e-9) throw new Error(`${{label}}: expected ${{expected}}, got ${{actual}}`);
 }}
 
-// Official current marketplace constants: setup=2.5%, sales tax=8% or Premium 4%.
-let r = calc.calculateMarketplaceProfit(1500, 2500, 1, false, true);
-assertEq(r.setupFeeBuy, 38, 'nonpremium/order setup buy ceil(1500*2.5%)');
-assertEq(r.setupFeeSell, 63, 'nonpremium/order setup sell ceil(2500*2.5%)');
-assertEq(r.salesTax, 200, 'nonpremium/order sales tax ceil(2500*8%)');
-assertEq(r.netProfit, 699, 'nonpremium/order net profit');
+// Four independent transaction modes. Fees are rounded once on each whole order.
+let direct = calc.calculateMarketplaceProfit(1000, 1500, 10, true, false, false);
+eq(direct.setupFeeBuy, 0, 'direct buy setup fee');
+eq(direct.setupFeeSell, 0, 'direct sell setup fee');
+eq(direct.salesTax, 600, 'direct sales tax');
+eq(direct.netProfit, 4400, 'direct profit');
+eq(direct.upfrontInvestment, 10000, 'direct upfront investment');
 
-r = calc.calculateMarketplaceProfit(1500, 2500, 1, true, true);
-assertEq(r.salesTax, 100, 'premium/order sales tax ceil(2500*4%)');
-assertEq(r.netProfit, 799, 'premium/order net profit');
+let sellOrder = calc.calculateMarketplaceProfit(1000, 1500, 10, true, false, true);
+eq(sellOrder.netProfit, 4025, 'instant buy plus sell order');
+eq(sellOrder.upfrontInvestment, 10000, 'sell fee is not upfront capital');
 
-r = calc.calculateMarketplaceProfit(1500, 2500, 1, false, false);
-assertEq(r.setupFeeBuy, 0, 'direct setup buy');
-assertEq(r.setupFeeSell, 0, 'direct setup sell');
-assertEq(r.salesTax, 200, 'direct nonpremium sales tax still applies to sale');
-assertEq(r.netProfit, 800, 'direct nonpremium net profit');
+let buyOrder = calc.calculateMarketplaceProfit(1000, 1500, 10, true, true, false);
+eq(buyOrder.netProfit, 4150, 'buy order plus instant sale');
+eq(buyOrder.upfrontInvestment, 10250, 'buy fee is upfront capital');
 
-// Per-item fee rounding: setup fee is displayed/charged per item; code rounds per unit then multiplies.
-r = calc.calculateMarketplaceProfit(101, 199, 3, true, true);
-assertEq(r.setupFeeBuy, 9, 'qty setup buy per-item ceil');
-assertEq(r.setupFeeSell, 15, 'qty setup sell per-item ceil');
-assertEq(r.salesTax, 24, 'qty sales tax per-item ceil');
-assertEq(r.netProfit, 246, 'qty net profit');
+let bothOrders = calc.calculateMarketplaceProfit(1000, 1500, 10, true, true, true);
+eq(bothOrders.netProfit, 3775, 'buy and sell orders');
+eq(bothOrders.upfrontInvestment, 10250, 'both-order upfront capital');
 
-// Building/crafting official formula: nutrition = IV*0.1125; fee = nutrition*TaxFee/100.
-r = calc.calculateCraftingFee(1000, 450, 2);
-assertClose(r.nutritionPerItem, 112.5, 'craft nutrition per item');
-assertClose(r.feePerItem, 506.25, 'craft fee per item');
-assertEq(r.totalNutrition, 225, 'craft total nutrition');
-assertEq(r.totalFee, 1013, 'craft total fee ceil total');
+let lot = calc.calculateMarketplaceProfit(101, 101, 10, true, true, true);
+eq(lot.setupFeeBuy, 26, 'buy fee rounded on lot');
+eq(lot.setupFeeSell, 26, 'sell fee rounded on lot');
+eq(lot.salesTax, 41, 'sales tax rounded on lot');
 
-r = calc.calculateFlippingProfit(1500, 2500, 1000, 450, 1, true, true);
-assertEq(r.marketplace.netProfit, 799, 'flipping marketplace component');
-assertEq(r.crafting.totalFee, 507, 'flipping crafting component');
-assertEq(r.totalProfit, 292, 'flipping total profit after crafting');
-assertEq(r.totalFees, 708, 'flipping total fees');
+// Station formula remains ItemValue*0.1125*stationTax/100, rounded on total.
+let station = calc.calculateCraftingFee(1000, 450, 2);
+close(station.nutritionPerItem, 112.5, 'nutrition per item');
+close(station.feePerItem, 506.25, 'station fee per item');
+eq(station.totalFee, 1013, 'station total fee');
+
+// Recipe sums every ingredient and applies an explicit resource return rate.
+let craft = calc.calculateFlippingProfit(
+  [
+    {{ unitPrice: 100, requiredQuantity: 2, useBuyOrder: true }},
+    {{ unitPrice: 50, requiredQuantity: 3, useBuyOrder: false }},
+  ],
+  1000, 100, 0, 10, true, true, 0.20
+);
+eq(craft.grossMaterialCost, 3500, 'gross recipe purchase cost before returns');
+eq(craft.returnedMaterialValue, 700, 'returned resources valued at purchase cost');
+eq(craft.materialCost, 2800, 'economic net material cost after returns');
+eq(craft.buyOrderFees, 50, 'buy-order fee charged on gross ingredient order');
+eq(craft.marketplace.setupFeeSell, 250, 'finished-product sell order fee');
+eq(craft.marketplace.salesTax, 400, 'finished-product sales tax');
+eq(craft.totalProfit, 6500, 'craft net profit');
+eq(craft.upfrontInvestment, 3550, 'craft upfront investment uses gross purchase capital');
+close(craft.roi, (6500 / 3550) * 100, 'craft ROI on upfront capital');
+
+// Inputs fail closed.
+craft = calc.calculateFlippingProfit(
+  [{{ unitPrice: 100, requiredQuantity: 2, useBuyOrder: false }}],
+  1000, 100, 0, 1, true, false, 2
+);
+eq(craft.resourceReturnRate, 1, 'resource return is clamped to 100%');
+eq(craft.materialCost, 0, '100% return consumes no material economically');
 console.log('formula numeric checks passed');
 '''))
 subprocess.run(['node', str(node_check)], cwd=ROOT, check=True)
 
-advisor = (ROOT / 'lib/advisor.ts').read_text()
-required = [
-    'const taxRate = isPremium ? 0.04 : 0.08;',
-    'const salesTax = Math.ceil(sellAt * taxRate);',
-    'const directProfit = sellAt - buyAt - salesTax;',
-    'const setupBuy = Math.ceil(buyAt * 0.025);',
-    'const setupSell = Math.ceil(sellAt * 0.025);',
-    'const orderProfit = sellAt - buyAt - setupBuy - setupSell - salesTax;',
-]
-for needle in required:
-    if needle not in advisor:
-        raise AssertionError(f'missing advisor formula pattern: {needle}')
-if 'BEST DIRECT FLIP' not in advisor or 'ORDER SCENARIO' not in advisor:
-    raise AssertionError('advisor must distinguish direct API flip from order scenario')
+# UI labels for independent order choices and ROI denominator must be present in
+# each locale block; a file-wide occurrence count could conceal a missing locale.
+def assert_localized_keys(content: str) -> None:
+    languages = ('fr', 'en', 'es')
+    expected_keys = ('useBuyOrder:', 'useSellOrder:', 'upfrontInvestment:')
+    starts = {language: content.find(f'  {language}: {{') for language in languages}
+    if any(position < 0 for position in starts.values()):
+        raise AssertionError('missing locale block')
+    for index, language in enumerate(languages):
+        start = starts[language]
+        end = starts[languages[index + 1]] if index + 1 < len(languages) else content.find('\n  },\n} as const;', start)
+        if end < 0:
+            raise AssertionError(f'{language}: malformed locale block')
+        block = content[start:end]
+        for key in expected_keys:
+            if block.count(key) != 1:
+                raise AssertionError(f'{language}: missing localized {key}')
 
-print('advisor formula checks passed')
+i18n = (ROOT / 'lib' / 'i18n.ts').read_text()
+# Negative controls: prove every required key is rejected in every locale block.
+for language in ('fr', 'en', 'es'):
+    start = i18n.find(f'  {language}: {{')
+    next_languages = {'fr': 'en', 'en': 'es'}
+    end = i18n.find(f'  {next_languages[language]}: {{', start) if language in next_languages else i18n.find('\n  },\n} as const;', start)
+    for key in ('useBuyOrder:', 'useSellOrder:', 'upfrontInvestment:'):
+        block = i18n[start:end]
+        mutated = i18n[:start] + block.replace(key, f'missing{key[0].upper()}{key[1:]}', 1) + i18n[end:]
+        try:
+            assert_localized_keys(mutated)
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError(f'localization checker accepted missing {language}.{key}')
+assert_localized_keys(i18n)
+
+# Advisor regression guard: deterministic market admission must keep authority
+# over the language model and must not infer order fees from existing orders.
+advisor = (ROOT / 'lib' / 'advisor.ts').read_text()
+for needle in (
+    'selectCompatibleMarketSignal(',
+    'MARKET SIGNAL REJECTED:',
+    'OWN ORDER SCENARIOS: not inferred from existing-order prices;',
+    'Never recommend BUY/ACHETER/COMPRAR; answer WATCH/SKIP only.',
+):
+    if needle not in advisor:
+        raise AssertionError(f'missing advisor guardrail: {needle}')
+
 print('all formula audit checks passed')

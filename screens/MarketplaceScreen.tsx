@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { Language } from '../lib/i18n';
 import { fetchCurrentPrices, CITIES, City, Server, formatDataAge, PriceData } from '../lib/api';
 import { trackMarketCalculation, trackPriceFetch } from '../lib/analytics';
 import { AlbionItem } from '../lib/items';
+import { useRequestScope } from '../hooks/useScreenLifecycle';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
 import ResultCard from '../components/ResultCard';
@@ -32,41 +33,57 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
   const [buyPrice, setBuyPrice] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [quantity, setQuantity] = useState('1');
-  const [useOrders, setUseOrders] = useState(true);
+  const [useBuyOrder, setUseBuyOrder] = useState(false);
+  const [useSellOrder, setUseSellOrder] = useState(false);
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedCity, setSelectedCity] = useState<City>('Caerleon');
   const [priceDate, setPriceDate] = useState<{ sell: string; buy: string } | null>(null);
+  const priceRequestGenerationRef = useRef(0);
+  const requestScope = useRequestScope(`${server}:${selectedCity}:${useBuyOrder}:${useSellOrder}`);
 
   const result = useMemo(() => {
     const buy = parseFloat(buyPrice) || 0;
     const sell = parseFloat(sellPrice) || 0;
     const qty = parseInt(quantity) || 1;
     if (buy <= 0 && sell <= 0) return null;
-    return calculateMarketplaceProfit(buy, sell, qty, isPremium, useOrders);
-  }, [buyPrice, sellPrice, quantity, isPremium, useOrders]);
+    return calculateMarketplaceProfit(buy, sell, qty, isPremium, useBuyOrder, useSellOrder);
+  }, [buyPrice, sellPrice, quantity, isPremium, useBuyOrder, useSellOrder]);
 
   const handleFetchPrices = async (item: AlbionItem) => {
+    const scope = requestScope.begin();
+    if (!scope) return;
+    const generation = ++priceRequestGenerationRef.current;
+    const requestedCity = selectedCity;
+    const requestedBuyOrder = useBuyOrder;
+    const requestedSellOrder = useSellOrder;
     setLoading(true);
     try {
-      const prices = await fetchCurrentPrices(item.id, [selectedCity], server);
-      const cityPrice = prices.find((p) => p.city === selectedCity);
+      const prices = await fetchCurrentPrices(item.id, [requestedCity], server, 1, { signal: scope.signal, forceRefresh: true });
+      if (!scope.current() || generation !== priceRequestGenerationRef.current) return;
+      const cityPrice = prices.find((p) => p.city === requestedCity);
       if (cityPrice) {
-        if (cityPrice.buy_price_max > 0) setBuyPrice(String(cityPrice.buy_price_max));
-        if (cityPrice.sell_price_min > 0) setSellPrice(String(cityPrice.sell_price_min));
-        trackPriceFetch(item.id, selectedCity);
+        const fetchedBuyPrice = requestedBuyOrder
+          ? cityPrice.buy_price_max
+          : cityPrice.sell_price_min;
+        const fetchedSellPrice = requestedSellOrder
+          ? cityPrice.sell_price_min
+          : cityPrice.buy_price_max;
+        if (fetchedBuyPrice > 0) setBuyPrice(String(fetchedBuyPrice));
+        if (fetchedSellPrice > 0) setSellPrice(String(fetchedSellPrice));
+        trackPriceFetch(item.id, requestedCity);
         trackMarketCalculation();
         setPriceDate({
-          sell: cityPrice.sell_price_min_date || '',
-          buy: cityPrice.buy_price_max_date || '',
+          buy: requestedBuyOrder ? cityPrice.buy_price_max_date : cityPrice.sell_price_min_date,
+          sell: requestedSellOrder ? cityPrice.sell_price_min_date : cityPrice.buy_price_max_date,
         });
       } else {
         Alert.alert(t('error'), t('noData'));
       }
     } catch (e) {
-      Alert.alert(t('error'), String(e));
+      if (scope.current() && generation === priceRequestGenerationRef.current) Alert.alert(t('error'), String(e));
     }
-    setLoading(false);
+    if (scope.current() && generation === priceRequestGenerationRef.current) setLoading(false);
   };
 
   const copyResult = async () => {
@@ -88,22 +105,22 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
         labelOff={t('nonPremium')}
       />
 
-      {/* Order Type */}
+      {/* Buy and sell order choices are independent. */}
       <View style={styles.orderToggle}>
         <TouchableOpacity
-          style={[styles.orderBtn, useOrders && styles.orderBtnActive]}
-          onPress={() => setUseOrders(true)}
+          style={[styles.orderBtn, useBuyOrder && styles.orderBtnActive]}
+          onPress={() => { priceRequestGenerationRef.current += 1; setLoading(false); setPriceDate(null); setBuyPrice(''); setSellPrice(''); setUseBuyOrder((value) => !value); }}
         >
-          <Text style={[styles.orderBtnText, useOrders && styles.orderBtnTextActive]}>
-            {t('useOrders')}
+          <Text style={[styles.orderBtnText, useBuyOrder && styles.orderBtnTextActive]}>
+            {t('useBuyOrder')}: {useBuyOrder ? 'ON' : 'OFF'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.orderBtn, !useOrders && styles.orderBtnActive]}
-          onPress={() => setUseOrders(false)}
+          style={[styles.orderBtn, useSellOrder && styles.orderBtnActive]}
+          onPress={() => { priceRequestGenerationRef.current += 1; setLoading(false); setPriceDate(null); setBuyPrice(''); setSellPrice(''); setUseSellOrder((value) => !value); }}
         >
-          <Text style={[styles.orderBtnText, !useOrders && styles.orderBtnTextActive]}>
-            {t('directTrade')}
+          <Text style={[styles.orderBtnText, useSellOrder && styles.orderBtnTextActive]}>
+            {t('useSellOrder')}: {useSellOrder ? 'ON' : 'OFF'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -116,7 +133,7 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
               <TouchableOpacity
                 key={city}
                 style={[styles.cityChip, selectedCity === city && styles.cityChipActive]}
-                onPress={() => setSelectedCity(city)}
+                onPress={() => { priceRequestGenerationRef.current += 1; setLoading(false); setPriceDate(null); setBuyPrice(''); setSellPrice(''); setSelectedCity(city); }}
               >
                 <Text
                   style={[
@@ -162,7 +179,7 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
         label={t('buyPrice')}
         value={buyPrice}
         onChangeText={setBuyPrice}
-        info={useOrders ? t('setupFeeInfo') : undefined}
+        info={useBuyOrder ? t('setupFeeInfo') : t('directTrade')}
       />
       <NumberInput
         label={t('sellPrice')}
@@ -186,12 +203,16 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
               label: result.netProfit >= 0 ? t('profit') : t('loss'),
             }}
             rows={[
-              ...(useOrders
-                ? [
-                    { label: t('setupFeeBuy'), value: `${result.setupFeeBuy} silver` },
-                    { label: t('setupFeeSell'), value: `${result.setupFeeSell} silver` },
-                  ]
+              ...(useBuyOrder
+                ? [{ label: t('setupFeeBuy'), value: `${result.setupFeeBuy} silver` }]
                 : []),
+              ...(useSellOrder
+                ? [{ label: t('setupFeeSell'), value: `${result.setupFeeSell} silver` }]
+                : []),
+              {
+                label: t('upfrontInvestment'),
+                value: `${result.upfrontInvestment} silver`,
+              },
               { label: t('salesTax'), value: `${result.salesTax} silver` },
               {
                 label: t('fees') + ' ' + t('total'),

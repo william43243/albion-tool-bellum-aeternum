@@ -172,6 +172,7 @@ export function formatRouteForPrompt(cityA: string, cityB: string): string {
  * Build compact route summary for the flip recommendation
  */
 export function getFlipRouteInfo(buyCity: string, sellCity: string): string {
+  if (buyCity === sellCity) return 'same-city trade — no transport required';
   if (buyCity === 'Brecilien' || sellCity === 'Brecilien') {
     return 'Avalon Roads only — unpredictable PvP risk';
   }
@@ -187,6 +188,32 @@ export function getFlipRouteInfo(buyCity: string, sellCity: string): string {
   }
   if (route.note) parts.push(route.note);
   return parts.join(', ');
+}
+
+/**
+ * Deterministic transport gate for market signals. Same-city trades need no
+ * route. Cross-city signals are eligible only when the embedded route is known,
+ * internally consistent and contains zero red zones.
+ */
+export function assessRouteEligibility(
+  cityA: string,
+  cityB: string
+): { eligible: boolean; reason: string; route: Route | null } {
+  if (!cityA || !cityB) return { eligible: false, reason: 'missing city identity', route: null };
+  if (cityA === cityB) return { eligible: true, reason: 'same-city trade', route: null };
+  if (cityA === 'Brecilien' || cityB === 'Brecilien') {
+    return { eligible: false, reason: 'Brecilien has no deterministic overland route', route: null };
+  }
+  const route = getRoute(cityA, cityB);
+  if (!route) return { eligible: false, reason: 'route is absent from embedded route data', route: null };
+  const consistent = route.zones === route.path.length
+    && route.zones === route.blueZones + route.yellowZones + route.redZones
+    && route.path.filter((zone) => zone === 'blue').length === route.blueZones
+    && route.path.filter((zone) => zone === 'yellow').length === route.yellowZones
+    && route.path.filter((zone) => zone === 'red').length === route.redZones;
+  if (!consistent) return { eligible: false, reason: 'route data invariants failed', route };
+  if (route.redZones > 0) return { eligible: false, reason: 'route crosses red zones', route };
+  return { eligible: true, reason: 'known route with zero red zones', route };
 }
 
 /**

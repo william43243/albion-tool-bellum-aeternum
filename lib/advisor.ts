@@ -14,10 +14,16 @@ import {
 } from './api';
 import { AlbionItem } from './items';
 import { Language } from './i18n';
-import { formatRouteForPrompt, getFlipRouteInfo, SAFE_ROUTES } from './routes';
+import { assessRouteEligibility, getFlipRouteInfo, SAFE_ROUTES } from './routes';
+import { parseAodpTimestamp } from './aodpTime';
+import {
+  MarketGuardrails,
+  selectCompatibleMarketSignal,
+} from './marketOpportunity';
 
 export interface MarketContext {
   item: AlbionItem;
+  server: Server;
   prices: PriceData[];
   history7d: HistoryResponse[];
   history30d: HistoryResponse[];
@@ -34,8 +40,8 @@ function formatServerName(server?: string): string {
 
 function getFreshnessHours(dateStr: string): number | null {
   if (!dateStr) return null;
-  const time = new Date(dateStr).getTime();
-  if (!Number.isFinite(time)) return null;
+  const time = parseAodpTimestamp(dateStr);
+  if (time === null) return null;
   return Math.max(0, (Date.now() - time) / 3600000);
 }
 
@@ -79,8 +85,9 @@ export function buildSystemPrompt(lang: Language, server?: string): string {
 Hard rules:
 - Use ONLY the market data in the prompt. Do not invent prices, cities, volumes, fees, or server data.
 - The active server is ${serverInfo}. Never mix data from another server.
-- The code precomputes taxes, fees, direct flip profit, order-scenario profit, freshness, and liquidity. Do not recalculate them; quote them and reason from them.
-- If data is stale, missing, low-volume, or the route is risky, lower confidence and prefer WATCH/SKIP.
+- The code precomputes taxes, direct-flip profit, freshness, liquidity, quality compatibility, and route admission. Do not recalculate or override them; quote them and reason from them.
+- If data is stale, missing, low-volume, quality-incompatible, or the route gate rejects it, the verdict MUST be WATCH/SKIP; never BUY/ACHETER/COMPRAR.
+- A MARKET SIGNAL REJECTED block is a deterministic code decision and cannot be overridden.
 - Keep answers short, concrete, and actionable. No hype.
 - Output the requested structure exactly when AI_DECISION_INPUT is present.`;
 
@@ -136,68 +143,72 @@ No inventes ningun numero ausente. Si faltan datos, elige VIGILAR o EVITAR. Resp
  */
 export async function fetchMarketContext(
   item: AlbionItem,
-  server: Server
+  server: Server,
+  signal?: AbortSignal
 ): Promise<MarketContext> {
   const cities = [...CITIES] as City[];
 
   const [prices, history7d, history30d] = await Promise.all([
-    fetchCurrentPrices(item.id, cities, server),
-    fetchPriceHistory(item.id, cities, formatDateForApi(daysAgo(7)), formatDateForApi(new Date()), 24, server),
-    fetchPriceHistory(item.id, cities, formatDateForApi(daysAgo(30)), formatDateForApi(new Date()), 24, server),
+    fetchCurrentPrices(item.id, cities, server, 1, { signal }),
+    fetchPriceHistory(item.id, cities, formatDateForApi(daysAgo(7)), formatDateForApi(new Date()), 24, server, 1, { signal }),
+    fetchPriceHistory(item.id, cities, formatDateForApi(daysAgo(30)), formatDateForApi(new Date()), 24, server, 1, { signal }),
   ]);
 
-  return { item, prices, history7d, history30d };
+  return { item, server, prices, history7d, history30d };
 }
 
 /**
  * Pre-compute the best buy/sell/flip from data so the LLM just confirms/comments.
  * This reduces hallucination risk — we give the LLM the answer and ask it to advise.
  */
-export function buildAnalysisPrompt(ctx: MarketContext, lang: Language, isPremium: boolean): string {
-  const { item, prices, history7d } = ctx;
-  const serverMode = 'server already selected by app/API layer';
+export function buildAnalysisPrompt(
+  ctx: MarketContext,
+  lang: Language,
+  isPremium: boolean,
+  guardrails: MarketGuardrails = { maxAgeHours: 24, minVolume7d: 15 }
+): string {
+  const { item, prices, history7d, server } = ctx;
+  const serverMode = formatServerName(server);
   const taxRate = isPremium ? 0.04 : 0.08;
   const taxMode = isPremium ? 'Premium sales tax 4%' : 'Non-Premium sales tax 8%';
 
   const trendStats = getTrendStats(history7d);
 
-  // Find best buy (lowest sell_price_min) and best sell (highest buy_price_max)
-  const validSell = prices.filter((p) => p.sell_price_min > 0);
-  const validBuy = prices.filter((p) => p.buy_price_max > 0);
+  const assessment = selectCompatibleMarketSignal(
+    prices,
+    history7d,
+    taxRate,
+    Date.now(),
+    guardrails
+  );
 
-  const cheapest = validSell.length > 0
-    ? validSell.reduce((a, b) => (a.sell_price_min < b.sell_price_min ? a : b))
-    : null;
-  const priciest = validBuy.length > 0
-    ? validBuy.reduce((a, b) => (a.buy_price_max > b.buy_price_max ? a : b))
-    : null;
-
-  // Compute flip margin if both exist
+  // AODP observations can support a signal, never guaranteed execution.
   let flipInfo = '';
-  if (cheapest && priciest) {
-    const buyAt = cheapest.sell_price_min;
-    const sellAt = priciest.buy_price_max;
-    const salesTax = Math.ceil(sellAt * taxRate);
-    const directProfit = sellAt - buyAt - salesTax;
-    const directMargin = buyAt > 0 ? ((directProfit / buyAt) * 100).toFixed(1) : 0;
-    const setupBuy = Math.ceil(buyAt * 0.025);
-    const setupSell = Math.ceil(sellAt * 0.025);
-    const orderProfit = sellAt - buyAt - setupBuy - setupSell - salesTax;
-    const orderMargin = buyAt > 0 ? ((orderProfit / buyAt) * 100).toFixed(1) : 0;
-    const routeInfo = getFlipRouteInfo(cheapest.city, priciest.city);
-    const buyFreshness = getFreshnessLabel(cheapest.sell_price_min_date);
-    const sellFreshness = getFreshnessLabel(priciest.buy_price_max_date);
-    const buyLiquidity = trendStats[cheapest.city]?.liquidity || 'unknown';
-    const sellLiquidity = trendStats[priciest.city]?.liquidity || 'unknown';
-    const spread = sellAt - buyAt;
-    flipInfo = `BEST DIRECT FLIP (${taxMode}): buy ${cheapest.city} sell order at ${buyAt} -> sell ${priciest.city} buy order at ${sellAt} = ${directProfit} silver profit/unit (${directMargin}% margin after sales tax; no setup fee because no order is created; spread=${spread}; buy freshness=${buyFreshness}; sell freshness=${sellFreshness}; buy liquidity=${buyLiquidity}; sell liquidity=${sellLiquidity})\nORDER SCENARIO: if you create buy/sell orders at these prices, setup fees apply too: ${orderProfit} silver profit/unit (${orderMargin}% margin)\nROUTE: ${routeInfo}`;
+  if (assessment.status === 'eligible-signal') {
+    const routeAssessment = assessRouteEligibility(
+      assessment.buyCity || '',
+      assessment.sellCity || ''
+    );
+    if (!routeAssessment.eligible) {
+      flipInfo = `MARKET SIGNAL REJECTED: transport gate failed (${routeAssessment.reason}).\nLIMITATIONS: ${assessment.limitations.join(' ')}`;
+    } else {
+    const buyRecord = prices.find((p) => p.city === assessment.buyCity && p.quality === assessment.quality);
+    const sellRecord = prices.find((p) => p.city === assessment.sellCity && p.quality === assessment.quality);
+    const directMargin = assessment.buyPrice && assessment.directProfit !== null
+      ? ((assessment.directProfit / assessment.buyPrice) * 100).toFixed(1)
+      : '0.0';
+    const routeInfo = getFlipRouteInfo(assessment.buyCity || '', assessment.sellCity || '');
+    flipInfo = `ELIGIBLE MARKET SIGNAL — NOT GUARANTEED EXECUTABLE (${taxMode}): quality=${assessment.quality}; buy ${assessment.buyCity} existing sell order at ${assessment.buyPrice} -> sell ${assessment.sellCity} existing buy order at ${assessment.sellPrice}; profit=${assessment.directProfit} silver/unit; margin=${directMargin}%; sales tax=${assessment.salesTax}; buy freshness=${getFreshnessLabel(buyRecord?.sell_price_min_date || '')}; sell freshness=${getFreshnessLabel(sellRecord?.buy_price_max_date || '')}; observed 7d volumes=${assessment.buyVolume7d}/${assessment.sellVolume7d}.\nOWN ORDER SCENARIOS: not inferred from existing-order prices; use the calculator's independent buy-order and sell-order controls.\nROUTE: ${routeInfo}\nLIMITATIONS: ${assessment.limitations.join(' ')}`;
+    }
+  } else {
+    flipInfo = `MARKET SIGNAL REJECTED: ${assessment.reasons.join('; ') || 'insufficient compatible observations'}.\nLIMITATIONS: ${assessment.limitations.join(' ')}`;
   }
 
   // Price list with timestamps — so the LLM knows data freshness
   const priceList = prices
     .filter((p) => p.sell_price_min > 0 || p.buy_price_max > 0)
     .map((p) => {
-      const parts: string[] = [`${p.city}:`];
+      const parts: string[] = [`${p.city} quality=${p.quality}:`];
       if (p.sell_price_min > 0) {
         const age = getDataAge(p.sell_price_min_date);
         const freshness = getFreshnessLabel(p.sell_price_min_date);
@@ -281,37 +292,61 @@ ${tpl.opinion}`;
 export function buildQuestionPrompt(
   question: string,
   ctx: MarketContext | null,
-  lang: Language
+  lang: Language,
+  isPremium: boolean,
+  guardrails: MarketGuardrails = { maxAgeHours: 24, minVolume7d: 15 }
 ): string {
   if (!ctx) return question;
 
-  // Attach compact current context so follow-up answers stay grounded.
+  const taxRate = isPremium ? 0.04 : 0.08;
+  const assessment = selectCompatibleMarketSignal(
+    ctx.prices,
+    ctx.history7d,
+    taxRate,
+    Date.now(),
+    guardrails
+  );
+  const routeAssessment = assessment.status === 'eligible-signal'
+    ? assessRouteEligibility(assessment.buyCity || '', assessment.sellCity || '')
+    : { eligible: false, reason: 'market compatibility gate rejected', route: null };
+  const eligible = assessment.status === 'eligible-signal' && routeAssessment.eligible;
+  const statusLine = eligible
+    ? 'FOLLOWUP MARKET STATUS: ELIGIBLE — this remains an observational signal, not guaranteed execution.'
+    : `FOLLOWUP MARKET STATUS: REJECTED — ${assessment.reasons.join('; ') || routeAssessment.reason}. Never recommend BUY/ACHETER/COMPRAR; answer WATCH/SKIP only.`;
+
   const validSell = ctx.prices.filter((p) => p.sell_price_min > 0);
   const validBuy = ctx.prices.filter((p) => p.buy_price_max > 0);
   const trendStats = getTrendStats(ctx.history7d);
-
-  const lines: string[] = [`Current context: ${ctx.item.n}`, 'Known prices:'];
+  const lines: string[] = [
+    statusLine,
+    `Current context: ${ctx.item.n}`,
+    `Server: ${formatServerName(ctx.server)}`,
+    `Premium: ${isPremium ? 'yes' : 'no'}`,
+    'Known prices:',
+  ];
   if (validSell.length > 0) {
     const top3 = [...validSell].sort((a, b) => a.sell_price_min - b.sell_price_min).slice(0, 3);
-    lines.push('Lowest sell: ' + top3.map((p) => `${p.city}=${p.sell_price_min} freshness=${getFreshnessLabel(p.sell_price_min_date)}`).join(', '));
+    lines.push('Lowest sell: ' + top3.map((p) => `${p.city}/q${p.quality}=${p.sell_price_min} freshness=${getFreshnessLabel(p.sell_price_min_date)}`).join(', '));
   }
   if (validBuy.length > 0) {
     const top3 = [...validBuy].sort((a, b) => b.buy_price_max - a.buy_price_max).slice(0, 3);
-    lines.push('Highest buy: ' + top3.map((p) => `${p.city}=${p.buy_price_max} freshness=${getFreshnessLabel(p.buy_price_max_date)}`).join(', '));
+    lines.push('Highest buy: ' + top3.map((p) => `${p.city}/q${p.quality}=${p.buy_price_max} freshness=${getFreshnessLabel(p.buy_price_max_date)}`).join(', '));
   }
   const liquidity = Object.entries(trendStats)
     .slice(0, 5)
     .map(([city, stats]) => `${city}:${stats.liquidity}/vol=${stats.volume}`)
     .join(', ');
   lines.push(`Data freshness and liquidity summary: ${liquidity || 'unknown'}`);
-  lines.push('Answer using only this current context; if missing data, say WATCH/SKIP.');
+  lines.push('The deterministic status above has authority over the language model.');
 
   return `${lines.join('\n')}\n\nUser question: ${question}`;
 }
 
 function getDataAge(dateStr: string): string {
   if (!dateStr) return '?';
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const timestamp = parseAodpTimestamp(dateStr);
+  if (timestamp === null) return '?';
+  const diff = Date.now() - timestamp;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return '<1min';
   if (mins < 60) return `${mins}min`;

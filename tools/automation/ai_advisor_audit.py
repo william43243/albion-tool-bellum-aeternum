@@ -25,14 +25,15 @@ function assertRegex(text, rx, label) {{
 }}
 const ctx = {{
   item: {{ id: 'T4_BAG', n: 'Adept Bag', t: 4, c: 'bag', iv: 0 }},
+  server: 'europe',
   prices: [
     {{ item_id:'T4_BAG', city:'Caerleon', quality:1, sell_price_min:1000, sell_price_min_date:isoHoursAgo(2), sell_price_max:1000, sell_price_max_date:isoHoursAgo(2), buy_price_min:1, buy_price_min_date:isoHoursAgo(2), buy_price_max:1200, buy_price_max_date:isoHoursAgo(2) }},
-    {{ item_id:'T4_BAG', city:'Bridgewatch', quality:1, sell_price_min:900, sell_price_min_date:isoHoursAgo(30), sell_price_max:900, sell_price_max_date:isoHoursAgo(30), buy_price_min:1, buy_price_min_date:isoHoursAgo(1), buy_price_max:1500, buy_price_max_date:isoHoursAgo(1) }},
+    {{ item_id:'T4_BAG', city:'Bridgewatch', quality:1, sell_price_min:900, sell_price_min_date:isoHoursAgo(2), sell_price_max:900, sell_price_max_date:isoHoursAgo(2), buy_price_min:1, buy_price_min_date:isoHoursAgo(1), buy_price_max:1500, buy_price_max_date:isoHoursAgo(1) }},
     {{ item_id:'T4_BAG', city:'Lymhurst', quality:1, sell_price_min:0, sell_price_min_date:'', sell_price_max:0, sell_price_max_date:'', buy_price_min:0, buy_price_min_date:'', buy_price_max:0, buy_price_max_date:'' }},
   ],
   history7d: [
-    {{ location:'Caerleon', item_id:'T4_BAG', quality:1, data:[{{ avg_price: 1000, item_count: 2, timestamp: isoHoursAgo(48) }}, {{ avg_price: 1100, item_count: 3, timestamp: isoHoursAgo(24) }}] }},
-    {{ location:'Bridgewatch', item_id:'T4_BAG', quality:1, data:[{{ avg_price: 1400, item_count: 1, timestamp: isoHoursAgo(24) }}] }},
+    {{ location:'Caerleon', item_id:'T4_BAG', quality:1, data:[{{ avg_price: 1000, item_count: 20, timestamp: isoHoursAgo(48) }}, {{ avg_price: 1100, item_count: 20, timestamp: isoHoursAgo(24) }}] }},
+    {{ location:'Bridgewatch', item_id:'T4_BAG', quality:1, data:[{{ avg_price: 1400, item_count: 40, timestamp: isoHoursAgo(24) }}] }},
   ],
   history30d: []
 }};
@@ -47,14 +48,22 @@ const prompt = advisor.buildAnalysisPrompt(ctx, 'en', true);
 assertHas(prompt, 'AI_DECISION_INPUT', 'analysis machine-readable block');
 assertHas(prompt, 'Server mode:', 'analysis server/mode context');
 assertHas(prompt, 'Premium sales tax 4%', 'analysis premium tax');
-assertHas(prompt, 'BEST DIRECT FLIP', 'analysis direct flip');
-assertHas(prompt, 'ORDER SCENARIO', 'analysis order scenario');
+assertHas(prompt, 'ELIGIBLE MARKET SIGNAL', 'analysis compatible signal');
+assertHas(prompt, 'OWN ORDER SCENARIOS', 'analysis independent order controls');
+assertHas(prompt, 'NOT GUARANTEED EXECUTABLE', 'analysis execution limitation');
+assertHas(prompt, 'quality=1', 'analysis quality identity');
 assertRegex(prompt, /Verdict rules/i, 'analysis verdict rules');
 assertRegex(prompt, /stale|freshness|old/i, 'analysis freshness guardrail');
 assertRegex(prompt, /liquidity|volume/i, 'analysis liquidity guardrail');
 assertRegex(prompt, /Do not recalculate|precomputed/i, 'analysis no recalculation instruction');
-const q = advisor.buildQuestionPrompt('Should I buy?', ctx, 'en');
+const q = advisor.buildQuestionPrompt('Should I buy?', ctx, 'en', true);
+assertHas(q, 'FOLLOWUP MARKET STATUS: ELIGIBLE', 'question prompt deterministic gate');
 assertRegex(q, /Current context|Server|Premium|Known prices|Data freshness/i, 'question prompt richer context');
+const staleCtx = JSON.parse(JSON.stringify(ctx));
+staleCtx.prices[1].sell_price_min_date = isoHoursAgo(30);
+const rejectedQ = advisor.buildQuestionPrompt('Should I buy?', staleCtx, 'en', true);
+assertHas(rejectedQ, 'FOLLOWUP MARKET STATUS: REJECTED', 'stale followup gate');
+assertHas(rejectedQ, 'Never recommend BUY', 'rejected followup authority cap');
 console.log('ai advisor prompt checks passed');
 """)
 subprocess.run(['node', str(node_check)], cwd=ROOT, check=True)

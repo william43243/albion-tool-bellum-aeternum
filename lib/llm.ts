@@ -109,9 +109,9 @@ export function sendMessageWithImage(message: string, imagePath: string, callbac
   return LiteRT.sendMessageWithImage(message, imagePath, callbacks);
 }
 
-export async function resetConversation(systemPrompt: string) {
+export async function resetConversation(systemPrompt: string, serverBaseUrl: string) {
   if (isWeb) return (await getWebLLMModule()).resetConversation(systemPrompt);
-  return LiteRT.resetConversation(systemPrompt);
+  return LiteRT.resetConversation(systemPrompt, serverBaseUrl);
 }
 
 export async function destroy() {

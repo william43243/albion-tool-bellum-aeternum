@@ -24,6 +24,7 @@ import {
 import { AlbionItem } from '../lib/items';
 import { Language } from '../lib/i18n';
 import ItemPicker from '../components/ItemPicker';
+import { useRequestScope } from '../hooks/useScreenLifecycle';
 
 interface Props {
   t: (key: any) => any;
@@ -65,6 +66,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [historyData, setHistoryData] = useState<HistoryResponse[]>([]);
   const [loading, setLoading] = useState(false);
+  const requestScope = useRequestScope(`${server}:${selectedItems.map((item) => item.id).join(',')}:${[...selectedCities].join(',')}:${period}:${timeScale}`);
 
   const periodLabels: Record<string, string> = {
     '7d': t('days7'),
@@ -94,6 +96,8 @@ export default function HistoryScreen({ t, lang, server }: Props) {
       Alert.alert(t('error'), t('selectCities'));
       return;
     }
+    const scope = requestScope.begin();
+    if (!scope) return;
     setLoading(true);
     try {
       const startDate = formatDateForApi(daysAgo(period));
@@ -102,14 +106,16 @@ export default function HistoryScreen({ t, lang, server }: Props) {
 
       const allData: HistoryResponse[] = [];
       for (const item of selectedItems) {
-        const data = await fetchPriceHistory(item.id, cities, startDate, endDate, timeScale, server);
+        const data = await fetchPriceHistory(item.id, cities, startDate, endDate, timeScale, server, 1, { signal: scope.signal, forceRefresh: true });
+        if (!scope.current()) return;
         allData.push(...data);
       }
+      if (!scope.current()) return;
       setHistoryData(allData);
     } catch (e) {
-      Alert.alert(t('error'), String(e));
+      if (scope.current()) Alert.alert(t('error'), String(e));
     }
-    setLoading(false);
+    if (scope.current()) setLoading(false);
   }, [selectedItems, selectedCities, period, timeScale, server]);
 
   // Prepare cleaned chart data

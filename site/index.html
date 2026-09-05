@@ -75,10 +75,10 @@
   <div class="hero-guild" data-i18n="hero_guild">Outils de Marché</div>
   <p data-i18n="hero_desc">Consultez les prix du marché, calculez vos profits de craft et trouvez les meilleures opportunités de flipping sur Albion Online.</p>
   <div class="hero-buttons">
-    <a href="https://github.com/william43243/albion-tool-bellum-aeternum/releases/latest/download/AlbionMarket-v2.0.4.apk" class="btn btn-primary">
+    <span class="btn btn-primary" aria-disabled="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span data-i18n="download_apk">Télécharger l'APK</span>
-    </a>
+      <span>Installation indisponible</span>
+    </span>
     <a href="/app/" class="btn btn-secondary">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       <span data-i18n="use_online">Utiliser en ligne</span>
@@ -213,7 +213,7 @@
         <p data-i18n="guide_step1_desc">L'outil Marché calcule votre profit net en tenant compte de tous les frais du marché d'Albion.</p>
         <ul>
           <li>Choisissez <strong>Premium</strong> ou <strong>Non-Premium</strong> (la taxe de vente passe de 8% à 4% avec Premium)</li>
-          <li>Sélectionnez <strong>Buy/Sell Orders</strong> (ordres limités avec Setup Fee de 2.5%) ou <strong>Achat/Vente direct</strong> (instant, sans Setup Fee)</li>
+          <li>Choisissez séparément un <strong>ordre d'achat</strong> et/ou un <strong>ordre de vente</strong>. Chaque ordre créé paie 2,5%; une transaction instantanée n'en paie pas.</li>
           <li>Entrez le <strong>prix d'achat</strong>, le <strong>prix de vente</strong> et la <strong>quantité</strong></li>
           <li>Utilisez <strong>Prix live</strong> pour récupérer automatiquement les prix actuels depuis l'API Albion Online Data Project</li>
         </ul>
@@ -241,10 +241,10 @@
         <h3 data-i18n="guide_step3_title">Flipping — Achat, Craft et Revente</h3>
         <p data-i18n="guide_step3_desc">L'outil Flipping combine le marketplace et le craft pour calculer le profit complet d'une opération d'achat de matériaux, craft et revente.</p>
         <ul>
-          <li><strong>Étape 1 :</strong> Entrez le coût des matériaux</li>
+          <li><strong>Étape 1 :</strong> Ajoutez chaque ingrédient, sa quantité, son prix et son mode d'achat</li>
           <li><strong>Étape 2 :</strong> Entrez la valeur de l'item crafté et la taxe de la station</li>
-          <li><strong>Étape 3 :</strong> Entrez le prix de vente du produit fini</li>
-          <li>Le résultat montre le <strong>profit net</strong>, le détail de tous les frais et le <strong>ROI</strong> (retour sur investissement)</li>
+          <li><strong>Étape 3 :</strong> Entrez le prix de vente, le mode de vente et le taux explicite de retour de ressources</li>
+          <li>Le <strong>ROI</strong> utilise le capital engagé avant la vente; les frais prélevés à la vente réduisent le profit sans gonfler ce capital.</li>
         </ul>
         <div class="tip"><strong>Astuce :</strong> Comparez Premium vs Non-Premium pour voir combien le statut Premium vous fait économiser sur une opération.</div>
       </div>
@@ -289,9 +289,10 @@
     <div class="formula-card">
       <h3 data-i18n="formula_market">Frais de Marché</h3>
       <code>
-        Setup Fee = ⌈prix x 2.5%⌉<br>
-        Taxe vente (Premium) = ⌈prix x 4%⌉<br>
-        Taxe vente (Normal) = ⌈prix x 8%⌉
+        Frais ordre achat = ⌈prix achat x quantité x 2.5%⌉<br>
+        Frais ordre vente = ⌈prix vente x quantité x 2.5%⌉<br>
+        Taxe vente (Premium) = ⌈prix vente x quantité x 4%⌉<br>
+        Taxe vente (Normal) = ⌈prix vente x quantité x 8%⌉
       </code>
     </div>
     <div class="formula-card">
@@ -311,10 +312,10 @@
     <h2 style="margin-top: 24px;" data-i18n="cta_title">Prêt à conquérir le marché ?</h2>
     <p data-i18n="cta_desc">Disponible sur Android ou directement dans votre navigateur. Gratuit, sans inscription.</p>
     <div class="cta-buttons">
-      <a href="https://github.com/william43243/albion-tool-bellum-aeternum/releases/latest/download/AlbionMarket-v2.0.4.apk" class="btn btn-primary">
+      <span class="btn btn-primary" aria-disabled="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Télécharger l'APK
-      </a>
+        Installation indisponible
+      </span>
       <a href="/app/" class="btn btn-secondary">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         <span data-i18n="use_online">Utiliser en ligne</span>

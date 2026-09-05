@@ -92,9 +92,11 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
 
         <View style={styles.formulaCard}>
           <Text style={styles.formulaTitle}>Marketplace</Text>
-          <Text style={styles.formulaText}>Setup Fee = ceil(price × 2.5%)</Text>
-          <Text style={styles.formulaText}>Sales Tax = ceil(price × 4%) [Premium]</Text>
-          <Text style={styles.formulaText}>Sales Tax = ceil(price × 8%) [Non-Premium]</Text>
+          <Text style={styles.formulaText}>Buy Order Fee = ceil(buy price × quantity × 2.5%)</Text>
+          <Text style={styles.formulaText}>Sell Order Fee = ceil(sell price × quantity × 2.5%)</Text>
+          <Text style={styles.formulaText}>Sales Tax = ceil(sell price × quantity × 4%) [Premium]</Text>
+          <Text style={styles.formulaText}>Sales Tax = ceil(sell price × quantity × 8%) [Non-Premium]</Text>
+          <Text style={styles.formulaText}>Buy and sell orders are selected independently.</Text>
         </View>
 
         <View style={styles.formulaCard}>

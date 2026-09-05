@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.google.ai.edge.litertlm.Backend
@@ -35,7 +36,10 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
     private var engine: Engine? = null
     private var conversation: Conversation? = null
     private var currentModelId: String? = null
-    private var hasVision: Boolean = false
+    private var currentServerBaseUrl: String? = null
+    private var hasVision = false
+    private val conversationLock = Any()
+    @Volatile private var activeInferenceRequestId: String? = null
     private var backendUsed: String = "unknown"
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -193,9 +197,12 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
             }
         }
         val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            reactContext.registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else { reactContext.registerReceiver(downloadReceiver, filter) }
+        ContextCompat.registerReceiver(
+            reactContext,
+            downloadReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED,
+        )
     }
 
     private fun startProgressPolling(dm: DownloadManager) {
@@ -320,6 +327,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
 
                 val albionTools = AlbionTools(serverBaseUrl, reactContext)
                 val toolList = albionTools.allTools().map { tool(it) }
+                currentServerBaseUrl = serverBaseUrl
 
                 val convConfig = ConversationConfig(
                     systemInstruction = Contents.of(systemPrompt),
@@ -345,8 +353,9 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun sendMessage(userMessage: String, requestId: String, promise: Promise) {
-        val conv = conversation ?: run {
-            promise.reject("NOT_INITIALIZED", "Engine not initialized."); return
+        val conv = synchronized(conversationLock) {
+            conversation ?: run { promise.reject("NOT_INITIALIZED", "Engine not initialized."); return }
+                .also { activeInferenceRequestId = requestId }
         }
         scope.launch {
             try {
@@ -369,6 +378,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
             promise.reject("NO_VISION", "This model does not support images. Use a multimodal model (Qwen3.5).")
             return
         }
+        activeInferenceRequestId = requestId
         scope.launch {
             try {
                 val imageFile = File(imagePath)
@@ -386,15 +396,37 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
+    /** Cancel only the currently active inference request. A stale JS cleanup
+     * must never interrupt a newer request that reused the conversation. */
     @ReactMethod
-    fun resetConversation(systemPrompt: String, promise: Promise) {
+    fun cancelMessage(requestId: String, promise: Promise) {
+        if (activeInferenceRequestId != requestId) {
+            promise.resolve(false)
+            return
+        }
+        try {
+            conversation?.cancelProcess()
+            activeInferenceRequestId = null
+            promise.resolve(true)
+        } catch (e: Exception) {
+            // Native completion/cancellation races are expected; surface no
+            // false success and never tear down a newer conversation here.
+            promise.reject("CANCEL_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun resetConversation(systemPrompt: String, serverBaseUrl: String, promise: Promise) {
         val eng = engine ?: run { promise.reject("NOT_INITIALIZED", "Engine not initialized."); return }
         scope.launch {
             try {
                 conversation?.close()
+                val toolList = AlbionTools(serverBaseUrl, reactContext).allTools().map { tool(it) }
+                currentServerBaseUrl = serverBaseUrl
                 val convConfig = ConversationConfig(
                     systemInstruction = Contents.of(systemPrompt),
-                    samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.3)
+                    samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.3),
+                    tools = toolList,
                 )
                 conversation = eng.createConversation(convConfig)
                 promise.resolve(true)
@@ -408,7 +440,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
             try {
                 conversation?.close(); conversation = null
                 engine?.close(); engine = null
-                currentModelId = null; hasVision = false
+                currentModelId = null; currentServerBaseUrl = null; hasVision = false
                 promise.resolve(true)
             } catch (e: Exception) { promise.reject("DESTROY_ERROR", e.message, e) }
         }
@@ -423,9 +455,11 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
             })
         }
         override fun onDone() {
+            if (activeInferenceRequestId == requestId) activeInferenceRequestId = null
             sendEvent("onLiteRTDone", Arguments.createMap().apply { putString("requestId", requestId) })
         }
         override fun onError(throwable: Throwable) {
+            if (activeInferenceRequestId == requestId) activeInferenceRequestId = null
             sendEvent("onLiteRTError", Arguments.createMap().apply {
                 putString("requestId", requestId); putString("error", throwable.message ?: "Unknown error")
             })

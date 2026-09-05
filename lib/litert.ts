@@ -142,6 +142,8 @@ export function sendMessage(
     tokenSub.remove();
     doneSub.remove();
     errorSub.remove();
+    // Detaching listeners is not enough: end the on-device inference too.
+    LiteRTModule.cancelMessage(requestId).catch(() => {});
   };
 
   LiteRTModule.sendMessage(message, requestId).catch((err: Error) => {
@@ -189,6 +191,8 @@ export function sendMessageWithImage(
     tokenSub.remove();
     doneSub.remove();
     errorSub.remove();
+    // Detaching listeners is not enough: end the on-device inference too.
+    LiteRTModule.cancelMessage(requestId).catch(() => {});
   };
 
   LiteRTModule.sendMessageWithImage(message, imagePath, requestId).catch((err: Error) => {
@@ -199,9 +203,9 @@ export function sendMessageWithImage(
   return cleanup;
 }
 
-export async function resetConversation(systemPrompt: string): Promise<boolean> {
+export async function resetConversation(systemPrompt: string, serverBaseUrl: string): Promise<boolean> {
   if (Platform.OS !== 'android' || !LiteRTModule) return false;
-  return LiteRTModule.resetConversation(systemPrompt);
+  return LiteRTModule.resetConversation(systemPrompt, serverBaseUrl);
 }
 
 export async function destroy(): Promise<boolean> {

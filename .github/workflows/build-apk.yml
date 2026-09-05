@@ -1,13 +1,11 @@
-name: Build Android APK
+name: Build signed Android release APK
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
-    name: Build release APK
+    name: Build production-signed release APK
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,46 +29,43 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate debug keystore
-        working-directory: android/app
-        run: |
-          keytool -genkeypair -v \
-            -storetype PKCS12 \
-            -keystore debug.keystore \
-            -alias androiddebugkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
-
-      - name: Configure CI release signing
+      - name: Materialize and verify production signing identity
         working-directory: android
+        env:
+          ALBION_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ALBION_UPLOAD_KEYSTORE_BASE64 }}
+          ALBION_UPLOAD_STORE_PASSWORD: ${{ secrets.ALBION_UPLOAD_STORE_PASSWORD }}
+          ALBION_UPLOAD_KEY_ALIAS: ${{ secrets.ALBION_UPLOAD_KEY_ALIAS }}
+          ALBION_UPLOAD_KEY_PASSWORD: ${{ secrets.ALBION_UPLOAD_KEY_PASSWORD }}
+          ALBION_UPLOAD_CERT_SHA256: ${{ secrets.ALBION_UPLOAD_CERT_SHA256 }}
         run: |
-          cat >> gradle.properties <<EOF
-          ALBION_UPLOAD_STORE_FILE=debug.keystore
-          ALBION_UPLOAD_STORE_PASSWORD=android
-          ALBION_UPLOAD_KEY_ALIAS=androiddebugkey
-          ALBION_UPLOAD_KEY_PASSWORD=android
-          EOF
+          set -eu
+          for name in ALBION_UPLOAD_KEYSTORE_BASE64 ALBION_UPLOAD_STORE_PASSWORD ALBION_UPLOAD_KEY_ALIAS ALBION_UPLOAD_KEY_PASSWORD ALBION_UPLOAD_CERT_SHA256; do
+            eval "value=\${$name}"
+            test -n "$value" || { echo "Release signing secret $name is missing" >&2; exit 1; }
+          done
+          keystore="$RUNNER_TEMP/albion-production-release.keystore"
+          printf '%s' "$ALBION_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+          actual="$(keytool -list -v -keystore "$keystore" -storepass "$ALBION_UPLOAD_STORE_PASSWORD" -alias "$ALBION_UPLOAD_KEY_ALIAS" | awk -F': ' '/SHA256:/{print $2; exit}')"
+          expected="$(printf '%s' "$ALBION_UPLOAD_CERT_SHA256" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
+          test -n "$actual" && test "$actual" = "$expected" || { echo 'Release certificate fingerprint mismatch' >&2; exit 1; }
+          {
+            printf 'ALBION_UPLOAD_STORE_FILE=%s\n' "$keystore"
+            printf 'ALBION_UPLOAD_STORE_PASSWORD=%s\n' "$ALBION_UPLOAD_STORE_PASSWORD"
+            printf 'ALBION_UPLOAD_KEY_ALIAS=%s\n' "$ALBION_UPLOAD_KEY_ALIAS"
+            printf 'ALBION_UPLOAD_KEY_PASSWORD=%s\n' "$ALBION_UPLOAD_KEY_PASSWORD"
+          } >> gradle.properties
 
       - name: Make Gradle wrapper executable
         run: chmod +x android/gradlew
 
-      - name: Build APK (release variant, debug-signed)
+      - name: Build production-signed APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --max-workers=1
 
-      - name: Rename APK
-        run: |
-          mkdir -p site/downloads
-          cp android/app/build/outputs/apk/release/app-release.apk \
-             site/downloads/albion-market.apk
-
-      - name: Upload APK artifact
+      - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: albion-market
-          path: site/downloads/albion-market.apk
+          name: albion-market-release-signed
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30

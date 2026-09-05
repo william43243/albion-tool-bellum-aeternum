@@ -126,6 +126,24 @@ def test_admin_secret_is_read_from_a_file_not_an_environment_value():
     assert "app.disable('x-powered-by')" in server
 
 
+def test_release_ci_requires_explicit_production_signing_and_never_uses_debug_key():
+    workflow = (ROOT / ".github/workflows/build-apk.yml").read_text(encoding="utf-8")
+    assert "Generate debug keystore" not in workflow
+    assert "debug.keystore" not in workflow
+    assert "ALBION_UPLOAD_STORE_FILE=debug.keystore" not in workflow
+    assert "secrets.ALBION_UPLOAD_KEYSTORE_BASE64" in workflow
+    assert "secrets.ALBION_UPLOAD_STORE_PASSWORD" in workflow
+    assert "secrets.ALBION_UPLOAD_KEY_ALIAS" in workflow
+    assert "secrets.ALBION_UPLOAD_KEY_PASSWORD" in workflow
+    assert "assembleRelease" in workflow
+
+
+def test_public_site_does_not_link_to_an_unpublished_versioned_apk():
+    homepage = (SITE / "index.html").read_text(encoding="utf-8")
+    assert "/downloads/AlbionMarket-v2.0.7.apk" not in homepage
+    assert "Installation indisponible" in homepage
+
+
 def test_hardened_runtime_initializes_tmpfs_and_readable_code():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     entrypoint = (ROOT / "docker-entrypoint.sh").read_text(encoding="utf-8")

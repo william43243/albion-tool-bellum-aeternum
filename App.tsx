@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from '
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLanguage } from './hooks/useLanguage';
 import { useServer } from './hooks/useServer';
+import { ScreenActiveContext, useAppForeground } from './hooks/useScreenLifecycle';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from './constants/theme';
 import { trackPageView, trackToolUse } from './lib/analytics';
 
@@ -27,11 +28,21 @@ const TAB_ICONS: Record<TabKey, string> = {
 
 const TABS: TabKey[] = ['marketplace', 'crafting', 'flipping', 'history', 'advisor', 'settings'];
 
+function ScreenSlot({ active, foreground, children }: { active: boolean; foreground: boolean; children: React.ReactNode }) {
+  return (
+    <ScreenActiveContext.Provider value={active && foreground}>
+      <View style={[styles.screenContainer, !active && { display: 'none' }]}>{children}</View>
+    </ScreenActiveContext.Provider>
+  );
+}
+
 function AppContent() {
   const { lang, switchLanguage, t, loaded } = useLanguage();
   const { server, switchServer, serverLoaded } = useServer();
   const [activeTab, setActiveTab] = useState<TabKey>('marketplace');
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabKey>>(() => new Set(['marketplace']));
   const [isPremium, setIsPremium] = useState(true);
+  const foreground = useAppForeground();
   const insets = useSafeAreaInsets();
 
   // Track initial page view
@@ -40,6 +51,7 @@ function AppContent() {
   }, []);
 
   const handleTabChange = (tab: TabKey) => {
+    setVisitedTabs((previous) => previous.has(tab) ? previous : new Set([...previous, tab]));
     setActiveTab(tab);
     trackPageView('/' + tab);
     trackToolUse(tab);
@@ -60,25 +72,25 @@ function AppContent() {
       {/* Top safe area spacer */}
       <View style={{ height: insets.top, backgroundColor: COLORS.background }} />
 
-      {/* All screens stay mounted; hidden via display:'none' to preserve state */}
-      <View style={[styles.screenContainer, activeTab !== 'marketplace' && { display: 'none' }]}>
+      {/* Screens mount on first visit, preserve their state, and receive visibility + foreground lifecycle. */}
+      <ScreenSlot active={activeTab === 'marketplace'} foreground={foreground}>
         <MarketplaceScreen t={t} lang={lang} server={server} isPremium={isPremium} onPremiumChange={setIsPremium} />
-      </View>
-      <View style={[styles.screenContainer, activeTab !== 'crafting' && { display: 'none' }]}>
+      </ScreenSlot>
+      {visitedTabs.has('crafting') && <ScreenSlot active={activeTab === 'crafting'} foreground={foreground}>
         <CraftingScreen t={t} lang={lang} />
-      </View>
-      <View style={[styles.screenContainer, activeTab !== 'flipping' && { display: 'none' }]}>
+      </ScreenSlot>}
+      {visitedTabs.has('flipping') && <ScreenSlot active={activeTab === 'flipping'} foreground={foreground}>
         <FlippingScreen t={t} lang={lang} isPremium={isPremium} onPremiumChange={setIsPremium} />
-      </View>
-      <View style={[styles.screenContainer, activeTab !== 'history' && { display: 'none' }]}>
+      </ScreenSlot>}
+      {visitedTabs.has('history') && <ScreenSlot active={activeTab === 'history'} foreground={foreground}>
         <HistoryScreen t={t} lang={lang} server={server} />
-      </View>
-      <View style={[styles.screenContainer, activeTab !== 'advisor' && { display: 'none' }]}>
+      </ScreenSlot>}
+      {visitedTabs.has('advisor') && <ScreenSlot active={activeTab === 'advisor'} foreground={foreground}>
         <AdvisorScreen t={t} lang={lang} server={server} isPremium={isPremium} />
-      </View>
-      <View style={[styles.screenContainer, activeTab !== 'settings' && { display: 'none' }]}>
+      </ScreenSlot>}
+      {visitedTabs.has('settings') && <ScreenSlot active={activeTab === 'settings'} foreground={foreground}>
         <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} server={server} onSwitchServer={switchServer} />
-      </View>
+      </ScreenSlot>}
 
       {/* Tab bar with bottom safe area */}
       <View

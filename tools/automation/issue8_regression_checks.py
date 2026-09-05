@@ -21,6 +21,7 @@ advisor_screen = read('screens/AdvisorScreen.tsx')
 flipping = read('screens/FlippingScreen.tsx')
 marketplace = read('screens/MarketplaceScreen.tsx')
 history = read('screens/HistoryScreen.tsx')
+litert_module = read('android/app/src/main/java/com/albion/market/litert/LiteRTModule.kt')
 
 assert_true("admin auth not configured" in server, "admin auth missing fail-closed response")
 missing_token_block = re.search(r"if \(!ADMIN_TOKEN\) \{(?P<body>.*?)\n\s*\}", server, re.S)
@@ -51,5 +52,9 @@ assert_true("isPremium" in advisor_screen.split("interface Props",1)[1].split("}
 assert_true("previousServerRef" in advisor_screen or "prevServer" in advisor_screen, "AdvisorScreen should guard/reset on server changes")
 assert_true(re.search(r"handleStartModel[\s\S]*\[[^\]]*server", advisor_screen), "handleStartModel dependencies must include server")
 assert_true(re.search(r"handleItemSelect[\s\S]*\[[^\]]*sendToLLM", advisor_screen), "handleItemSelect dependencies must include sendToLLM")
+
+assert_true("ContextCompat.registerReceiver" in litert_module, "download receiver must use the compatibility API on every supported Android version")
+assert_true("ContextCompat.RECEIVER_EXPORTED" in litert_module, "download manager receiver must declare its export state")
+assert_true("reactContext.registerReceiver(downloadReceiver" not in litert_module, "legacy receiver registration leaves the export state unspecified")
 
 print("issue8 regression checks passed")

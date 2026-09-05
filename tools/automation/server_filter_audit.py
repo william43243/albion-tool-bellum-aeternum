@@ -12,8 +12,8 @@ subprocess.run([
     '--skipLibCheck', '--esModuleInterop', '--moduleResolution', 'node', '--resolveJsonModule'
 ], cwd=ROOT, check=True)
 
-api_path = json.dumps(str(OUT / 'api.js'))
-advisor_path = json.dumps(str(OUT / 'advisor.js'))
+api_path = json.dumps(str(OUT / 'lib/api.js'))
+advisor_path = json.dumps(str(OUT / 'lib/advisor.js'))
 node_check = OUT / 'check_server_filter.js'
 node_check.write_text(f"""
 const api = require({api_path});
@@ -39,6 +39,7 @@ global.fetch = async (url) => {{
     if (matching.length !== 5) throw new Error(server + ' expected 5 calls to ' + base + ', got ' + matching.length + '\\n' + calls.join('\\n'));
   }}
   if (calls.some(u => u.includes('undefined') || u.includes('[object Object]'))) throw new Error('bad URL generated: ' + calls.join('\\n'));
+  if (calls.some(u => !u.includes('qualities=1'))) throw new Error('quality filter missing: ' + calls.join('\\n'));
   console.log(JSON.stringify({{ ok: true, calls }}, null, 2));
 }})().catch(err => {{ console.error(err.stack || err); process.exit(1); }});
 """)
