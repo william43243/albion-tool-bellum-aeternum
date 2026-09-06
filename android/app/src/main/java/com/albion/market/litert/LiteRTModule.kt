@@ -334,8 +334,15 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 engine = newEngine
                 currentModelId = modelFile.nameWithoutExtension
 
-                val albionTools = AlbionTools(serverBaseUrl, reactContext)
-                val toolList = albionTools.allTools().map { tool(it) }
+                // LiteRT-LM 0.16.1 attempts to resolve a vision encoder when
+                // tool providers are attached to text-only model conversations.
+                // Market context is already fetched and injected by JS, so keep
+                // tools for the explicitly multimodal path only.
+                val toolList = if (supportsVision) {
+                    AlbionTools(serverBaseUrl, reactContext).allTools().map { tool(it) }
+                } else {
+                    emptyList()
+                }
                 currentServerBaseUrl = serverBaseUrl
 
                 val convConfig = ConversationConfig(
@@ -430,7 +437,11 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         scope.launch {
             try {
                 conversation?.close()
-                val toolList = AlbionTools(serverBaseUrl, reactContext).allTools().map { tool(it) }
+                val toolList = if (hasVision) {
+                    AlbionTools(serverBaseUrl, reactContext).allTools().map { tool(it) }
+                } else {
+                    emptyList()
+                }
                 currentServerBaseUrl = serverBaseUrl
                 val convConfig = ConversationConfig(
                     systemInstruction = Contents.of(systemPrompt),

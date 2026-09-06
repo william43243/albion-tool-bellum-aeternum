@@ -218,7 +218,7 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
         val conn = URL(urlStr).openConnection() as HttpURLConnection
         conn.connectTimeout = CONNECT_TIMEOUT; conn.readTimeout = READ_TIMEOUT
         conn.instanceFollowRedirects = false
-        conn.setRequestProperty("User-Agent", "AlbionMarket/2.0.701")
+        conn.setRequestProperty("User-Agent", "AlbionMarket/2.0.702")
         conn.setRequestProperty("Accept", "application/json")
         return try {
             val responseCode = conn.responseCode
