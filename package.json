@@ -1,6 +1,6 @@
 {
   "name": "albion-calculator",
-  "version": "2.0.7",
+  "version": "2.0.701",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
