@@ -64,9 +64,14 @@ export async function deleteModel(filename: string) {
   return LiteRT.deleteModel(filename);
 }
 
-export async function initialize(modelFilename: string, systemPrompt: string, serverBaseUrl: string) {
+export async function initialize(
+  modelFilename: string,
+  systemPrompt: string,
+  serverBaseUrl: string,
+  supportsVision: boolean = false
+) {
   if (isWeb) return (await getWebLLMModule()).initialize(modelFilename, systemPrompt, serverBaseUrl);
-  return LiteRT.initialize(modelFilename, systemPrompt, serverBaseUrl);
+  return LiteRT.initialize(modelFilename, systemPrompt, serverBaseUrl, supportsVision);
 }
 
 export function sendMessage(message: string, callbacks: LiteRT.StreamCallbacks) {

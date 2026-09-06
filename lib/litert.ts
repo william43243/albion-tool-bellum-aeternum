@@ -102,11 +102,16 @@ export interface InitResult {
   chipset: string;
 }
 
-export async function initialize(modelFilename: string, systemPrompt: string, serverBaseUrl: string): Promise<InitResult> {
+export async function initialize(
+  modelFilename: string,
+  systemPrompt: string,
+  serverBaseUrl: string,
+  supportsVision: boolean = false
+): Promise<InitResult> {
   if (Platform.OS !== 'android' || !LiteRTModule) {
     throw new Error('LiteRT-LM is only available on Android');
   }
-  return LiteRTModule.initialize(modelFilename, systemPrompt, serverBaseUrl);
+  return LiteRTModule.initialize(modelFilename, systemPrompt, serverBaseUrl, supportsVision);
 }
 
 export function sendMessage(

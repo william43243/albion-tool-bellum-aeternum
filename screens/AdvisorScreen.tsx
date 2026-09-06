@@ -303,7 +303,7 @@ export default function AdvisorScreen({ t, lang, server, isPremium }: Props) {
         const systemPrompt = buildSystemPrompt(lang, server);
         const serverUrl = SERVERS[server];
         const filename = getModelFilename(model, Platform.OS);
-        const initResult = await LLM.initialize(filename, systemPrompt, serverUrl);
+        const initResult = await LLM.initialize(filename, systemPrompt, serverUrl, model.multimodal === true);
         if (!isCurrent(generation)) {
           // Native initialization is not abortable; promptly release an engine
           // that completed after this screen became inactive.

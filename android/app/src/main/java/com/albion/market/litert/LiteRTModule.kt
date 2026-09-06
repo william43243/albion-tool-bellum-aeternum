@@ -238,7 +238,13 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
     // ─── Engine Lifecycle ────────────────────────────────────────
 
     @ReactMethod
-    fun initialize(modelFilename: String, systemPrompt: String, serverBaseUrl: String, promise: Promise) {
+    fun initialize(
+        modelFilename: String,
+        systemPrompt: String,
+        serverBaseUrl: String,
+        supportsVision: Boolean,
+        promise: Promise,
+    ) {
         scope.launch {
             try {
                 val modelFile = findModelFile(modelFilename)
@@ -264,8 +270,11 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
 
                 var newEngine: Engine? = null
 
-                // Tier 1 — GPU + vision (best path for multimodal models)
-                if (gpuBackend != null) {
+                // Tier 1 — GPU + vision, only for models that ship a vision encoder.
+                // Text-only models (e.g. DeepSeek R1) must not receive a vision
+                // backend: LiteRT-LM can defer the missing-encoder failure until
+                // createConversation(), producing NOT_FOUND: TF_LITE_VISION_ENCODER.
+                if (supportsVision && gpuBackend != null) {
                     try {
                         val config = EngineConfig(
                             modelPath = modelFile.absolutePath,
