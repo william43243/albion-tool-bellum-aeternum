@@ -88,6 +88,14 @@ export const translations = {
     about: 'À propos',
     credits: 'Crédits',
     version: 'Version',
+    analyticsConsent: 'Statistiques d’utilisation',
+    analyticsConsentTitle: 'Aidez-nous à améliorer Albion Market',
+    analyticsConsentPrompt: "Acceptez-vous l’envoi de statistiques d’utilisation minimales ? Aucun identifiant persistant, prompt ou image n’est enregistré dans la base analytique; l’adresse IP et l’agent utilisateur peuvent apparaître dans les journaux techniques d’infrastructure. Vous pourrez changer ce choix dans Réglages.",
+    analyticsAccept: 'Accepter',
+    analyticsRefuse: 'Refuser',
+    analyticsEnabled: 'Activées',
+    analyticsDisabled: 'Désactivées',
+    analyticsSettingsDescription: 'Événements individuels minimisés, consultés sous forme agrégée. Désactiver retire immédiatement votre consentement.',
 
     // Premium bonuses
     premiumBonusList: [
@@ -247,6 +255,14 @@ export const translations = {
     about: 'About',
     credits: 'Credits',
     version: 'Version',
+    analyticsConsent: 'Usage analytics',
+    analyticsConsentTitle: 'Help improve Albion Market',
+    analyticsConsentPrompt: 'Do you accept sending minimal usage analytics? No persistent identifier, prompt, or image is stored in the analytics database; IP addresses and user agents may appear in technical infrastructure logs. You can change this choice in Settings.',
+    analyticsAccept: 'Accept',
+    analyticsRefuse: 'Refuse',
+    analyticsEnabled: 'Enabled',
+    analyticsDisabled: 'Disabled',
+    analyticsSettingsDescription: 'Minimized individual events, viewed only in aggregate. Disabling immediately withdraws your consent.',
 
     // Premium bonuses
     premiumBonusList: [
@@ -406,6 +422,14 @@ export const translations = {
     about: 'Acerca de',
     credits: 'Créditos',
     version: 'Versión',
+    analyticsConsent: 'Estadísticas de uso',
+    analyticsConsentTitle: 'Ayuda a mejorar Albion Market',
+    analyticsConsentPrompt: '¿Aceptas enviar estadísticas mínimas de uso? No se guarda ningún identificador persistente, prompt ni imagen en la base analítica; las direcciones IP y los agentes de usuario pueden aparecer en registros técnicos de infraestructura. Puedes cambiar esta opción en Ajustes.',
+    analyticsAccept: 'Aceptar',
+    analyticsRefuse: 'Rechazar',
+    analyticsEnabled: 'Activadas',
+    analyticsDisabled: 'Desactivadas',
+    analyticsSettingsDescription: 'Eventos individuales minimizados, consultados solo de forma agregada. Desactivar retira inmediatamente tu consentimiento.',
 
     // Premium bonuses
     premiumBonusList: [

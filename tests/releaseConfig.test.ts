@@ -8,6 +8,7 @@ const appJson = JSON.parse(readFileSync('app.json', 'utf8'));
 const buildGradle = readFileSync('android/app/build.gradle', 'utf8');
 const gradleProperties = readFileSync('android/gradle.properties', 'utf8');
 const releaseWorkflow = readFileSync('.github/workflows/build-apk.yml', 'utf8');
+const siteIndex = readFileSync('site/index.html', 'utf8');
 
 function requiredMatch(input: string, expression: RegExp, label: string): string {
   const match = input.match(expression);
@@ -26,6 +27,11 @@ test('release version names and codes stay synchronized', () => {
   assert.equal(appJson.expo.version, packageJson.version);
   assert.equal(nativeVersionName, packageJson.version);
   assert.equal(appJson.expo.android.versionCode, nativeVersionCode);
+  assert.equal(packageJson.version, '2.0.8-beta.5.11');
+  assert.equal(nativeVersionCode, 17);
+  const escapedVersion = packageJson.version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.equal((siteIndex.match(new RegExp(`/releases/download/v${escapedVersion}/albion-market-v${escapedVersion}-release\\.apk`, 'g')) || []).length, 2);
+  assert.equal((siteIndex.match(new RegExp(`Télécharger l'APK v${escapedVersion}`, 'g')) || []).length, 2);
 });
 
 test('release workflow verifies the packaged minimum SDK field emitted by aapt2', () => {
@@ -49,6 +55,30 @@ test('signed workflow uploads only one exact verified APK from a fresh directory
   assert.match(releaseWorkflow, /sha256sum -c SHA256SUMS/);
   assert.match(releaseWorkflow, /steps\.sign-release\.outputs\.apk_path/);
   assert.doesNotMatch(releaseWorkflow, /release-candidate\/albion-market-v\*-release\.apk/);
+});
+
+test('verified signed artifact is published to the exact prerelease URL used by the website', () => {
+  assert.match(releaseWorkflow, /publish-release:/);
+  assert.match(releaseWorkflow, /needs: verify-signed-artifact/);
+  assert.match(releaseWorkflow, /contents: write/);
+  assert.match(releaseWorkflow, /gh release create "\$tag"/);
+  assert.match(releaseWorkflow, /gh release upload "\$tag"/);
+  assert.match(releaseWorkflow, /--prerelease/);
+  assert.match(releaseWorkflow, /expected_asset="albion-market-v\$\{version\}-release\.apk"/);
+  assert.match(releaseWorkflow, /assets\[\]\?\.name/);
+  assert.match(releaseWorkflow, /concurrency:/);
+  assert.match(releaseWorkflow, /current_main=.*git\/ref\/heads\/main/);
+  assert.match(releaseWorkflow, /release_json=.*releases\/tags\/\$tag/);
+  assert.match(releaseWorkflow, /\.draft == false/);
+  assert.match(releaseWorkflow, /\.prerelease == true/);
+  assert.match(releaseWorkflow, /\.target_commitish == \$sha/);
+  assert.match(releaseWorkflow, /git\/ref\/tags\/\$tag/);
+  assert.match(releaseWorkflow, /git\/tags\/\$tag_sha/);
+  assert.match(releaseWorkflow, /if gh api "repos\/\$GITHUB_REPOSITORY\/git\/ref\/tags\/\$tag"/);
+  assert.match(releaseWorkflow, /curl [^\n]*--fail --location/);
+  assert.match(releaseWorkflow, /for asset in "\$expected_asset" SHA256SUMS/);
+  assert.match(releaseWorkflow, /cmp -s "\$asset"/);
+  assert.doesNotMatch(releaseWorkflow, /gh release upload[^\n]*--clobber/);
 });
 
 test('every multiline release shell enables pipefail', () => {

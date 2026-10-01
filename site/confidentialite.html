@@ -7,8 +7,20 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 
 <link rel="stylesheet" href="/assets/confidentialite.css">
+<link rel="stylesheet" href="/assets/analytics-consent.css">
 </head>
 <body>
+
+<div class="analytics-consent" id="analyticsConsent" role="dialog" aria-modal="true" aria-labelledby="analyticsConsentTitle" hidden>
+  <div class="analytics-consent-card">
+    <h2 id="analyticsConsentTitle">Statistiques d'utilisation</h2>
+    <p>Acceptez-vous l'envoi de statistiques d'utilisation minimales ? Aucun identifiant persistant, prompt ou image n'est enregistré dans la base analytique. Vous pourrez retirer ce consentement à tout moment.</p>
+    <div class="analytics-consent-actions">
+      <button type="button" id="analyticsRefuse">Refuser</button>
+      <button type="button" id="analyticsAccept" class="primary">Accepter</button>
+    </div>
+  </div>
+</div>
 
 <div class="legal-header">
   <a href="/" style="display:flex;align-items:center;gap:12px;">
@@ -19,17 +31,19 @@
 
 <div class="legal-content">
   <h1>Politique de confidentialité</h1>
-  <p class="last-update">Dernière mise à jour : 29 septembre 2026</p>
+  <p class="last-update">Dernière mise à jour : 1er octobre 2026</p>
 
-  <h2>1. Télémétrie produit</h2>
-  <p>La télémétrie produit est désactivée dans l'application Android et sur le site web. Albion Market n'envoie pas de pages consultées, d'outils utilisés, d'objets ou de villes recherchés, de modèles choisis, d'images ni de prompts IA vers un service analytique.</p>
-  <p>Les anciens points de terminaison analytiques sont désactivés et ne persistent plus les requêtes. Les anciennes lignes statistiques conservées pendant la transition sont privées d'adresse IP et supprimées automatiquement au plus tard après <strong>90 jours</strong>.</p>
+  <h2>1. Analytique produit facultative</h2>
+  <p>Au premier lancement de l'application Android ou à la première visite du site, Albion Market demande un consentement explicite. Vous pouvez <strong>accepter</strong> ou <strong>refuser</strong>. Aucune télémétrie produit n'est envoyée avant l'acceptation. Le choix est enregistré localement afin de ne pas reposer la question à chaque ouverture.</p>
+  <p>Vous pouvez retirer votre consentement à tout moment dans les Réglages de l'application ou avec « Préférences analytics » au bas du site. Le retrait arrête immédiatement les futurs envois; il ne réactive pas une file d'événements antérieurs.</p>
+  <p>Après consentement uniquement, nous enregistrons des événements individuels minimisés et strictement bornés, avec leur horodatage technique, puis les consultons sous forme agrégée : page ou outil utilisé, type de calcul, occurrence d'un prompt ou d'un envoi d'image (jamais leur contenu), téléchargement de l'APK, téléchargement ou démarrage d'un modèle, vérification, téléchargement ou installation d'une mise à jour, ainsi que, selon l'événement, l'identifiant technique allowlisté du modèle ou de l'objet, la ville, la version et la plateforme. Le texte des prompts, le contenu ou chemin des images et les résultats de calcul ne sont jamais envoyés.</p>
+  <p>Aucun identifiant analytique persistant n'est créé. L'adresse IP n'est pas enregistrée dans la base analytique et l'agent utilisateur n'est jamais enregistré dans cette base. La suppression automatique cible une durée maximale de <strong>90 jours</strong> et la collecte s'arrête si le nettoyage échoue. Un incident technique du stockage peut néanmoins retarder la suppression jusqu'au rétablissement du service de nettoyage.</p>
 
   <h2>2. Informations demandées</h2>
   <ul>
     <li>Aucun compte, nom ou adresse e-mail n'est requis.</li>
     <li>Aucun cookie publicitaire ou identifiant de suivi n'est créé.</li>
-    <li>Les calculs et prompts IA ne sont pas enregistrés par Albion Market.</li>
+    <li>Les calculs, prompts IA et images ne sont pas enregistrés par Albion Market.</li>
   </ul>
 
   <h2>3. Stockage local</h2>
@@ -39,13 +53,15 @@
   <p>Selon les fonctions utilisées, le Service communique avec :</p>
   <ul>
     <li>Albion Online Data Project pour les prix et historiques de marché;</li>
-    <li>les sources de modèles indiquées dans l'application lorsque vous demandez explicitement un téléchargement;</li>
+    <li><strong>Hugging Face</strong> (<code>huggingface.co/litert-community</code> sur Android et <code>huggingface.co/mlc-ai</code> dans l'application web) lorsque vous demandez explicitement le téléchargement d'un modèle local; Hugging Face traite alors la requête et ses métadonnées techniques selon sa <a href="https://huggingface.co/privacy" target="_blank" rel="noopener">politique de confidentialité</a> et ses propres durées de conservation;</li>
     <li>le serveur Albion Market pour vérifier ou télécharger une mise à jour.</li>
   </ul>
   <p>Ces communications ne sont pas utilisées par Albion Market pour établir un profil d'utilisation. Les prompts IA sont traités localement lorsqu'un modèle local est utilisé.</p>
 
   <h2>5. Journaux techniques et services tiers</h2>
-  <p>Le site est protégé et distribué notamment par Cloudflare. Cloudflare, l'hébergeur et le serveur web peuvent traiter temporairement l'adresse IP et les en-têtes HTTP dans leurs journaux techniques pour livrer le service, prévenir les abus et assurer la sécurité. Ces journaux d'infrastructure sont distincts de la télémétrie produit désactivée. Consultez la <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">politique de confidentialité de Cloudflare</a>.</p>
+  <p>Le site est distribué et protégé par <strong>Cloudflare</strong>, qui peut traiter l'adresse IP et les en-têtes HTTP pour la livraison et la prévention des abus selon sa <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">politique de confidentialité</a> et ses propres durées de conservation.</p>
+  <p>Le <strong>serveur d'origine exploité par Bellum Aeternum</strong> traite temporairement l'adresse IP et les en-têtes HTTP dans ses journaux techniques de sécurité. Ces journaux tournent selon une limite de volume de <strong>3 fichiers de 10 Mo</strong> par service; leur durée calendaire varie donc avec le trafic. Ils sont distincts de la base analytique produit.</p>
+  <p>Les APK sont distribués par <strong>GitHub Releases</strong>. L'application web charge aussi les bibliothèques d'exécution WebLLM depuis <code>raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs</code>. GitHub traite ces requêtes et leurs métadonnées techniques selon la <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">Déclaration générale de confidentialité GitHub</a> et ses propres durées de conservation.</p>
 
   <h2>6. Données des mineurs</h2>
   <p>Albion Market ne demande pas l'âge et ne collecte pas volontairement de données permettant d'identifier un mineur.</p>
@@ -59,7 +75,9 @@
 
 <footer>
   <a href="/">Retour à l'accueil</a>
+  <button type="button" id="analyticsSettings" class="analytics-settings">Préférences analytics</button>
 </footer>
 
+<script src="/js/analytics.js"></script>
 </body>
 </html>

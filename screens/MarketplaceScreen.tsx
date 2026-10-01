@@ -13,7 +13,7 @@ import { calculateMarketplaceProfit, MarketplaceStrategy, breakEvenSellPrice } f
 import { Language } from '../lib/i18n';
 import { fetchCurrentPrices, fetchCurrentPricesBatch, CITIES, City, Server, formatDataAge, PriceData, Quality } from '../lib/api';
 import { parseUserNumber } from '../lib/numberParsing';
-import { trackMarketCalculation, trackPriceFetch } from '../lib/analytics';
+import { captureAnalyticsAuthorization, trackMarketCalculation, trackPriceFetch } from '../lib/analytics';
 import { AlbionItem } from '../lib/items';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
@@ -76,6 +76,7 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
 
   const handleFetchPrices = async (item: AlbionItem) => {
     const generation = ++requestGeneration.current;
+    const analyticsAuthorization = captureAnalyticsAuthorization();
     setLoading(true);
     try {
       const prices = await fetchCurrentPrices(item.id, [selectedCity], server, quality);
@@ -85,8 +86,8 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
         addWatch({ itemId: item.id, itemName: item.n, quality });
         setBuyPrice(cityPrice.buy_price_max > 0 ? String(cityPrice.buy_price_max) : '');
         setSellPrice(cityPrice.sell_price_min > 0 ? String(cityPrice.sell_price_min) : '');
-        trackPriceFetch(item.id, selectedCity);
-        trackMarketCalculation();
+        trackPriceFetch(item.id, selectedCity, analyticsAuthorization);
+        trackMarketCalculation(analyticsAuthorization);
         setPriceDate({
           sell: cityPrice.sell_price_min_date || '',
           buy: cityPrice.buy_price_max_date || '',

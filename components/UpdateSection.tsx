@@ -32,7 +32,7 @@ import {
   installUpdate,
   VersionManifest,
 } from '../lib/updater';
-import { trackEvent } from '../lib/analytics';
+import { captureAnalyticsAuthorization, trackEvent } from '../lib/analytics';
 
 interface Props {
   t: (key: any) => any;
@@ -65,6 +65,7 @@ export default function UpdateSection({ t, lang }: Props) {
   // was updated since the last run — log it as a successful install.
   useEffect(() => {
     let cancelled = false;
+    const analyticsAuthorization = captureAnalyticsAuthorization();
     (async () => {
       try {
         const lastKnown = await AsyncStorage.getItem(LAST_KNOWN_VERSION_KEY);
@@ -73,7 +74,7 @@ export default function UpdateSection({ t, lang }: Props) {
           trackEvent('update_install_success', 'updates', {
             from: lastKnown,
             to: current,
-          });
+          }, analyticsAuthorization);
         }
         if (current && !cancelled) {
           await AsyncStorage.setItem(LAST_KNOWN_VERSION_KEY, current);
@@ -93,9 +94,10 @@ export default function UpdateSection({ t, lang }: Props) {
   }
 
   const handleCheck = async () => {
+    const analyticsAuthorization = captureAnalyticsAuthorization();
     setState('checking');
     setErrorMessage(null);
-    trackEvent('update_check_started', 'updates');
+    trackEvent('update_check_started', 'updates', {}, analyticsAuthorization);
     try {
       const result = await checkForUpdate();
       if (result) {
@@ -104,42 +106,41 @@ export default function UpdateSection({ t, lang }: Props) {
         trackEvent('update_check_completed', 'updates', {
           target: result.version,
           available: true,
-        });
+        }, analyticsAuthorization);
       } else {
         setState('upToDate');
-        trackEvent('update_check_completed', 'updates', { available: false });
+        trackEvent('update_check_completed', 'updates', { available: false }, analyticsAuthorization);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || String(err));
       setState('error');
       trackEvent('update_check_failed', 'updates', {
-        error: String(err?.message || err).slice(0, 200),
-      });
+      }, analyticsAuthorization);
     }
   };
 
   const handleDownload = async () => {
     if (!manifest) return;
+    const analyticsAuthorization = captureAnalyticsAuthorization();
     setState('downloading');
     setProgress(0);
     setErrorMessage(null);
     trackEvent('update_download_started', 'updates', {
       target: manifest.version,
-    });
+    }, analyticsAuthorization);
     try {
       const uri = await downloadUpdate(manifest, (frac) => setProgress(frac));
       setLocalPath(uri);
       setState('ready');
       trackEvent('update_download_completed', 'updates', {
         target: manifest.version,
-      });
+      }, analyticsAuthorization);
     } catch (err: any) {
       setErrorMessage(err?.message || String(err));
       setState('error');
       trackEvent('update_download_failed', 'updates', {
         target: manifest.version,
-        error: String(err?.message || err).slice(0, 200),
-      });
+      }, analyticsAuthorization);
     }
   };
 

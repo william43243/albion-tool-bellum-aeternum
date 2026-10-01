@@ -3,7 +3,11 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-nati
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateFlipProfit } from '../lib/calculations';
 import { Language } from '../lib/i18n';
-import { trackFlipCalculation } from '../lib/analytics';
+import {
+  captureAnalyticsAuthorization,
+  isAnalyticsAuthorizationCurrent,
+  trackFlipCalculation,
+} from '../lib/analytics';
 import { parseUserNumber } from '../lib/numberParsing';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
@@ -43,7 +47,10 @@ export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: 
       return;
     }
     if (trackedFirstValidRef.current) return;
+    const authorization = captureAnalyticsAuthorization();
+    if (authorization === null) return;
     const id = setTimeout(() => {
+      if (!isAnalyticsAuthorizationCurrent(authorization)) return;
       trackFlipCalculation();
       trackedFirstValidRef.current = true;
     }, 1000);

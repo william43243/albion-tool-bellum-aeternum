@@ -106,25 +106,36 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_app_versions_current ON app_versions(is_current);
 `);
 
-// Product telemetry was retired. De-identify legacy rows and enforce the
-// 90-day maximum continuously rather than only once at process startup.
-function runLegacyRetentionCleanup() {
+// Legacy columns remain for migration compatibility, but new analytics writes
+// never populate IP, referrer, or user-agent fields. Continuously de-identify
+// old rows and enforce the 90-day maximum.
+let retentionHealthy = false;
+function runAnalyticsRetentionCleanup() {
   try {
     db.exec(`
-      UPDATE page_views SET ip = NULL WHERE ip IS NOT NULL;
+      UPDATE page_views SET referrer = NULL, user_agent = NULL, ip = NULL
+        WHERE referrer IS NOT NULL OR user_agent IS NOT NULL OR ip IS NOT NULL;
       UPDATE events SET ip = NULL WHERE ip IS NOT NULL;
-      DELETE FROM page_views WHERE created_at < datetime('now', '-90 days');
-      DELETE FROM events WHERE created_at < datetime('now', '-90 days');
+      DELETE FROM page_views
+        WHERE created_at IS NULL OR datetime(created_at) IS NULL
+          OR datetime(created_at) != created_at
+          OR created_at < datetime('now', '-89 days');
+      DELETE FROM events
+        WHERE created_at IS NULL OR datetime(created_at) IS NULL
+          OR datetime(created_at) != created_at
+          OR created_at < datetime('now', '-89 days');
     `);
+    retentionHealthy = true;
     return true;
   } catch (err) {
-    console.error('legacy retention cleanup failed; will retry on the next interval:', err.message);
+    retentionHealthy = false;
+    console.error('analytics retention cleanup failed; will retry on the next interval:', err.message);
     return false;
   }
 }
-runLegacyRetentionCleanup();
-const legacyRetentionTimer = setInterval(runLegacyRetentionCleanup, 60 * 60 * 1000);
-legacyRetentionTimer.unref();
+runAnalyticsRetentionCleanup();
+const analyticsRetentionTimer = setInterval(runAnalyticsRetentionCleanup, 60 * 60 * 1000);
+analyticsRetentionTimer.unref();
 
 // Reads the currently published version row. The columns selected here are
 // exactly the ones that were canonicalized+signed by scripts/publish.js —
@@ -147,14 +158,110 @@ const selectCurrentVersion = db.prepare(`
   LIMIT 1
 `);
 
-// Product analytics are disabled. Keep explicit retired endpoints so cached
-// clients receive a deterministic response without any persistence.
-app.post('/api/track/pageview', trackingLimiter, (_req, res) => {
-  return res.status(410).json({ error: 'analytics disabled' });
+const ALLOWED_PAGES = new Set([
+  '/', '/index.html', '/app/', '/cgu.html', '/confidentialite.html',
+  '/marketplace', '/crafting', '/flipping', '/history', '/advisor', '/settings',
+]);
+const ALLOWED_EVENTS = new Set([
+  'marketplace', 'crafting', 'flipping', 'history', 'advisor', 'settings',
+  'ai_prompt', 'ai_model_download', 'ai_model_start', 'ai_image_sent',
+  'flip_calc', 'market_calc', 'craft_calc', 'price_fetch', 'history_fetch', 'apk_download',
+  'update_install_success', 'update_check_started', 'update_check_completed', 'update_check_failed',
+  'update_download_started', 'update_download_completed', 'update_download_failed', 'update_install_attempted',
+]);
+const ALLOWED_CATEGORIES = new Set(['app', 'website', 'tool_use', 'ai', 'calculation', 'market', 'updates', 'download']);
+const ALLOWED_METADATA = new Set(['model', 'item', 'city', 'version', 'platform', 'from', 'to', 'target', 'available']);
+const COMMON_METADATA = ['platform', 'version'];
+const EVENT_METADATA = {
+  marketplace: COMMON_METADATA, crafting: COMMON_METADATA, flipping: COMMON_METADATA,
+  history: COMMON_METADATA, advisor: COMMON_METADATA, settings: COMMON_METADATA,
+  ai_prompt: [...COMMON_METADATA, 'model'], ai_model_download: [...COMMON_METADATA, 'model'],
+  ai_model_start: [...COMMON_METADATA, 'model'], ai_image_sent: [...COMMON_METADATA, 'model'],
+  flip_calc: COMMON_METADATA, market_calc: COMMON_METADATA, craft_calc: COMMON_METADATA,
+  price_fetch: [...COMMON_METADATA, 'item', 'city'], history_fetch: [...COMMON_METADATA, 'item'],
+  apk_download: COMMON_METADATA,
+  update_install_success: [...COMMON_METADATA, 'from', 'to'],
+  update_check_started: COMMON_METADATA,
+  update_check_completed: [...COMMON_METADATA, 'target', 'available'],
+  update_check_failed: COMMON_METADATA,
+  update_download_started: [...COMMON_METADATA, 'target'],
+  update_download_completed: [...COMMON_METADATA, 'target'],
+  update_download_failed: [...COMMON_METADATA, 'target'],
+  update_install_attempted: [...COMMON_METADATA, 'target'],
+};
+const EVENT_CATEGORIES = {
+  marketplace: 'tool_use', crafting: 'tool_use', flipping: 'tool_use', history: 'tool_use',
+  advisor: 'tool_use', settings: 'tool_use', ai_prompt: 'ai', ai_model_download: 'ai',
+  ai_model_start: 'ai', ai_image_sent: 'ai', flip_calc: 'calculation', market_calc: 'calculation',
+  craft_calc: 'calculation', price_fetch: 'market', history_fetch: 'market', apk_download: 'download',
+  update_install_success: 'updates', update_check_started: 'updates', update_check_completed: 'updates',
+  update_check_failed: 'updates', update_download_started: 'updates', update_download_completed: 'updates',
+  update_download_failed: 'updates', update_install_attempted: 'updates',
+};
+const ALLOWED_CITIES = new Set(['Caerleon', 'Bridgewatch', 'Fort Sterling', 'Lymhurst', 'Thetford', 'Martlock', 'Brecilien']);
+const ALLOWED_PLATFORMS = new Set(['android', 'ios', 'web']);
+const ALLOWED_MODELS = new Set([
+  'qwen35-08b', 'qwen25-15b', 'deepseek-r1-15b', 'gemma4-e2b',
+  'gemma4-e4b', 'qwen25-7b-web', 'phi35-mini-web', 'llama32-3b-web',
+]);
+const ITEM_IDENTIFIER = /^T[1-8](?:_[A-Z0-9]+)+(?:@[1-4])?$/;
+const VERSION_IDENTIFIER = /^\d{1,3}\.\d{1,3}\.\d{1,3}(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/;
+
+const insertPageView = db.prepare('INSERT INTO page_views (page) VALUES (?)');
+const insertEvent = db.prepare('INSERT INTO events (name, category, metadata) VALUES (?, ?, ?)');
+
+function hasOnlyKeys(object, allowed) {
+  return object && typeof object === 'object' && !Array.isArray(object)
+    && Object.keys(object).every((key) => allowed.has(key));
+}
+
+function boundedString(value, max) {
+  return typeof value === 'string' && value.length > 0 && value.length <= max;
+}
+
+function sanitizeMetadata(eventName, metadata) {
+  if (metadata === undefined) return {};
+  const eventKeys = new Set(EVENT_METADATA[eventName] || []);
+  if (!hasOnlyKeys(metadata, ALLOWED_METADATA) || !hasOnlyKeys(metadata, eventKeys) || Object.keys(metadata).length > 6) return null;
+  const clean = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (key === 'available') {
+      if (typeof value !== 'boolean') return null;
+      clean[key] = value;
+    } else {
+      if (!boundedString(value, 80)) return null;
+      if (key === 'city' && !ALLOWED_CITIES.has(value)) return null;
+      if (key === 'platform' && !ALLOWED_PLATFORMS.has(value)) return null;
+      if (key === 'model' && !ALLOWED_MODELS.has(value)) return null;
+      if (key === 'item' && !ITEM_IDENTIFIER.test(value)) return null;
+      if (['version', 'from', 'to', 'target'].includes(key) && !VERSION_IDENTIFIER.test(value)) return null;
+      clean[key] = value;
+    }
+  }
+  return clean;
+}
+
+app.post('/api/track/pageview', trackingLimiter, (req, res) => {
+  if (!retentionHealthy) return res.status(503).json({ error: 'analytics retention unavailable' });
+  if (!hasOnlyKeys(req.body, new Set(['page'])) || !ALLOWED_PAGES.has(req.body.page)) {
+    return res.status(400).json({ error: 'invalid analytics payload' });
+  }
+  insertPageView.run(req.body.page);
+  return res.status(204).end();
 });
 
-app.post('/api/track/event', trackingLimiter, (_req, res) => {
-  return res.status(410).json({ error: 'analytics disabled' });
+app.post('/api/track/event', trackingLimiter, (req, res) => {
+  if (!retentionHealthy) return res.status(503).json({ error: 'analytics retention unavailable' });
+  if (!hasOnlyKeys(req.body, new Set(['name', 'category', 'metadata']))
+      || !ALLOWED_EVENTS.has(req.body.name)
+      || !ALLOWED_CATEGORIES.has(req.body.category)
+      || EVENT_CATEGORIES[req.body.name] !== req.body.category) {
+    return res.status(400).json({ error: 'invalid analytics payload' });
+  }
+  const metadata = sanitizeMetadata(req.body.name, req.body.metadata);
+  if (metadata === null) return res.status(400).json({ error: 'invalid analytics metadata' });
+  insertEvent.run(req.body.name, req.body.category, JSON.stringify(metadata));
+  return res.status(204).end();
 });
 
 // Admin stats API
@@ -236,7 +343,7 @@ app.get('/api/stats/overview', adminLimiter, checkAdmin, (req, res) => {
 
     // Platform breakdown
     const platformBreakdown = db.prepare(`
-      SELECT json_extract(metadata, '$._platform') as platform, COUNT(*) as count
+      SELECT json_extract(metadata, '$.platform') as platform, COUNT(*) as count
       FROM events
       WHERE created_at >= datetime('now', ?) AND metadata IS NOT NULL
       GROUP BY platform

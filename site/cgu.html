@@ -7,8 +7,20 @@
 <link rel="icon" href="/assets/favicon.png" type="image/png">
 
 <link rel="stylesheet" href="/assets/cgu.css">
+<link rel="stylesheet" href="/assets/analytics-consent.css">
 </head>
 <body>
+
+<div class="analytics-consent" id="analyticsConsent" role="dialog" aria-modal="true" aria-labelledby="analyticsConsentTitle" hidden>
+  <div class="analytics-consent-card">
+    <h2 id="analyticsConsentTitle">Statistiques d'utilisation</h2>
+    <p>Acceptez-vous l'envoi de statistiques d'utilisation minimales ? Aucun identifiant persistant, prompt ou image n'est enregistré dans la base analytique. Vous pourrez retirer ce consentement à tout moment.</p>
+    <div class="analytics-consent-actions">
+      <button type="button" id="analyticsRefuse">Refuser</button>
+      <button type="button" id="analyticsAccept" class="primary">Accepter</button>
+    </div>
+  </div>
+</div>
 
 <div class="legal-header">
   <a href="/" style="display:flex;align-items:center;gap:12px;">
@@ -70,7 +82,9 @@
 
 <footer>
   <a href="/">Retour à l'accueil</a>
+  <button type="button" id="analyticsSettings" class="analytics-settings">Préférences analytics</button>
 </footer>
 
+<script src="/js/analytics.js"></script>
 </body>
 </html>

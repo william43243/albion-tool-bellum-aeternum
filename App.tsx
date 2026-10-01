@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
+import { Alert, View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLanguage } from './hooks/useLanguage';
 import { useServer } from './hooks/useServer';
 import { usePlayerCity } from './hooks/usePlayerCity';
 import CitySelector from './components/CitySelector';
+import AnalyticsConsentPrompt from './components/AnalyticsConsentPrompt';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS } from './constants/theme';
-import { trackPageView, trackToolUse } from './lib/analytics';
+import {
+  AnalyticsConsent,
+  getAnalyticsConsent,
+  initializeAnalyticsConsent,
+  setAnalyticsConsent,
+  trackPageView,
+  trackToolUse,
+} from './lib/analytics';
 
 import MarketplaceScreen from './screens/MarketplaceScreen';
 import CraftingScreen from './screens/CraftingScreen';
@@ -36,12 +44,37 @@ function AppContent() {
   const [showCitySelector, setShowCitySelector] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('marketplace');
   const [isPremium, setIsPremium] = useState(true);
+  const [analyticsConsent, setAnalyticsConsentState] = useState<AnalyticsConsent>('undecided');
+  const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
   const insets = useSafeAreaInsets();
 
-  // Track initial page view
   useEffect(() => {
-    trackPageView('/marketplace');
+    let active = true;
+    initializeAnalyticsConsent().then((choice) => {
+      if (!active) return;
+      setAnalyticsConsentState(choice);
+      setAnalyticsLoaded(true);
+      if (choice === 'accepted') trackPageView('/marketplace');
+    });
+    return () => { active = false; };
   }, []);
+
+  const changeAnalyticsConsent = async (choice: 'accepted' | 'refused') => {
+    const previous = analyticsConsent;
+    try {
+      await setAnalyticsConsent(choice);
+      if (previous !== 'accepted' && choice === 'accepted') trackPageView('/' + activeTab);
+    } catch {
+      const messages: Record<string, string> = {
+        fr: "Impossible d'enregistrer ce choix. L'analytique est désactivée pour cette session; réessayez avant de redémarrer.",
+        en: 'Unable to save this choice. Analytics is disabled for this session; retry before restarting.',
+        es: 'No se pudo guardar esta opción. Las analíticas están desactivadas durante esta sesión; inténtalo de nuevo antes de reiniciar.',
+      };
+      Alert.alert('Analytics', messages[lang] || messages.en);
+    } finally {
+      setAnalyticsConsentState(getAnalyticsConsent());
+    }
+  };
 
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
@@ -49,7 +82,7 @@ function AppContent() {
     trackToolUse(tab);
   };
 
-  if (!loaded || !serverLoaded || !cityLoaded) {
+  if (!loaded || !serverLoaded || !cityLoaded || !analyticsLoaded) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Albion Market</Text>
@@ -87,7 +120,15 @@ function AppContent() {
         <AdvisorScreen t={t} lang={lang} server={server} playerCity={city} onCityDetected={selectCity} isPremium={isPremium} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'settings' && { display: 'none' }]}>
-        <SettingsScreen t={t} lang={lang} onSwitchLanguage={switchLanguage} server={server} onSwitchServer={switchServer} />
+        <SettingsScreen
+          t={t}
+          lang={lang}
+          onSwitchLanguage={switchLanguage}
+          server={server}
+          onSwitchServer={switchServer}
+          analyticsConsent={analyticsConsent}
+          onAnalyticsConsentChange={changeAnalyticsConsent}
+        />
       </View>
 
       <CitySelector
@@ -99,6 +140,12 @@ function AppContent() {
           setShowCitySelector(false);
         }}
         onClose={() => setShowCitySelector(false)}
+      />
+
+      <AnalyticsConsentPrompt
+        visible={analyticsLoaded && analyticsConsent === 'undecided'}
+        t={t}
+        onChoice={changeAnalyticsConsent}
       />
 
       {/* Tab bar with bottom safe area */}

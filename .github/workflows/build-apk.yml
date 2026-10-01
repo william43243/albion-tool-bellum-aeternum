@@ -272,3 +272,112 @@ jobs:
           test "$expected_entry" = "$apk"
           case "$expected_entry" in */*) echo 'Checksum manifest must contain a basename only' >&2; exit 1;; esac
           sha256sum -c SHA256SUMS
+
+  publish-release:
+    name: Publish verified APK to the website release URL
+    needs: verify-signed-artifact
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: albion-production-release-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Download exact verified signed artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: albion-market-release-signed
+          path: verified-artifact
+
+      - name: Publish and verify exact prerelease asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          case "$version" in *[!A-Za-z0-9._-]*|'') echo 'Invalid release version' >&2; exit 1;; esac
+          tag="v$version"
+          expected_asset="albion-market-v${version}-release.apk"
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          test "$current_main" = "$GITHUB_SHA" || { echo 'Refusing to publish a stale main revision' >&2; exit 1; }
+
+          verify_tag_target() {
+            local ref_json tag_sha tag_type tag_json
+            ref_json="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag")"
+            tag_sha="$(printf '%s' "$ref_json" | jq -r '.object.sha')"
+            tag_type="$(printf '%s' "$ref_json" | jq -r '.object.type')"
+            while test "$tag_type" = tag; do
+              tag_json="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$tag_sha")"
+              tag_sha="$(printf '%s' "$tag_json" | jq -r '.object.sha')"
+              tag_type="$(printf '%s' "$tag_json" | jq -r '.object.type')"
+            done
+            test "$tag_type" = commit
+            test "$tag_sha" = "$GITHUB_SHA"
+          }
+
+          cd verified-artifact
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 2
+          test -f "$expected_asset"
+          test -f SHA256SUMS
+          test "$(awk '{print $2}' SHA256SUMS)" = "$expected_asset"
+          sha256sum -c SHA256SUMS
+
+          if release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null)"; then
+            verify_tag_target
+            printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
+              '.draft == false and .prerelease == true and .target_commitish == $sha' >/dev/null
+          else
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+              verify_tag_target
+            fi
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+              --title "Albion Market $version" --notes "Verified production-signed Android prerelease $version."
+            verify_tag_target
+          fi
+
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
+          printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
+            '.draft == false and .prerelease == true and .target_commitish == $sha' >/dev/null
+
+          verify_asset() {
+            local asset="$1" authenticated_dir anonymous_file
+            authenticated_dir="$RUNNER_TEMP/release-readback-$asset"
+            anonymous_file="$RUNNER_TEMP/anonymous-$asset"
+            rm -rf "$authenticated_dir" "$anonymous_file"
+            mkdir -p "$authenticated_dir"
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$authenticated_dir"
+            cmp -s "$asset" "$authenticated_dir/$asset"
+            curl --retry 5 --retry-all-errors --retry-delay 2 --fail --location --silent --show-error \
+              --output "$anonymous_file" \
+              "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$asset"
+            cmp -s "$asset" "$anonymous_file"
+          }
+
+          # Verify every pre-existing byte before any new external write.
+          for asset in "$expected_asset" SHA256SUMS; do
+            asset_count="$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset" || true)"
+            test "$asset_count" -le 1
+            if test "$asset_count" -eq 1; then
+              verify_asset "$asset"
+            fi
+          done
+
+          for asset in "$expected_asset" SHA256SUMS; do
+            asset_count="$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset" || true)"
+            if test "$asset_count" -eq 0; then
+              gh release upload "$tag" "$asset" --repo "$GITHUB_REPOSITORY"
+            fi
+          done
+
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
+          for asset in "$expected_asset" SHA256SUMS; do
+            test "$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset")" -eq 1
+            verify_asset "$asset"
+          done

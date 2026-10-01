@@ -28,7 +28,7 @@ import { SERVERS } from '../lib/api';
 import * as LLM from '../lib/llm';
 import * as ImagePicker from 'expo-image-picker';
 import { AVAILABLE_MODELS, ModelInfo, formatBytes, getModelsForPlatform, getModelFilename, getModelSizeLabel } from '../lib/models';
-import { trackAIPrompt, trackAIModelDownload, trackAIModelStart, trackAIImageSent } from '../lib/analytics';
+import { captureAnalyticsAuthorization, trackAIPrompt, trackAIModelDownload, trackAIModelStart, trackAIImageSent } from '../lib/analytics';
 import { shouldCancelDownload } from '../lib/downloadLifecycle';
 
 interface Props {
@@ -291,6 +291,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const handleDownload = useCallback(
     (model: ModelInfo) => {
       if (downloading || currentDownloadAttemptRef.current) return;
+      const analyticsAuthorization = captureAnalyticsAuthorization();
 
       // Check disk space
       if (freeDisk > 0 && model.sizeBytes > freeDisk * 0.9) {
@@ -337,7 +338,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
               setDownloading(null);
               await refreshDownloadedModels();
               LLM.getFreeDiskSpace().then(setFreeDisk);
-              trackAIModelDownload(model.id);
+              trackAIModelDownload(model.id, analyticsAuthorization);
               return;
             }
             const durable = await LLM.getActiveDownload().catch(() => null);
@@ -345,7 +346,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
             if (durable?.attemptId === attemptId && durable.status === 'complete') {
               applyActiveDownloadRef.current?.(durable);
               LLM.getFreeDiskSpace().then(setFreeDisk);
-              trackAIModelDownload(model.id);
+              trackAIModelDownload(model.id, analyticsAuthorization);
               return;
             }
             Alert.alert(
@@ -468,6 +469,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
   const handleStartModel = useCallback(
     async (model: ModelInfo) => {
+      const analyticsAuthorization = captureAnalyticsAuthorization();
       setEngineState('loading');
       setActiveModelId(model.id);
       try {
@@ -494,7 +496,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           },
         ]);
         setScreen('chat');
-        trackAIModelStart(model.id);
+        trackAIModelStart(model.id, analyticsAuthorization);
       } catch (e: any) {
         setEngineState('error');
         setActiveModelId(null);

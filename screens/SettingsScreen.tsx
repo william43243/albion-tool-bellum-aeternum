@@ -7,6 +7,7 @@ import { Language } from '../lib/i18n';
 import { Server } from '../lib/api';
 import PremiumInfoPanel from '../components/PremiumInfoPanel';
 import UpdateSection from '../components/UpdateSection';
+import { AnalyticsConsent } from '../lib/analytics';
 
 const BTC_ADDRESS = 'bc1qcptkrekh335wvffcxnrzqkj5nqf72r538vey4x';
 
@@ -16,6 +17,8 @@ interface Props {
   onSwitchLanguage: (lang: Language) => void;
   server: Server;
   onSwitchServer: (server: Server) => void;
+  analyticsConsent: AnalyticsConsent;
+  onAnalyticsConsentChange: (choice: 'accepted' | 'refused') => void;
 }
 
 const SERVER_OPTIONS: { key: Server; flag: string }[] = [
@@ -24,7 +27,15 @@ const SERVER_OPTIONS: { key: Server; flag: string }[] = [
   { key: 'asia', flag: '\uD83C\uDDEF\uD83C\uDDF5' },
 ];
 
-export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSwitchServer }: Props) {
+export default function SettingsScreen({
+  t,
+  lang,
+  onSwitchLanguage,
+  server,
+  onSwitchServer,
+  analyticsConsent,
+  onAnalyticsConsentChange,
+}: Props) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{t('settings')}</Text>
@@ -55,6 +66,36 @@ export default function SettingsScreen({ t, lang, onSwitchLanguage, server, onSw
           >
             <Text style={[styles.langBtnText, lang === 'es' && styles.langBtnTextActive]}>
               🇪🇸 {t('spanish')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Privacy-minimized product analytics */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('analyticsConsent')}</Text>
+        <Text style={styles.settingDescription}>{t('analyticsSettingsDescription')}</Text>
+        <View style={styles.langRow}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ selected: analyticsConsent === 'accepted' }}
+            disabled={analyticsConsent === 'accepted'}
+            style={[styles.langBtn, analyticsConsent === 'accepted' && styles.langBtnActive]}
+            onPress={() => onAnalyticsConsentChange('accepted')}
+          >
+            <Text style={[styles.langBtnText, analyticsConsent === 'accepted' && styles.langBtnTextActive]}>
+              {t('analyticsEnabled')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ selected: analyticsConsent !== 'accepted' }}
+            disabled={analyticsConsent !== 'accepted'}
+            style={[styles.langBtn, analyticsConsent !== 'accepted' && styles.langBtnActive]}
+            onPress={() => onAnalyticsConsentChange('refused')}
+          >
+            <Text style={[styles.langBtnText, analyticsConsent !== 'accepted' && styles.langBtnTextActive]}>
+              {t('analyticsDisabled')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -202,6 +243,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
+    marginBottom: SPACING.md,
+  },
+  settingDescription: {
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZE.sm,
+    lineHeight: 20,
     marginBottom: SPACING.md,
   },
   langRow: {
