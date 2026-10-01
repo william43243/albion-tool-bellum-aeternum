@@ -98,7 +98,7 @@ def test_haproxy_only_routes_cloudflare_sources_to_the_web_gateway():
 
 def test_declarative_deployment_matches_running_hardening():
     compose = (ROOT / "deploy/compose.yaml").read_text(encoding="utf-8")
-    assert "image: albion-market:security-20260821" in compose
+    assert "image: albion-market:security-20261001" in compose
     assert '"127.0.0.1:2053:443"' in compose
     assert "mkdir -p /run/nginx" not in compose
 

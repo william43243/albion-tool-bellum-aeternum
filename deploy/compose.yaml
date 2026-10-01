@@ -28,7 +28,7 @@ services:
       - no-new-privileges:true
 
   albion:
-    image: albion-market:security-20260821
+    image: albion-market:security-20261001
     container_name: migrated-albion-market
     restart: unless-stopped
 
