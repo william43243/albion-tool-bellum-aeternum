@@ -141,7 +141,7 @@ def test_release_ci_requires_explicit_production_signing_and_never_uses_debug_ke
 
 def test_public_site_apk_links_use_one_self_consistent_published_release_path():
     homepage = (SITE / "index.html").read_text(encoding="utf-8")
-    links = re.findall(r'href="(https://github\.com/[^\"]+/releases/download/v([^/]+)/AlbionMarket-v([^\"]+)\.apk)"', homepage)
+    links = re.findall(r'href="(https://github\.com/[^\"]+/releases/download/v([^/]+)/albion-market-v([^\"]+)-release\.apk)"', homepage)
     assert len(links) == 2
     assert len({url for url, _, _ in links}) == 1
     assert all(tag_version == asset_version for _, tag_version, asset_version in links)
