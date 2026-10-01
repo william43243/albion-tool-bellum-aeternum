@@ -88,6 +88,8 @@ test('every multiline release shell enables pipefail', () => {
 });
 
 test('CI executes native tests and rejects every release APK or AAB from refusal probes', () => {
+  assert.match(releaseWorkflow, /cache-dependency-path: \|\n\s+package-lock\.json\n\s+analytics\/package-lock\.json/);
+  assert.match(releaseWorkflow, /npm ci --prefix analytics/);
   assert.match(releaseWorkflow, /:app:testDebugUnitTest/);
   assert.match(releaseWorkflow, /find android\/app\/build\/outputs[^\n]+-name '\*\.apk'[^\n]+-name '\*\.aab'/);
 });
