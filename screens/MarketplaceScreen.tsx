@@ -51,23 +51,28 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
     setBuyPrice(''); setSellPrice(''); setPriceDate(null);
   }, [server, selectedCity]);
   const result = useMemo(() => {
-    const buy = parseUserNumber(buyPrice).valid ? parseUserNumber(buyPrice).value : 0;
-    const sell = parseUserNumber(sellPrice).valid ? parseUserNumber(sellPrice).value : 0;
-    const qty = parseUserNumber(quantity, true).valid ? parseUserNumber(quantity, true).value : 0;
+    const buyParsed = parseUserNumber(buyPrice, false, lang);
+    const sellParsed = parseUserNumber(sellPrice, false, lang);
+    const quantityParsed = parseUserNumber(quantity, true, lang);
+    const buy = buyParsed.valid ? buyParsed.value : 0;
+    const sell = sellParsed.valid ? sellParsed.value : 0;
+    const qty = quantityParsed.valid ? quantityParsed.value : 0;
     if (buy <= 0 || sell <= 0 || qty <= 0) return null;
     return calculateMarketplaceProfit(buy, sell, qty, isPremium, useBuyOrder, useSellOrder);
-  }, [buyPrice, sellPrice, quantity, isPremium, useBuyOrder, useSellOrder]);
+  }, [buyPrice, sellPrice, quantity, isPremium, useBuyOrder, useSellOrder, lang]);
 
   const comparisonRows = useMemo(() => {
     if (!result) return [];
-    const buy = parseUserNumber(buyPrice).value; const sell = parseUserNumber(sellPrice).value; const qty = parseUserNumber(quantity, true).value;
+    const buy = parseUserNumber(buyPrice, false, lang).value;
+    const sell = parseUserNumber(sellPrice, false, lang).value;
+    const qty = parseUserNumber(quantity, true, lang).value;
     const modes: MarketplaceStrategy[] = ['instant-instant', 'order-instant', 'instant-order', 'order-order'];
     return modes.map((mode) => {
       const flags = { useBuyOrder: mode === 'order-instant' || mode === 'order-order', useSellOrder: mode === 'instant-order' || mode === 'order-order' };
       const value = calculateMarketplaceProfit(buy, sell, qty, isPremium, flags.useBuyOrder, flags.useSellOrder);
       return { mode, value, breakEven: breakEvenSellPrice(buy, qty, isPremium, mode) };
     });
-  }, [result, buyPrice, sellPrice, quantity, isPremium]);
+  }, [result, buyPrice, sellPrice, quantity, isPremium, lang]);
 
   const handleFetchPrices = async (item: AlbionItem) => {
     const generation = ++requestGeneration.current;
@@ -215,21 +220,25 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
 
       {/* Inputs */}
       <NumberInput
+        locale={lang}
         label={t('buyPrice')}
         value={buyPrice}
         onChangeText={setBuyPrice}
         info={useBuyOrder ? t('setupFeeInfo') : undefined}
       />
       <NumberInput
+        locale={lang}
         label={t('sellPrice')}
         value={sellPrice}
         onChangeText={setSellPrice}
         info={t('salesTaxInfo')}
       />
       <NumberInput
+        locale={lang}
         label={t('quantity')}
         value={quantity}
         onChangeText={setQuantity}
+        integer
       />
 
       {/* Results */}

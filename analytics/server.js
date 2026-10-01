@@ -106,20 +106,25 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_app_versions_current ON app_versions(is_current);
 `);
 
-// Input validation constants
-const MAX_PAGE_LENGTH = 255;
-const MAX_NAME_LENGTH = 100;
-const MAX_CATEGORY_LENGTH = 50;
-const MAX_METADATA_LENGTH = 2048;
-const MAX_REFERRER_LENGTH = 512;
-
-// Prepared statements
-const insertPageView = db.prepare(
-  'INSERT INTO page_views (page, referrer, user_agent, ip) VALUES (?, ?, ?, ?)'
-);
-const insertEvent = db.prepare(
-  'INSERT INTO events (name, category, metadata, ip) VALUES (?, ?, ?, ?)'
-);
+// Product telemetry was retired. De-identify legacy rows and enforce the
+// 90-day maximum continuously rather than only once at process startup.
+function runLegacyRetentionCleanup() {
+  try {
+    db.exec(`
+      UPDATE page_views SET ip = NULL WHERE ip IS NOT NULL;
+      UPDATE events SET ip = NULL WHERE ip IS NOT NULL;
+      DELETE FROM page_views WHERE created_at < datetime('now', '-90 days');
+      DELETE FROM events WHERE created_at < datetime('now', '-90 days');
+    `);
+    return true;
+  } catch (err) {
+    console.error('legacy retention cleanup failed; will retry on the next interval:', err.message);
+    return false;
+  }
+}
+runLegacyRetentionCleanup();
+const legacyRetentionTimer = setInterval(runLegacyRetentionCleanup, 60 * 60 * 1000);
+legacyRetentionTimer.unref();
 
 // Reads the currently published version row. The columns selected here are
 // exactly the ones that were canonicalized+signed by scripts/publish.js —
@@ -142,52 +147,14 @@ const selectCurrentVersion = db.prepare(`
   LIMIT 1
 `);
 
-// Track page view
-app.post('/api/track/pageview', trackingLimiter, (req, res) => {
-  try {
-    const { page } = req.body;
-    if (!page || typeof page !== 'string' || page.length > MAX_PAGE_LENGTH) {
-      return res.status(400).json({ error: 'invalid page' });
-    }
-
-    const ip = clientIpKey(req);
-    const referrer = String(req.body.referrer || req.headers['referer'] || '').slice(0, MAX_REFERRER_LENGTH);
-    const userAgent = String(req.headers['user-agent'] || '').slice(0, MAX_REFERRER_LENGTH);
-
-    insertPageView.run(page, referrer, userAgent, ip);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('pageview error:', err.message);
-    res.status(500).json({ error: 'internal error' });
-  }
+// Product analytics are disabled. Keep explicit retired endpoints so cached
+// clients receive a deterministic response without any persistence.
+app.post('/api/track/pageview', trackingLimiter, (_req, res) => {
+  return res.status(410).json({ error: 'analytics disabled' });
 });
 
-// Track event (tool usage, downloads, AI prompts, etc.)
-app.post('/api/track/event', trackingLimiter, (req, res) => {
-  try {
-    const { name, category, metadata, _version, _platform } = req.body;
-    if (!name || typeof name !== 'string' || name.length > MAX_NAME_LENGTH) {
-      return res.status(400).json({ error: 'invalid name' });
-    }
-    if (category && (typeof category !== 'string' || category.length > MAX_CATEGORY_LENGTH)) {
-      return res.status(400).json({ error: 'invalid category' });
-    }
-
-    const ip = clientIpKey(req);
-
-    // Merge version/platform into metadata for tracking
-    const fullMetadata = { ...(metadata || {}), _version, _platform };
-    const metaStr = JSON.stringify(fullMetadata);
-    if (metaStr.length > MAX_METADATA_LENGTH) {
-      return res.status(400).json({ error: 'metadata too large' });
-    }
-
-    insertEvent.run(name, category || null, metaStr, ip);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('event error:', err.message);
-    res.status(500).json({ error: 'internal error' });
-  }
+app.post('/api/track/event', trackingLimiter, (_req, res) => {
+  return res.status(410).json({ error: 'analytics disabled' });
 });
 
 // Admin stats API
@@ -397,34 +364,6 @@ app.get('/api/stats/events', adminLimiter, checkAdmin, (req, res) => {
   }
 });
 
-// Public stats endpoint (no auth, all-time counters only — for the landing page)
-app.get('/api/stats/public', publicLimiter, (req, res) => {
-  try {
-    const allTimePrompts = db.prepare(
-      `SELECT COUNT(*) as count FROM events WHERE name = 'ai_prompt'`
-    ).get();
-    const allTimeFlips = db.prepare(
-      `SELECT COUNT(*) as count FROM events WHERE name = 'flip_calc'`
-    ).get();
-    const allTimePageViews = db.prepare('SELECT COUNT(*) as count FROM page_views').get();
-    const uniqueVisitors = db.prepare('SELECT COUNT(DISTINCT ip) as count FROM page_views').get();
-    const aiDownloads = db.prepare(
-      `SELECT COUNT(*) as count FROM events WHERE name = 'ai_model_download'`
-    ).get();
-
-    res.json({
-      ai_prompts: allTimePrompts.count,
-      flip_calculations: allTimeFlips.count,
-      page_views: allTimePageViews.count,
-      unique_visitors: uniqueVisitors.count,
-      ai_model_downloads: aiDownloads.count,
-    });
-  } catch (err) {
-    console.error('public stats error:', err.message);
-    res.status(500).json({ error: 'internal error' });
-  }
-});
-
 // In-app updater: return the currently published version manifest.
 //
 // The response includes a detached Ed25519 signature over the canonical JSON
@@ -433,27 +372,11 @@ app.get('/api/stats/public', publicLimiter, (req, res) => {
 // any field — a compromised server or MITM cannot forge a manifest without
 // the private key on /data/signing-private.bin.
 //
-// Clients should send X-Current-Version and X-Platform so we can track which
-// builds are checking for updates; these are logged as `update_check` events.
-app.get('/api/version', publicLimiter, (req, res) => {
+// Clients may send version/platform headers for compatibility, but this endpoint
+// does not log or persist them.
+app.get('/api/version', publicLimiter, (_req, res) => {
   try {
     const row = selectCurrentVersion.get();
-
-    // Audit: log the check (best-effort; don't fail the request if it fails).
-    try {
-      const clientVersion = String(req.headers['x-current-version'] || '').slice(0, 32);
-      const clientPlatform = String(req.headers['x-platform'] || '').slice(0, 16);
-      const meta = JSON.stringify({
-        current: clientVersion || null,
-        platform: clientPlatform || null,
-        target: row ? row.version : null,
-      });
-      if (meta.length <= MAX_METADATA_LENGTH) {
-        insertEvent.run('update_check', 'updates', meta, clientIpKey(req));
-      }
-    } catch (logErr) {
-      console.error('update_check audit failed:', logErr.message);
-    }
 
     if (!row) {
       return res.status(404).json({ error: 'no version published' });

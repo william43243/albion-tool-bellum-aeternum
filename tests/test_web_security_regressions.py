@@ -1,9 +1,10 @@
 from pathlib import Path
+import os
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
 APP_NGINX = (ROOT / "nginx.conf").read_text(encoding="utf-8")
-GATEWAY_PATH = Path("/srv/migrated-sites/gateway/nginx.conf")
+GATEWAY_PATH = Path(os.environ.get("ALBION_GATEWAY_CONFIG", ROOT / "deploy/gateway-nginx.conf"))
 GATEWAY = GATEWAY_PATH.read_text(encoding="utf-8")
 SITE = ROOT / "site"
 
@@ -138,10 +139,12 @@ def test_release_ci_requires_explicit_production_signing_and_never_uses_debug_ke
     assert "assembleRelease" in workflow
 
 
-def test_public_site_does_not_link_to_an_unpublished_versioned_apk():
+def test_public_site_apk_links_use_one_self_consistent_published_release_path():
     homepage = (SITE / "index.html").read_text(encoding="utf-8")
-    assert "/downloads/AlbionMarket-v2.0.7.apk" not in homepage
-    assert "Installation indisponible" in homepage
+    links = re.findall(r'href="(https://github\.com/[^\"]+/releases/download/v([^/]+)/AlbionMarket-v([^\"]+)\.apk)"', homepage)
+    assert len(links) == 2
+    assert len({url for url, _, _ in links}) == 1
+    assert all(tag_version == asset_version for _, tag_version, asset_version in links)
 
 
 def test_hardened_runtime_initializes_tmpfs_and_readable_code():
@@ -154,6 +157,9 @@ def test_hardened_runtime_initializes_tmpfs_and_readable_code():
 
 
 if __name__ == "__main__":
+    if not __debug__:
+        print("FAIL assertions are disabled; refusing optimized Python mode")
+        raise SystemExit(2)
     failures = []
     tests = sorted((name, obj) for name, obj in globals().items() if name.startswith("test_") and callable(obj))
     for name, test in tests:

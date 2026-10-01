@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateCraftingFee } from '../lib/calculations';
 import { Language } from '../lib/i18n';
+import { parseUserNumber } from '../lib/numberParsing';
 import NumberInput from '../components/NumberInput';
 import ResultCard from '../components/ResultCard';
 import PremiumInfoPanel from '../components/PremiumInfoPanel';
@@ -20,12 +21,14 @@ export default function CraftingScreen({ t, lang }: Props) {
   const [showItemPicker, setShowItemPicker] = useState(false);
 
   const result = useMemo(() => {
-    const iv = parseFloat(itemValue) || 0;
-    const tax = parseFloat(stationTax) || 0;
-    const qty = parseInt(quantity) || 1;
-    if (iv <= 0) return null;
-    return calculateCraftingFee(iv, tax, qty);
-  }, [itemValue, stationTax, quantity]);
+    const iv = parseUserNumber(itemValue, false, lang);
+    const tax = stationTax.trim()
+      ? parseUserNumber(stationTax, false, lang)
+      : { value: 0, valid: true };
+    const qty = parseUserNumber(quantity, true, lang);
+    if (!iv.valid || !tax.valid || !qty.valid || iv.value <= 0 || qty.value <= 0) return null;
+    return calculateCraftingFee(iv.value, tax.value, qty.value);
+  }, [itemValue, stationTax, quantity, lang]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -39,6 +42,7 @@ export default function CraftingScreen({ t, lang }: Props) {
       </TouchableOpacity>
 
       <NumberInput
+        locale={lang}
         label={t('itemValue')}
         value={itemValue}
         onChangeText={setItemValue}
@@ -46,6 +50,7 @@ export default function CraftingScreen({ t, lang }: Props) {
       />
 
       <NumberInput
+        locale={lang}
         label={t('stationTax')}
         value={stationTax}
         onChangeText={setStationTax}
@@ -56,9 +61,11 @@ export default function CraftingScreen({ t, lang }: Props) {
       />
 
       <NumberInput
+        locale={lang}
         label={t('quantity')}
         value={quantity}
         onChangeText={setQuantity}
+        integer
       />
 
       {result && (

@@ -60,6 +60,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const [engineState, setEngineState] = useState<EngineState>('idle');
   const [downloadedFilenames, setDownloadedFilenames] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState<DownloadState | null>(null);
+  const [blockedTerminalModelId, setBlockedTerminalModelId] = useState<string | null>(null);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [freeDisk, setFreeDisk] = useState<number>(-1);
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(
@@ -80,7 +81,14 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const [tokenCount, setTokenCount] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
-  const cancelDownloadRef = useRef<(() => void) | null>(null);
+  const cancelDownloadRef = useRef<(() => Promise<boolean>) | null>(null);
+  const applyActiveDownloadRef = useRef<((active: Awaited<ReturnType<typeof LLM.getActiveDownload>>) => void) | null>(null);
+  const currentDownloadAttemptRef = useRef<string | null>(null);
+  const retiredDownloadAttemptsRef = useRef(new Set<string>());
+  const acknowledgementInFlightRef = useRef(new Map<string, Promise<void>>());
+  const terminalProcessingInFlightRef = useRef(new Map<string, Promise<void>>());
+  const downloadRecoveryAlertVisibleRef = useRef(false);
+  const latestDownloadStateRef = useRef<{ downloadId: number; terminal: boolean } | null>(null);
   const previousServerRef = useRef<Server>(server);
   const resetInFlightRef = useRef<Promise<boolean> | null>(null);
 
@@ -102,8 +110,145 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
   // Load downloaded models on mount + refresh when app comes back to foreground
   useEffect(() => {
+    let mounted = true;
+    const applyActiveDownload = (active: Awaited<ReturnType<typeof LLM.getActiveDownload>>) => {
+      if (!mounted) return;
+      if (!active) return;
+      if (retiredDownloadAttemptsRef.current.has(active.attemptId)) return;
+      const terminal = active.status === 'complete' || active.status === 'failed';
+      if (currentDownloadAttemptRef.current && currentDownloadAttemptRef.current !== active.attemptId) return;
+      const previous = latestDownloadStateRef.current;
+      if (previous && (
+        active.downloadId < previous.downloadId ||
+        (active.downloadId === previous.downloadId && previous.terminal && !terminal)
+      )) return;
+      const isNewTerminal = terminal && (!previous || previous.downloadId !== active.downloadId || !previous.terminal);
+      latestDownloadStateRef.current = { downloadId: active.downloadId, terminal };
+      currentDownloadAttemptRef.current = active.attemptId;
+
+      const acknowledge = (): Promise<void> => {
+        const acknowledgementKey = `${active.attemptId}:${active.downloadId}`;
+        const inFlight = acknowledgementInFlightRef.current.get(acknowledgementKey);
+        if (inFlight) return inFlight;
+
+        const pending = LLM.acknowledgeDownloadResult(active.modelId, active.attemptId, active.downloadId)
+          .then(async (acknowledged) => {
+            if (!acknowledged) {
+              const current = await LLM.getActiveDownload();
+              if (current && current.attemptId === active.attemptId && current.downloadId === active.downloadId) {
+                throw new Error('Download result still exists but could not be acknowledged');
+              }
+            }
+            retiredDownloadAttemptsRef.current.add(active.attemptId);
+            if (currentDownloadAttemptRef.current === active.attemptId) currentDownloadAttemptRef.current = null;
+            setBlockedTerminalModelId(null);
+          })
+          .catch(() => {
+            if (!mounted) return;
+            Alert.alert(
+              t('error'),
+              lang === 'fr' ? 'Impossible de confirmer le résultat. Réessayez.' : lang === 'es' ? 'No se pudo confirmar el resultado. Inténtalo de nuevo.' : 'Could not acknowledge the result. Try again.',
+              [{
+                text: lang === 'fr' ? 'Réessayer' : lang === 'es' ? 'Reintentar' : 'Retry',
+                onPress: () => active.status === 'complete' ? verifyCompleteAndAcknowledge() : void acknowledge(),
+              }],
+              { cancelable: false },
+            );
+          })
+          .finally(() => {
+            if (acknowledgementInFlightRef.current.get(acknowledgementKey) === pending) {
+              acknowledgementInFlightRef.current.delete(acknowledgementKey);
+            }
+          });
+        acknowledgementInFlightRef.current.set(acknowledgementKey, pending);
+        return pending;
+      };
+
+      const verifyCompleteAndAcknowledge = (): Promise<void> => {
+        const processingKey = `${active.attemptId}:${active.downloadId}`;
+        const existing = terminalProcessingInFlightRef.current.get(processingKey);
+        if (existing) return existing;
+        const pending = refreshDownloadedModels()
+          .then((verified) => {
+            if (!verified.has(active.filename)) {
+              throw new Error('Promoted model is not verified as ready');
+            }
+            return acknowledge();
+          })
+          .catch(() => {
+            if (!mounted || downloadRecoveryAlertVisibleRef.current) return;
+            downloadRecoveryAlertVisibleRef.current = true;
+            Alert.alert(
+              t('error'),
+              lang === 'fr'
+                ? "Le modèle téléchargé n’est pas vérifié. Le résultat est conservé; réessayez."
+                : lang === 'es'
+                ? 'El modelo descargado no está verificado. El resultado se conserva; reinténtalo.'
+                : 'The downloaded model is not verified. The result is preserved; try again.',
+              [
+                { text: lang === 'fr' ? 'Réessayer' : lang === 'es' ? 'Reintentar' : 'Retry', onPress: () => { downloadRecoveryAlertVisibleRef.current = false; void verifyCompleteAndAcknowledge(); } },
+              ],
+              { cancelable: false },
+            );
+          })
+          .finally(() => {
+            if (terminalProcessingInFlightRef.current.get(processingKey) === pending) {
+              terminalProcessingInFlightRef.current.delete(processingKey);
+            }
+          });
+        terminalProcessingInFlightRef.current.set(processingKey, pending);
+        return pending;
+      };
+
+      if (terminal) {
+        setDownloading(null);
+        cancelDownloadRef.current = null;
+        if (active.status === 'complete') {
+          setBlockedTerminalModelId(active.modelId);
+          void verifyCompleteAndAcknowledge();
+        } else if (isNewTerminal) {
+          Alert.alert(
+            t('error'),
+            lang === 'fr' ? 'Le téléchargement du modèle a échoué.' : lang === 'es' ? 'La descarga del modelo falló.' : 'The model download failed.',
+            [{ text: 'OK', onPress: acknowledge }],
+          );
+        }
+        return;
+      }
+      setDownloading({
+        modelId: active.modelId,
+        percent: active.percent,
+        bytesDownloaded: active.bytesDownloaded,
+        totalBytes: active.totalBytes,
+      });
+      cancelDownloadRef.current = () => LLM.cancelDownload(active.modelId, active.attemptId);
+    };
+    applyActiveDownloadRef.current = applyActiveDownload;
+    const showDownloadRecoveryError = () => {
+      if (!mounted || downloadRecoveryAlertVisibleRef.current) return;
+      downloadRecoveryAlertVisibleRef.current = true;
+      Alert.alert(
+        t('error'),
+        lang === 'fr'
+          ? "Impossible de restaurer l’état du téléchargement. Réessayez; si l’erreur persiste, redémarrez l’application."
+          : lang === 'es'
+          ? 'No se pudo restaurar el estado de la descarga. Reinténtalo; si el error persiste, reinicia la aplicación.'
+          : 'Could not restore download state. Retry; if the error persists, restart the app.',
+        [
+          { text: lang === 'fr' ? 'Réessayer' : lang === 'es' ? 'Reintentar' : 'Retry', onPress: syncActiveDownload },
+          { text: 'OK', onPress: () => { downloadRecoveryAlertVisibleRef.current = false; } },
+        ],
+      );
+    };
+    function syncActiveDownload() {
+      downloadRecoveryAlertVisibleRef.current = false;
+      void LLM.getActiveDownload().then(applyActiveDownload).catch(showDownloadRecoveryError);
+    }
+
     refreshDownloadedModels();
     LLM.getFreeDiskSpace().then(setFreeDisk);
+    const stopObservingDownload = LLM.observeDownloadProgress(applyActiveDownload);
+    syncActiveDownload();
 
     // Check WebGPU on web
     if (Platform.OS === 'web') {
@@ -114,9 +259,15 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
       if (state === 'active') {
         refreshDownloadedModels();
         LLM.getFreeDiskSpace().then(setFreeDisk);
+        syncActiveDownload();
       }
     });
-    return () => sub.remove();
+    return () => {
+      mounted = false;
+      applyActiveDownloadRef.current = null;
+      stopObservingDownload();
+      sub.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -124,28 +275,22 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   }, [messages, streamBuffer]);
 
   const refreshDownloadedModels = async () => {
-    if (isWeb) {
-      // On web, check each model individually via WebLLM cache
-      const platformMods = getModelsForPlatform('web');
-      const cached = new Set<string>();
-      for (const m of platformMods) {
-        const webId = getModelFilename(m, 'web');
-        const inCache = await LLM.isModelDownloaded(webId);
-        if (inCache) cached.add(webId);
-      }
-      setDownloadedFilenames(cached);
-    } else {
-      const models = await LLM.getDownloadedModels();
-      const filenames = new Set(models.map((m) => m.filename || m.id));
-      setDownloadedFilenames(filenames);
+    const platformModels = getModelsForPlatform(Platform.OS);
+    const verified = new Set<string>();
+    for (const model of platformModels) {
+      const filename = getModelFilename(model, Platform.OS);
+      const isDownloaded = await LLM.isModelDownloaded(filename, model.sizeBytes, model.sha256 ?? '');
+      if (isDownloaded) verified.add(filename);
     }
+    setDownloadedFilenames(verified);
+    return verified;
   };
 
   // ─── Model Download ──────────────────────────────────────────
 
   const handleDownload = useCallback(
     (model: ModelInfo) => {
-      if (downloading) return;
+      if (downloading || currentDownloadAttemptRef.current) return;
 
       // Check disk space
       if (freeDisk > 0 && model.sizeBytes > freeDisk * 0.9) {
@@ -162,12 +307,15 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
       try {
         const dlFilename = getModelFilename(model, Platform.OS);
-        const { promise, cancel } = LLM.downloadModel(
+        const { attemptId, promise, cancel } = LLM.downloadModel(
           model.id,
           model.downloadUrl,
           dlFilename,
+          model.sizeBytes,
+          model.sha256 ?? '',
           {
             onProgress: (bytesDownloaded, totalBytes, percent) => {
+              if (currentDownloadAttemptRef.current !== attemptId) return;
               setDownloading((prev) =>
                 prev ? { ...prev, bytesDownloaded, totalBytes, percent } : null
               );
@@ -175,19 +323,78 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           }
         );
 
-        cancelDownloadRef.current = cancel;
+        currentDownloadAttemptRef.current = attemptId;
+        cancelDownloadRef.current = () => {
+          if (currentDownloadAttemptRef.current !== attemptId) return Promise.resolve(false);
+          return cancel();
+        };
 
         promise
-          .then(() => {
-            setDownloading(null);
-            cancelDownloadRef.current = null;
-            refreshDownloadedModels();
-            LLM.getFreeDiskSpace().then(setFreeDisk);
-            trackAIModelDownload(model.id);
+          .then(async function reconcileCompletedDownload() {
+            if (currentDownloadAttemptRef.current !== attemptId) return;
+            if (Platform.OS === 'web') {
+              currentDownloadAttemptRef.current = null;
+              setDownloading(null);
+              await refreshDownloadedModels();
+              LLM.getFreeDiskSpace().then(setFreeDisk);
+              trackAIModelDownload(model.id);
+              return;
+            }
+            const durable = await LLM.getActiveDownload().catch(() => null);
+            if (currentDownloadAttemptRef.current !== attemptId) return;
+            if (durable?.attemptId === attemptId && durable.status === 'complete') {
+              applyActiveDownloadRef.current?.(durable);
+              LLM.getFreeDiskSpace().then(setFreeDisk);
+              trackAIModelDownload(model.id);
+              return;
+            }
+            Alert.alert(
+              t('error'),
+              lang === 'fr'
+                ? 'Impossible de confirmer le téléchargement terminé. Réessayez.'
+                : lang === 'es'
+                ? 'No se pudo confirmar la descarga completada. Inténtalo de nuevo.'
+                : 'Could not confirm the completed download. Try again.',
+              [{
+                text: lang === 'fr' ? 'Réessayer' : lang === 'es' ? 'Reintentar' : 'Retry',
+                onPress: () => void reconcileCompletedDownload(),
+              }],
+            );
           })
-          .catch((err: any) => {
+          .catch(async (err: any) => {
+            if (currentDownloadAttemptRef.current !== attemptId) return;
+            if (err?.code === 'DOWNLOAD_CANCELLED') return;
+            if (err?.code === 'DOWNLOAD_FAILED' || err?.code === 'DOWNLOAD_INTEGRITY_ERROR') {
+              const reconcileFailedDownload = async (): Promise<void> => {
+                if (currentDownloadAttemptRef.current !== attemptId) return;
+                const durable = await LLM.getActiveDownload().catch(() => null);
+                if (currentDownloadAttemptRef.current !== attemptId) return;
+                if (durable?.attemptId === attemptId && durable.status === 'failed') {
+                  applyActiveDownloadRef.current?.(durable);
+                  return;
+                }
+
+                setDownloading(null);
+                cancelDownloadRef.current = null;
+                Alert.alert(
+                  t('error'),
+                  lang === 'fr'
+                    ? 'Impossible de récupérer le résultat du téléchargement échoué. Réessayez.'
+                    : lang === 'es'
+                    ? 'No se pudo recuperar el resultado de la descarga fallida. Inténtalo de nuevo.'
+                    : 'Could not retrieve the failed download result. Try again.',
+                  [{
+                    text: lang === 'fr' ? 'Réessayer' : lang === 'es' ? 'Reintentar' : 'Retry',
+                    onPress: () => void reconcileFailedDownload(),
+                  }],
+                );
+              };
+              await reconcileFailedDownload();
+              return;
+            }
             setDownloading(null);
             cancelDownloadRef.current = null;
+            currentDownloadAttemptRef.current = null;
             const msg = err?.message || String(err) || 'Unknown error';
             if (!msg.includes('cancelled')) {
               Alert.alert(t('error'), msg);
@@ -195,6 +402,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           });
       } catch (err: any) {
         setDownloading(null);
+        cancelDownloadRef.current = null;
         Alert.alert(t('error'), err?.message || String(err));
       }
     },
@@ -202,12 +410,34 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   );
 
   const handleCancelDownload = useCallback(() => {
-    if (shouldCancelDownload('explicit-cancel')) cancelDownloadRef.current?.();
-    setDownloading(null);
-  }, []);
+    if (!shouldCancelDownload('explicit-cancel')) return;
+    const cancel = cancelDownloadRef.current;
+    const attemptId = currentDownloadAttemptRef.current;
+    if (!cancel || !attemptId) return;
+    void cancel()
+      .then((cancelled) => {
+        if (!cancelled) throw new Error('Download cancellation was not accepted');
+        if (currentDownloadAttemptRef.current !== attemptId) return;
+        retiredDownloadAttemptsRef.current.add(attemptId);
+        currentDownloadAttemptRef.current = null;
+        cancelDownloadRef.current = null;
+        setDownloading(null);
+      })
+      .catch((error) => {
+        if (currentDownloadAttemptRef.current !== attemptId) return;
+        Alert.alert(t('error'), error?.message || String(error));
+      });
+  }, [t]);
 
   const handleDeleteModel = useCallback(
     async (model: ModelInfo) => {
+      if (blockedTerminalModelId === model.id) {
+        Alert.alert(
+          t('error'),
+          lang === 'fr' ? 'Confirmez d’abord le téléchargement conservé.' : lang === 'es' ? 'Confirma primero la descarga conservada.' : 'Confirm the retained download first.',
+        );
+        return;
+      }
       Alert.alert(
         lang === 'fr' ? 'Supprimer le modèle ?' : 'Delete model?',
         model.name,
@@ -231,7 +461,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         ]
       );
     },
-    [activeModelId, lang]
+    [activeModelId, blockedTerminalModelId, lang, t]
   );
 
   // ─── Engine Init ─────────────────────────────────────────────
@@ -707,7 +937,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                     <TouchableOpacity
                       style={[styles.actionBtn, styles.downloadBtn, webGPUBlocked && { opacity: 0.3 }]}
                       onPress={() => handleDownload(model)}
-                      disabled={!!downloading || webGPUBlocked}
+                      disabled={!!downloading || !!currentDownloadAttemptRef.current || webGPUBlocked}
                     >
                       <Text style={styles.downloadBtnText}>
                         {lang === 'fr' ? 'Télécharger' : lang === 'es' ? 'Descargar' : 'Download'}
@@ -725,7 +955,8 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.actionBtn, styles.deleteBtn]}
+                        style={[styles.actionBtn, styles.deleteBtn, blockedTerminalModelId === model.id && { opacity: 0.35 }]}
+                        disabled={blockedTerminalModelId === model.id}
                         onPress={() => handleDeleteModel(model)}
                       >
                         <Text style={styles.deleteBtnText}>{'\u{1F5D1}'}</Text>

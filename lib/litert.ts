@@ -8,6 +8,12 @@ const { LiteRTModule } = NativeModules;
 const emitter = Platform.OS === 'android' && LiteRTModule
   ? new NativeEventEmitter(LiteRTModule)
   : null;
+let downloadAttemptSequence = 0;
+
+export function createDownloadAttemptId(): string {
+  downloadAttemptSequence += 1;
+  return `${Date.now()}-${downloadAttemptSequence}-${Math.random().toString(36).slice(2)}`;
+}
 
 export interface StreamCallbacks {
   onToken: (token: string) => void;
@@ -17,6 +23,17 @@ export interface StreamCallbacks {
 
 export interface DownloadCallbacks {
   onProgress: (bytesDownloaded: number, totalBytes: number, percent: number) => void;
+}
+
+export interface ActiveDownload {
+  downloadId: number;
+  attemptId: string;
+  modelId: string;
+  filename: string;
+  bytesDownloaded: number;
+  totalBytes: number;
+  percent: number;
+  status: 'pending' | 'downloading' | 'verifying' | 'complete' | 'failed';
 }
 
 export interface DownloadedModel {
@@ -33,14 +50,35 @@ export async function getDownloadedModels(): Promise<DownloadedModel[]> {
   return LiteRTModule.getDownloadedModels();
 }
 
-export async function isModelDownloaded(filename: string): Promise<boolean> {
+export async function isModelDownloaded(filename: string, expectedSizeBytes: number, expectedSha256: string): Promise<boolean> {
   if (Platform.OS !== 'android' || !LiteRTModule) return false;
-  return LiteRTModule.isModelDownloaded(filename);
+  return LiteRTModule.isModelDownloaded(filename, expectedSizeBytes, expectedSha256);
 }
 
 export async function getFreeDiskSpace(): Promise<number> {
   if (Platform.OS !== 'android' || !LiteRTModule) return -1;
   return LiteRTModule.getFreeDiskSpace();
+}
+
+export async function getActiveDownload(): Promise<ActiveDownload | null> {
+  if (Platform.OS !== 'android' || !LiteRTModule) return null;
+  return LiteRTModule.getActiveDownload();
+}
+
+export function observeDownloadProgress(callback: (event: ActiveDownload) => void): () => void {
+  if (!emitter) return () => {};
+  const subscription = emitter.addListener('onDownloadProgress', callback);
+  return () => subscription.remove();
+}
+
+export async function cancelDownload(modelId: string, attemptId: string): Promise<boolean> {
+  if (Platform.OS !== 'android' || !LiteRTModule) return false;
+  return LiteRTModule.cancelDownload(modelId, attemptId);
+}
+
+export async function acknowledgeDownloadResult(modelId: string, attemptId: string, downloadId: number): Promise<boolean> {
+  if (Platform.OS !== 'android' || !LiteRTModule) return false;
+  return LiteRTModule.acknowledgeDownloadResult(modelId, attemptId, downloadId);
 }
 
 /**
@@ -52,22 +90,26 @@ export function downloadModel(
   modelId: string,
   url: string,
   filename: string,
+  expectedSizeBytes: number,
+  expectedSha256: string,
   callbacks: DownloadCallbacks
-): { promise: Promise<{ path: string; sizeBytes: number }>; cancel: () => void } {
+): { attemptId: string; promise: Promise<{ path: string; sizeBytes: number }>; cancel: () => Promise<boolean> } {
+  const attemptId = createDownloadAttemptId();
   if (!emitter || !LiteRTModule) {
     return {
+      attemptId,
       promise: Promise.reject(new Error('LiteRT-LM not available')),
-      cancel: () => {},
+      cancel: async () => false,
     };
   }
 
   const sub = emitter.addListener('onDownloadProgress', (event) => {
-    if (event.modelId === modelId) {
+    if (event.attemptId === attemptId) {
       callbacks.onProgress(event.bytesDownloaded, event.totalBytes, event.percent);
     }
   });
 
-  const promise = LiteRTModule.downloadModel(modelId, url, filename).then(
+  const promise = LiteRTModule.downloadModel(attemptId, modelId, url, filename, expectedSizeBytes, expectedSha256).then(
     (result: any) => {
       sub.remove();
       return result;
@@ -79,10 +121,12 @@ export function downloadModel(
   );
 
   return {
+    attemptId,
     promise,
-    cancel: () => {
-      sub.remove();
-      LiteRTModule.cancelDownload(modelId);
+    cancel: async () => {
+      const cancelled = await LiteRTModule.cancelDownload(modelId, attemptId);
+      if (cancelled) sub.remove();
+      return cancelled;
     },
   };
 }

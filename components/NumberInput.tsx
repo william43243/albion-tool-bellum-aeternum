@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, FONT_WEIGHT } from '../constants/theme';
 import { parseUserNumber } from '../lib/numberParsing';
+import { Language } from '../lib/i18n';
 
 interface Props {
   label: string;
@@ -10,11 +11,12 @@ interface Props {
   placeholder?: string;
   info?: string;
   integer?: boolean;
+  locale: Language;
 }
 
-export default function NumberInput({ label, value, onChangeText, placeholder, info, integer = false }: Props) {
+export default function NumberInput({ label, value, onChangeText, placeholder, info, integer = false, locale }: Props) {
   const [focused, setFocused] = useState(false);
-  const parsed = value ? parseUserNumber(value, integer) : { valid: true, ambiguous: false };
+  const parsed = value ? parseUserNumber(value, integer, locale) : { valid: true, ambiguous: false };
   return (
     <View style={styles.container}>
       <Text style={[styles.label, focused && styles.labelFocused]}>{label}</Text>

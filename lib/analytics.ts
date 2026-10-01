@@ -1,98 +1,24 @@
-import { Platform } from 'react-native';
-import * as Application from 'expo-application';
-import { version as bundledVersion } from '../package.json';
+/**
+ * Product analytics are intentionally disabled.
+ *
+ * Keep these no-op exports while call sites are removed incrementally. They
+ * preserve UI behavior without creating any network request or persistent
+ * identifier on Android, iOS, or web.
+ */
 
-// Analytics server URL — web uses relative path, APK uses absolute
-const ANALYTICS_URL = Platform.OS === 'web'
-  ? '/api/track'
-  : 'https://albion-tool-bellum-aeternum.com/api/track';
-
-// Read the installed app's version at runtime instead of a hardcoded string,
-// so analytics and the in-app updater always agree about which build is
-// running. On web, nativeApplicationVersion is null — fall back to the
-// current bundled version.
-const APP_VERSION = Application.nativeApplicationVersion ?? bundledVersion;
-const APP_PLATFORM = Platform.OS; // 'android' | 'web' | 'ios'
-
-function send(endpoint: string, data: Record<string, unknown>): void {
-  try {
-    const payload = JSON.stringify({
-      ...data,
-      _version: APP_VERSION,
-      _platform: APP_PLATFORM,
-    });
-
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      navigator.sendBeacon(ANALYTICS_URL + endpoint, new Blob([payload], { type: 'application/json' }));
-    } else {
-      fetch(ANALYTICS_URL + endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload,
-      }).catch((e) => { if (__DEV__) console.warn('[analytics]', e); });
-    }
-  } catch {
-    // Silent fail — analytics should never break the app
-  }
-}
-
-// ─── Page / Screen views ─────────────────────────────────────
-
-export function trackPageView(page: string): void {
-  send('/pageview', {
-    page: '/app' + (page.startsWith('/') ? page : '/' + page),
-    referrer: Platform.OS === 'web' && typeof document !== 'undefined' ? document.referrer : '',
-  });
-}
-
-// ─── Tool usage (tab switches) ──────────────────────────────
-
-export function trackToolUse(toolName: string): void {
-  send('/event', { name: toolName, category: 'tool_use' });
-}
-
-// ─── AI Events ──────────────────────────────────────────────
-
-export function trackAIPrompt(modelId: string): void {
-  send('/event', { name: 'ai_prompt', category: 'ai', metadata: { model: modelId } });
-}
-
-export function trackAIModelDownload(modelId: string): void {
-  send('/event', { name: 'ai_model_download', category: 'ai', metadata: { model: modelId } });
-}
-
-export function trackAIModelStart(modelId: string): void {
-  send('/event', { name: 'ai_model_start', category: 'ai', metadata: { model: modelId } });
-}
-
-export function trackAIImageSent(modelId: string): void {
-  send('/event', { name: 'ai_image', category: 'ai', metadata: { model: modelId } });
-}
-
-// ─── Calculator Events ──────────────────────────────────────
-
-export function trackFlipCalculation(): void {
-  send('/event', { name: 'flip_calc', category: 'calculator' });
-}
-
-export function trackMarketCalculation(): void {
-  send('/event', { name: 'market_calc', category: 'calculator' });
-}
-
-export function trackCraftCalculation(): void {
-  send('/event', { name: 'craft_calc', category: 'calculator' });
-}
-
-export function trackPriceFetch(itemId: string, city: string): void {
-  send('/event', { name: 'price_fetch', category: 'api', metadata: { item: itemId, city } });
-}
-
-export function trackHistoryFetch(itemId: string): void {
-  send('/event', { name: 'history_fetch', category: 'api', metadata: { item: itemId } });
-}
-
-// ─── Generic ────────────────────────────────────────────────
-
-export function trackEvent(name: string, category?: string, metadata?: Record<string, unknown>): void {
-  send('/event', { name, category: category || null, metadata: metadata || null });
-}
+export function trackPageView(_page: string): void {}
+export function trackToolUse(_toolName: string): void {}
+export function trackAIPrompt(_modelId: string): void {}
+export function trackAIModelDownload(_modelId: string): void {}
+export function trackAIModelStart(_modelId: string): void {}
+export function trackAIImageSent(_modelId: string): void {}
+export function trackFlipCalculation(): void {}
+export function trackMarketCalculation(): void {}
+export function trackCraftCalculation(): void {}
+export function trackPriceFetch(_itemId: string, _city: string): void {}
+export function trackHistoryFetch(_itemId: string): void {}
+export function trackEvent(
+  _name: string,
+  _category?: string,
+  _metadata?: Record<string, unknown>,
+): void {}

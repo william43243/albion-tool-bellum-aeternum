@@ -23,9 +23,9 @@ export async function getDownloadedModels() {
   return LiteRT.getDownloadedModels();
 }
 
-export async function isModelDownloaded(filename: string) {
+export async function isModelDownloaded(filename: string, expectedSizeBytes: number, expectedSha256: string) {
   if (isWeb) return (await getWebLLMModule()).isModelDownloaded(filename);
-  return LiteRT.isModelDownloaded(filename);
+  return LiteRT.isModelDownloaded(filename, expectedSizeBytes, expectedSha256);
 }
 
 export async function getFreeDiskSpace() {
@@ -33,13 +33,36 @@ export async function getFreeDiskSpace() {
   return LiteRT.getFreeDiskSpace();
 }
 
+export async function getActiveDownload(): Promise<LiteRT.ActiveDownload | null> {
+  if (isWeb) return null;
+  return LiteRT.getActiveDownload();
+}
+
+export function observeDownloadProgress(callback: (event: LiteRT.ActiveDownload) => void): () => void {
+  if (isWeb) return () => {};
+  return LiteRT.observeDownloadProgress(callback);
+}
+
+export async function cancelDownload(modelId: string, attemptId: string): Promise<boolean> {
+  if (isWeb) return false;
+  return LiteRT.cancelDownload(modelId, attemptId);
+}
+
+export async function acknowledgeDownloadResult(modelId: string, attemptId: string, downloadId: number): Promise<boolean> {
+  if (isWeb) return false;
+  return LiteRT.acknowledgeDownloadResult(modelId, attemptId, downloadId);
+}
+
 export function downloadModel(
   modelId: string,
   url: string,
   filename: string,
+  expectedSizeBytes: number,
+  expectedSha256: string,
   callbacks: LiteRT.DownloadCallbacks
 ) {
   if (isWeb) {
+    const attemptId = LiteRT.createDownloadAttemptId();
     const token: CancelToken = { cancelled: false };
     const promise = getWebLLMModule().then((wllm) => {
       if (token.cancelled) throw new Error('cancelled');
@@ -49,14 +72,16 @@ export function downloadModel(
       return result.promise;
     });
     return {
+      attemptId,
       promise,
       cancel: () => {
         token.cancelled = true;
         token.cleanup?.();
+        return Promise.resolve(true);
       },
     };
   }
-  return LiteRT.downloadModel(modelId, url, filename, callbacks);
+  return LiteRT.downloadModel(modelId, url, filename, expectedSizeBytes, expectedSha256, callbacks);
 }
 
 export async function deleteModel(filename: string) {

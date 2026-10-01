@@ -1,13 +1,14 @@
 // LiteRT-LM Model Registry
 // Only verified working + ungated models
 
-export interface ModelInfo {
+interface ModelInfoBase {
   id: string;
   name: string;
   description: Record<string, string>;
   filename: string;
   downloadUrl: string;
   sizeBytes: number;
+
   sizeLabel: string;
   quality: 'basic' | 'good' | 'excellent';
   ramRequired: string;
@@ -20,9 +21,20 @@ export interface ModelInfo {
   multimodal?: boolean;
   /** Whether LiteRT-LM tool calling is enabled for this model */
   toolCalling?: boolean;
-  /** Web-only model — not available on Android */
-  webOnly?: boolean;
 }
+
+export interface AndroidModelInfo extends ModelInfoBase {
+  /** Exact SHA-256 of the Android LiteRT artifact. */
+  sha256: string;
+  webOnly?: false;
+}
+
+export interface WebOnlyModelInfo extends ModelInfoBase {
+  sha256?: never;
+  webOnly: true;
+}
+
+export type ModelInfo = AndroidModelInfo | WebOnlyModelInfo;
 
 const HF = 'https://huggingface.co/litert-community';
 
@@ -35,10 +47,11 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
       en: 'Light and multimodal (text + vision). Fast responses.',
       es: 'Ligero y multimodal (texto + visión). Respuestas rápidas.',
     },
-    filename: 'model_multimodal.litertlm',
-    downloadUrl: `${HF}/Qwen3.5-0.8B-LiteRT/resolve/main/model_multimodal.litertlm`,
-    sizeBytes: 1.07 * 1024 * 1024 * 1024,
-    sizeLabel: '1.07 GB',
+    filename: 'Qwen3.5-0.8B-VL_int8.litertlm',
+    downloadUrl: `${HF}/Qwen3.5-0.8B/resolve/main/Qwen3.5-0.8B-VL_int8.litertlm`,
+    sizeBytes: 1302262448,
+    sha256: 'e3360b658c929ff35ab740a21f5e4b688096a72e351b8d347e26ccda314121b7',
+    sizeLabel: '1.30 GB',
     quality: 'basic',
     ramRequired: '~2 GB',
     license: 'Apache 2.0',
@@ -55,7 +68,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     },
     filename: 'Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm',
     downloadUrl: `${HF}/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm`,
-    sizeBytes: 1.5 * 1024 * 1024 * 1024,
+    sizeBytes: 1597931520,
+    sha256: 'faa60663b333290c1496c499828b21d3e3254a788cacd8cce917ce0f761a2dc9',
     sizeLabel: '1.5 GB',
     quality: 'good',
     ramRequired: '~3 GB',
@@ -73,7 +87,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     },
     filename: 'DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.litertlm',
     downloadUrl: `${HF}/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.litertlm`,
-    sizeBytes: 1.75 * 1024 * 1024 * 1024,
+    sizeBytes: 1833451520,
+    sha256: '69b35f01759eed765641ab4af589bbe98131fd2825662a086d9037409b8c1295',
     sizeLabel: '1.75 GB',
     quality: 'good',
     ramRequired: '~3 GB',
@@ -90,7 +105,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     },
     filename: 'gemma-4-E2B-it.litertlm',
     downloadUrl: `${HF}/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm`,
-    sizeBytes: 2.58 * 1024 * 1024 * 1024,
+    sizeBytes: 2588147712,
+    sha256: '181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c',
     sizeLabel: '2.58 GB',
     quality: 'excellent',
     ramRequired: '~4 GB',
@@ -109,7 +125,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     },
     filename: 'gemma-4-E4B-it.litertlm',
     downloadUrl: `${HF}/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm`,
-    sizeBytes: 3.65 * 1024 * 1024 * 1024,
+    sizeBytes: 3659530240,
+    sha256: '0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0',
     sizeLabel: '3.65 GB',
     quality: 'excellent',
     ramRequired: '~6 GB',

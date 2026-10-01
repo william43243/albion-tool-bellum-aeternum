@@ -4,6 +4,7 @@ import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateFlipProfit } from '../lib/calculations';
 import { Language } from '../lib/i18n';
 import { trackFlipCalculation } from '../lib/analytics';
+import { parseUserNumber } from '../lib/numberParsing';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
 import ResultCard from '../components/ResultCard';
@@ -24,12 +25,13 @@ export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: 
 
   // Pure calculation — no side effects. Recomputes in real time on every input.
   const result = useMemo(() => {
-    const buy = parseFloat(buyPrice) || 0;
-    const sell = parseFloat(sellPrice) || 0;
-    const qty = parseInt(quantity) || 1;
-    if (buy <= 0 && sell <= 0) return null;
-    return calculateFlipProfit(buy, sell, qty, isPremium, useBuyOrder, useSellOrder);
-  }, [buyPrice, sellPrice, quantity, isPremium, useBuyOrder, useSellOrder]);
+    const buy = parseUserNumber(buyPrice, false, lang);
+    const sell = parseUserNumber(sellPrice, false, lang);
+    const qty = parseUserNumber(quantity, true, lang);
+    if (!buy.valid || !sell.valid || !qty.valid || qty.value <= 0) return null;
+    if (buy.value <= 0 && sell.value <= 0) return null;
+    return calculateFlipProfit(buy.value, sell.value, qty.value, isPremium, useBuyOrder, useSellOrder);
+  }, [buyPrice, sellPrice, quantity, lang, isPremium, useBuyOrder, useSellOrder]);
 
   const trackedFirstValidRef = useRef(false);
 
@@ -83,6 +85,7 @@ export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: 
           {lang === 'fr' ? "1. Prix d'achat" : '1. Buy price'}
         </Text>
         <NumberInput
+          locale={lang}
           label={t('buyPrice')}
           value={buyPrice}
           onChangeText={setBuyPrice}
@@ -95,6 +98,7 @@ export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: 
           {lang === 'fr' ? '2. Prix de vente' : '2. Sell price'}
         </Text>
         <NumberInput
+          locale={lang}
           label={t('sellPrice')}
           value={sellPrice}
           onChangeText={setSellPrice}
@@ -102,9 +106,11 @@ export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: 
       </View>
 
       <NumberInput
+          locale={lang}
         label={t('quantity')}
         value={quantity}
         onChangeText={setQuantity}
+        integer
       />
 
       {result && (

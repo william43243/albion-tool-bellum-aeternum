@@ -93,8 +93,8 @@ android {
         applicationId 'com.albion.market'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 15
-        versionName "2.0.8-beta.5.9"
+        versionCode 16
+        versionName "2.0.8-beta.5.10"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -105,26 +105,15 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        release {
-            // Production signing. Credentials are loaded from gradle.properties
-            // (ALBION_UPLOAD_*) which is gitignored — never commit the keystore or passwords.
-            if (project.hasProperty('ALBION_UPLOAD_STORE_FILE')) {
-                storeFile file(ALBION_UPLOAD_STORE_FILE)
-                storePassword ALBION_UPLOAD_STORE_PASSWORD
-                keyAlias ALBION_UPLOAD_KEY_ALIAS
-                keyPassword ALBION_UPLOAD_KEY_PASSWORD
-            }
-        }
+
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Signed with the production keystore (see signingConfigs.release above).
-            // REQUIRES ALBION_UPLOAD_* properties in android/gradle.properties — build
-            // will fail at install time otherwise, which is intentional.
-            signingConfig signingConfigs.release
+            // Release packaging is always unsigned. Production signing exists only
+            // in the isolated protected-environment apksigner job.
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
@@ -144,20 +133,24 @@ android {
     }
 }
 
-// Packaging a release must fail before producing an unsigned or ambiguously
-// signed artifact when the external production credentials are unavailable.
+// Packaging fails closed unless the caller explicitly requests the isolated
+// unsigned-candidate path. Gradle must never receive production credentials.
 gradle.taskGraph.whenReady { graph ->
     def releasePackagingRequested = graph.allTasks.any { task ->
-        task.project == project && task.name in ['assembleRelease', 'bundleRelease', 'packageRelease']
+        if (task.project != project) return false
+        def normalizedName = task.name.toLowerCase(java.util.Locale.ROOT)
+        def outputTask = ['assemble', 'bundle', 'package'].any { prefix -> normalizedName.startsWith(prefix) }
+        return outputTask && normalizedName.contains('release')
     }
-    def signingKeys = [
-        'ALBION_UPLOAD_STORE_FILE',
-        'ALBION_UPLOAD_STORE_PASSWORD',
-        'ALBION_UPLOAD_KEY_ALIAS',
-        'ALBION_UPLOAD_KEY_PASSWORD',
-    ]
-    if (releasePackagingRequested && !signingKeys.every { project.hasProperty(it) }) {
-        throw new GradleException('Release packaging refused: ALBION_UPLOAD_* production signing credentials are incomplete.')
+    def presentSigningKeys = project.properties.keySet().findAll { propertyName ->
+        propertyName.toString().startsWith('ALBION_UPLOAD_')
+    }
+    def unsignedCandidateAllowed = (findProperty('ALBION_ALLOW_UNSIGNED_RELEASE') ?: 'false').toBoolean()
+    if (releasePackagingRequested && !presentSigningKeys.isEmpty()) {
+        throw new GradleException('Release packaging refused: Gradle must never receive ALBION_UPLOAD_* production signing credentials.')
+    }
+    if (releasePackagingRequested && !unsignedCandidateAllowed) {
+        throw new GradleException('Release packaging refused: unsigned-candidate mode was not explicitly enabled.')
     }
 }
 
@@ -189,6 +182,7 @@ dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.0")
     // Coroutines for async inference
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    testImplementation("junit:junit:4.13.2")
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
