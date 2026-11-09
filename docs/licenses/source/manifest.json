@@ -1,0 +1,8 @@
+{
+  "component": "com.android.tools:desugar_jdk_libs:2.1.5",
+  "sourceRevision": "73170c345e6a762fc6a1f0301bb15218850023ef",
+  "sourceUrl": "https://codeload.github.com/google/desugar_jdk_libs/tar.gz/73170c345e6a762fc6a1f0301bb15218850023ef",
+  "archive": "desugar-jdk-libs-2.1.5.tar.gz",
+  "sha256": "4cd2faa88ecb2450522fd4f0dcd11d6df878d7197b2276fb35532c50267f7a64",
+  "scope": "Upstream source tree at the commit preparing VERSION_JDK11 2.1.5, including build scripts. Unmodified; see upstream LICENSE and ADDITIONAL_LICENSE_INFO."
+}

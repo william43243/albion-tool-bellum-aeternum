@@ -40,31 +40,47 @@ export function strategyFlags(strategy: MarketplaceStrategy): { useBuyOrder: boo
   };
 }
 
-/** Lowest sale price for a non-negative result, preserving whole-silver fees. */
+/**
+ * Lowest whole-silver sale price meeting the requested profit.
+ * Returns Infinity if no safe integer price can represent the result.
+ */
 export function breakEvenSellPrice(buyPrice: number, quantity: number, isPremium: boolean, strategy: MarketplaceStrategy, targetProfitPerItem = 0): number {
   const flags = strategyFlags(strategy);
-  const qty = Math.max(1, Math.floor(quantity));
-  const target = Math.max(0, targetProfitPerItem) * qty;
-  let low = Math.max(0, buyPrice);
-  let high = Math.max(low + 1, low * 2 + target + 100);
-  while (calculateMarketplaceProfit(buyPrice, high, qty, isPremium, flags.useBuyOrder, flags.useSellOrder).netProfit < target) high *= 2;
-  for (let i = 0; i < 64; i += 1) {
-    const mid = Math.floor((low + high) / 2);
-    if (calculateMarketplaceProfit(buyPrice, mid, qty, isPremium, flags.useBuyOrder, flags.useSellOrder).netProfit >= target) high = mid;
-    else low = mid + 1;
+  buyPrice = sanitizeAmount(buyPrice);
+  const qty = Math.max(1, sanitizeQuantity(quantity));
+  const target = sanitizeAmount(targetProfitPerItem) * qty;
+  const purchase = calculateMarketplaceProfit(buyPrice, 0, qty, isPremium, flags.useBuyOrder, flags.useSellOrder);
+  const netRevenueRate = 1 - (isPremium ? 0.04 : 0.08) - (flags.useSellOrder ? 0.025 : 0);
+  const estimate = (buyPrice * qty + purchase.setupFeeBuy + target) / qty / netRevenueRate;
+
+  // Unrounded sale fees give a lower bound. Rounding both sale fees can make
+  // profit fall when the sale price increases, so binary search is not valid.
+  // Start just below that bound to allow for floating-point roundoff, then
+  // check each nearby integer with the actual, separately rounded fees.
+  const roundoff = Math.max(1, estimate * Number.EPSILON * 8);
+  let price = Math.max(0, Math.floor(estimate - roundoff));
+  while (Number.isSafeInteger(price)) {
+    if (calculateMarketplaceProfit(buyPrice, price, qty, isPremium, flags.useBuyOrder, flags.useSellOrder).netProfit >= target) return price;
+    price += 1;
   }
-  return high;
+  return Infinity;
 }
 
-/** Highest purchase price for a requested per-item profit at a fixed sale price. */
+/**
+ * Highest safe whole-silver purchase price for the requested profit.
+ * Returns 0 when even a free purchase cannot meet the target.
+ */
 export function maxBuyPriceForTarget(sellPrice: number, quantity: number, isPremium: boolean, strategy: MarketplaceStrategy, targetProfitPerItem = 0): number {
   const flags = strategyFlags(strategy);
-  const qty = Math.max(1, Math.floor(quantity));
-  const target = Math.max(0, targetProfitPerItem) * qty;
-  let low = 0; let high = Math.max(1, sellPrice);
-  while (calculateMarketplaceProfit(high, sellPrice, qty, isPremium, flags.useBuyOrder, flags.useSellOrder).netProfit >= target) high *= 2;
-  for (let i = 0; i < 64; i += 1) {
-    const mid = Math.floor((low + high) / 2);
+  sellPrice = sanitizeAmount(sellPrice);
+  const qty = Math.max(1, sanitizeQuantity(quantity));
+  const target = sanitizeAmount(targetProfitPerItem) * qty;
+  let low = 0;
+  let high = Math.min(Number.MAX_SAFE_INTEGER, Math.floor(sellPrice));
+  // Purchase cost (including its rounded fee) is monotone. Use the upper
+  // midpoint so a feasible low cannot stall one silver below the true limit.
+  while (low < high) {
+    const mid = low + Math.ceil((high - low) / 2);
     if (calculateMarketplaceProfit(mid, sellPrice, qty, isPremium, flags.useBuyOrder, flags.useSellOrder).netProfit >= target) low = mid;
     else high = mid - 1;
   }
@@ -149,7 +165,15 @@ export function calculateCraftingFee(
   const nutritionPerItem = itemValue * 0.1125;
   const feePerItem = (itemValue * 0.1125 * stationTax) / 100;
   const totalNutrition = nutritionPerItem * quantity;
-  const totalFee = Math.ceil(feePerItem * quantity);
+  // For integer inputs, 0.1125 / 100 = 9 / 8000 keeps the numerator exact
+  // until the final division. Reusing an approximated per-item fee can turn
+  // an integer total (640 * 27 * 100 * 9 / 8000 = 1944) into 1944.000...2.
+  // Keep the existing fractional-input path: its products are not exact
+  // integers and reordering them can introduce different rounding errors.
+  const numerator = itemValue * stationTax * quantity * 9;
+  const exactIntegerRatio = Number.isSafeInteger(itemValue)
+    && Number.isSafeInteger(stationTax) && Number.isSafeInteger(numerator);
+  const totalFee = Math.ceil(exactIntegerRatio ? numerator / 8000 : feePerItem * quantity);
 
   return {
     itemValue,

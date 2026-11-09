@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Application from 'expo-application';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { Language } from '../lib/i18n';
-import { Server } from '../lib/api';
+import { Server, marketCacheInfo, clearMarketMemoryCache } from '../lib/api';
 import PremiumInfoPanel from '../components/PremiumInfoPanel';
 import UpdateSection from '../components/UpdateSection';
+import ThirdPartyNotices from '../components/ThirdPartyNotices';
 import { AnalyticsConsent } from '../lib/analytics';
 
 const BTC_ADDRESS = 'bc1qcptkrekh335wvffcxnrzqkj5nqf72r538vey4x';
@@ -36,6 +37,8 @@ export default function SettingsScreen({
   analyticsConsent,
   onAnalyticsConsentChange,
 }: Props) {
+  const [cacheInfo,setCacheInfo]=useState(()=>marketCacheInfo());
+  const cacheText=(fr:string,en:string,es:string)=>lang==='fr'?fr:lang==='es'?es:en;
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{t('settings')}</Text>
@@ -69,6 +72,13 @@ export default function SettingsScreen({
             </Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{cacheText('Cache des données marché','Market data cache','Caché del mercado')}</Text>
+        <Text style={styles.settingDescription}>{cacheText('Cache temporaire en mémoire :','Temporary in-memory cache:','Caché temporal en memoria:')} {cacheInfo.prices} {cacheText('prix','prices','precios')} · {cacheInfo.history} {cacheText('historiques','histories','históricos')} · {cacheInfo.other} {cacheText('autres','other','otros')} · {cacheInfo.ttlMinutes} min</Text>
+        <Text style={styles.settingDescription}>{cacheText('Ce cache se vide à la fermeture de l’app. Les résultats du chat et les données enregistrées ailleurs ne sont pas inclus.','This cache clears when the app closes. Chat results and data stored elsewhere are not included.','Esta caché se borra al cerrar la app. No incluye resultados del chat ni datos guardados en otro lugar.')}</Text>
+        <View style={styles.langRow}><TouchableOpacity accessibilityRole="button" style={styles.langBtn} onPress={()=>setCacheInfo(marketCacheInfo())}><Text style={styles.langBtnText}>{cacheText('Actualiser','Refresh','Actualizar')}</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" style={styles.langBtn} onPress={()=>{clearMarketMemoryCache();setCacheInfo(marketCacheInfo());}}><Text style={styles.langBtnText}>{cacheText('Vider ce cache','Clear this cache','Vaciar caché')}</Text></TouchableOpacity></View>
       </View>
 
       {/* Privacy-minimized product analytics */}
@@ -205,6 +215,7 @@ export default function SettingsScreen({
       </View>
 
       {/* Version */}
+      <ThirdPartyNotices lang={lang} />
       <View style={styles.versionBox}>
         <Text style={styles.versionText}>Albion Market</Text>
         <Text style={styles.versionNumber}>

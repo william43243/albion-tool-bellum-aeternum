@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply from: 'third-party.gradle'
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -81,8 +82,14 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+// A project-specific short native cache avoids Windows path limits in debug and release.
+def cmakeStagingDir = new File(System.getProperty('java.io.tmpdir'), "albion-cmake-${Integer.toHexString(rootDir.absolutePath.hashCode())}")
 
 android {
+    // Backport Java APIs used by authentication on Android 7 (API 24–25).
+    compileOptions { coreLibraryDesugaringEnabled true }
+    // Hash long generated object paths so Android's Windows toolchain can build them.
+    externalNativeBuild { cmake { buildStagingDirectory cmakeStagingDir } }
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -90,7 +97,9 @@ android {
 
     namespace 'com.albion.market'
     defaultConfig {
+        externalNativeBuild { cmake { arguments '-DCMAKE_OBJECT_PATH_MAX=240' } }
         applicationId 'com.albion.market'
+        manifestPlaceholders = [albionAppLabel: "@string/app_name"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 17
@@ -100,7 +109,9 @@ android {
     }
     signingConfigs {
         debug {
-            storeFile file('debug.keystore')
+            // Preserve existing local QA signing, but let AGP generate its
+            // standard user-local debug key when building a fresh checkout.
+            if (file('debug.keystore').exists()) storeFile file('debug.keystore')
             storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
@@ -110,6 +121,11 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            // Explicit side-by-side QA packaging; never overwrite the signed release app.
+            if ((findProperty('ALBION_QA') ?: 'false').toBoolean()) {
+                applicationIdSuffix '.qa'
+                manifestPlaceholders = [albionAppLabel: 'Albion Tool QA']
+            }
         }
         release {
             // Release packaging is always unsigned. Production signing exists only
@@ -117,7 +133,7 @@ android {
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
             crunchPngs enablePngCrunchInRelease.toBoolean()
         }
@@ -175,11 +191,21 @@ gradle.taskGraph.whenReady { graph ->
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+    // Keep vulnerable transitive Android runtime versions out of the APK.
+    // Constraints preserve the original dependency graph while upgrading the selected versions.
+    constraints {
+        implementation("com.google.guava:guava:33.7.2-android")
+        implementation("com.squareup.okio:okio:3.16.4")
+        implementation("commons-io:commons-io:2.20.0")
+    }
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
 
     // LiteRT-LM — on-device LLM inference with GPU acceleration
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.0")
+    implementation("com.nimbusds:nimbus-jose-jwt:10.10")
     // Coroutines for async inference
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     testImplementation("junit:junit:4.13.2")

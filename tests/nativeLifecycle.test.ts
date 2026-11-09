@@ -62,7 +62,7 @@ test('blocking native calls use a supervised wall-clock boundary', () => {
   assert.match(source, /boundedNativeCall\(\s*"conversation creation"/);
   assert.match(source, /boundedNativeCall\(\s*"inference start"/);
   assert.match(source, /closeRuntimeBounded\(/);
-  assert.match(source, /boundedNativeCall\(label\) \{ closeRuntimeDirect/);
+  assert.match(source, /boundedNativeCall\(label, initialization = initialization\) \{\s*try \{ closeRuntimeDirect/);
 });
 
 test('native timeouts quarantine runtimes behind a bounded fail-closed executor', () => {

@@ -24,24 +24,31 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Set up Node.js 20
+      - name: Set up Node.js 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: |
             package-lock.json
             analytics/package-lock.json
 
+      - name: Install declared Android SDK components
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
+
       - name: Install dependencies
         run: |
           set -euo pipefail
-          npm ci
+          npm ci --legacy-peer-deps
           npm ci --prefix analytics
 
       - name: Run release source gates
         run: |
           set -euo pipefail
+          npm run prepare:data
+          npm run check:data
+          python3 scripts/generate-notices.py --check
+          chmod +x android/gradlew
           npm test
           npm run typecheck
           python3 tests/test_web_security_regressions.py
@@ -89,6 +96,12 @@ jobs:
       - name: Build explicit unsigned release candidate
         run: android/gradlew -p android :app:assembleRelease -PALBION_ALLOW_UNSIGNED_RELEASE=true --no-daemon --max-workers=1
 
+      - name: Verify notices against the actual release runtime
+        run: |
+          set -euo pipefail
+          android/gradlew -p android :app:exportThirdPartyArtifacts --no-daemon --max-workers=1
+          python3 scripts/generate-notices.py --check-runtime
+
       - name: Run blocking Android lint
         run: android/gradlew -p android :app:lintDebug --no-daemon --max-workers=1
 
@@ -96,7 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           apk="android/app/build/outputs/apk/release/app-release-unsigned.apk"
-          tools_dir="$ANDROID_HOME/build-tools/36.0.0"
+          tools_dir="$ANDROID_HOME/build-tools/37.0.0"
           test -f "$apk"
           if "$tools_dir/apksigner" verify "$apk" >/dev/null 2>&1; then
             echo 'Unsigned candidate unexpectedly has a valid APK signature' >&2
@@ -151,6 +164,9 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      - name: Install release signing tools
+        run: sdkmanager "build-tools;37.0.0"
+
       - name: Download validated unsigned candidate
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -192,7 +208,7 @@ jobs:
           case "$expected_name" in *[!A-Za-z0-9._-]*|'') echo 'Invalid expected version name' >&2; exit 1;; esac
           case "$expected_code" in *[!0-9]*|'') echo 'Invalid expected version code' >&2; exit 1;; esac
 
-          tools_dir="$ANDROID_HOME/build-tools/36.0.0"
+          tools_dir="$ANDROID_HOME/build-tools/37.0.0"
           unsigned_apk='release-candidate/albion-market-release-unsigned.apk'
           aligned_apk="$signing_dir/albion-market-release-aligned.apk"
           final_apk="$output_dir/albion-market-v${expected_name}-release.apk"
@@ -334,6 +350,8 @@ jobs:
           test -f SHA256SUMS
           test "$(awk '{print $2}' SHA256SUMS)" = "$expected_asset"
           sha256sum -c SHA256SUMS
+          python3 ../scripts/package-release-notices.py --output .
+          sha256sum -c THIRD_PARTY_SHA256SUMS
 
           if release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null)"; then
             verify_tag_target
@@ -367,7 +385,7 @@ jobs:
           }
 
           # Verify every pre-existing byte before any new external write.
-          for asset in "$expected_asset" SHA256SUMS; do
+          for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
             asset_count="$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset" || true)"
             test "$asset_count" -le 1
             if test "$asset_count" -eq 1; then
@@ -375,7 +393,7 @@ jobs:
             fi
           done
 
-          for asset in "$expected_asset" SHA256SUMS; do
+          for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
             asset_count="$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset" || true)"
             if test "$asset_count" -eq 0; then
               gh release upload "$tag" "$asset" --repo "$GITHUB_REPOSITORY"
@@ -383,7 +401,7 @@ jobs:
           done
 
           release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
-          for asset in "$expected_asset" SHA256SUMS; do
+          for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
             test "$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset")" -eq 1
             verify_asset "$asset"
           done

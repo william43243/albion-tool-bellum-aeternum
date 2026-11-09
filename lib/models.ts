@@ -1,5 +1,5 @@
 // LiteRT-LM Model Registry
-// Only verified working + ungated models
+// Pinned artifacts and advertised capabilities; on-device answer quality varies.
 
 interface ModelInfoBase {
   id: string;
@@ -13,6 +13,8 @@ interface ModelInfoBase {
   quality: 'basic' | 'good' | 'excellent';
   ramRequired: string;
   license: string;
+  /** License of a different browser artifact, when it differs from Android. */
+  webLicense?: string;
   /** WebLLM model ID for browser — if set, this model works on web too */
   webModelId?: string;
   /** Web-specific size label (MLC format differs from LiteRT) */
@@ -21,6 +23,10 @@ interface ModelInfoBase {
   multimodal?: boolean;
   /** Whether LiteRT-LM tool calling is enabled for this model */
   toolCalling?: boolean;
+  /** Offer an explicit Android CPU/text-only start; automatic GPU/vision stays available. */
+  cpuTextOption?: boolean;
+  /** Explicitly suspend unvalidated item-analysis prose for a tested artifact. */
+  itemAnalysisMode?: 'calculator-only';
 }
 
 export interface AndroidModelInfo extends ModelInfoBase {
@@ -37,26 +43,34 @@ export interface WebOnlyModelInfo extends ModelInfoBase {
 export type ModelInfo = AndroidModelInfo | WebOnlyModelInfo;
 
 const HF = 'https://huggingface.co/litert-community';
+// Pin every Android artifact to the revision verified with its size/SHA-256.
+// A mutable /resolve/main URL can change independently and fail integrity checks
+// after the user has downloaded the entire model. See docs/model-download-audit.md.
 
 export const AVAILABLE_MODELS: ModelInfo[] = [
   {
     id: 'qwen35-08b',
     name: 'Qwen3.5 0.8B',
     description: {
-      fr: 'Léger et multimodal (texte + vision). Réponses rapides.',
-      en: 'Light and multimodal (text + vision). Fast responses.',
-      es: 'Ligero y multimodal (texto + visión). Respuestas rápidas.',
+      fr: 'Expérimental (texte + vision). Analyses d’items calculées par l’app, chat non validé.',
+      en: 'Experimental (text + vision). App-calculated item analyses; chat is unvalidated.',
+      es: 'Experimental (texto + visión). Análisis de objetos calculados por la app; chat sin validar.',
     },
     filename: 'Qwen3.5-0.8B-VL_int8.litertlm',
-    downloadUrl: `${HF}/Qwen3.5-0.8B/resolve/main/Qwen3.5-0.8B-VL_int8.litertlm`,
+    downloadUrl: `${HF}/Qwen3.5-0.8B/resolve/10243c0a01d24e6b122a0e814f8c4d984c9c92d6/Qwen3.5-0.8B-VL_int8.litertlm`,
     sizeBytes: 1302262448,
     sha256: 'e3360b658c929ff35ab740a21f5e4b688096a72e351b8d347e26ccda314121b7',
     sizeLabel: '1.30 GB',
     quality: 'basic',
-    ramRequired: '~2 GB',
+    // GPU startup exceeded 3 GB resident+swapped on S22. Do not promise 2 GB.
+    ramRequired: 'Variable (CPU / GPU)',
     license: 'Apache 2.0',
     multimodal: true,
-    toolCalling: true,
+    // This exact VL artifact's template has no tool schema/call/result format.
+    // Keep direct app-provided analysis; do not advertise native tool support.
+    toolCalling: false,
+    cpuTextOption: true,
+    itemAnalysisMode: 'calculator-only',
   },
   {
     id: 'qwen25-15b',
@@ -67,7 +81,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
       es: 'Buen equilibrio tamaño/calidad. Sólido para análisis de mercado.',
     },
     filename: 'Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm',
-    downloadUrl: `${HF}/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm`,
+    downloadUrl: `${HF}/Qwen2.5-1.5B-Instruct/resolve/19edb84c69a0212f29a6ef17ba0d6f278b6a1614/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm`,
     sizeBytes: 1597931520,
     sha256: 'faa60663b333290c1496c499828b21d3e3254a788cacd8cce917ce0f761a2dc9',
     sizeLabel: '1.5 GB',
@@ -86,7 +100,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
       es: 'Especialista en razonamiento. Bueno para tendencias y cálculos.',
     },
     filename: 'DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.litertlm',
-    downloadUrl: `${HF}/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.litertlm`,
+    downloadUrl: `${HF}/DeepSeek-R1-Distill-Qwen-1.5B/resolve/9fd875541bb0f277e4b3cefe7d9622c4c1de2fb5/DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv4096.litertlm`,
     sizeBytes: 1833451520,
     sha256: '69b35f01759eed765641ab4af589bbe98131fd2825662a086d9037409b8c1295',
     sizeLabel: '1.75 GB',
@@ -104,13 +118,14 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
       es: 'Recomendado. Mejor soporte de tool calling y análisis precisos.',
     },
     filename: 'gemma-4-E2B-it.litertlm',
-    downloadUrl: `${HF}/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm`,
+    downloadUrl: `${HF}/gemma-4-E2B-it-litert-lm/resolve/c658da437244f072bf2f1cabc916b60d66d97663/gemma-4-E2B-it.litertlm`,
     sizeBytes: 2588147712,
     sha256: '181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c',
     sizeLabel: '2.58 GB',
     quality: 'excellent',
     ramRequired: '~4 GB',
-    license: 'Gemma',
+    license: 'Apache 2.0',
+    webLicense: 'Gemma',
     toolCalling: true,
     webModelId: 'gemma-2-2b-it-q4f16_1-MLC',
     webSizeLabel: '~1.4 GB',
@@ -124,13 +139,13 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
       es: 'El más potente. Análisis más precisos. Teléfono de gama alta.',
     },
     filename: 'gemma-4-E4B-it.litertlm',
-    downloadUrl: `${HF}/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm`,
+    downloadUrl: `${HF}/gemma-4-E4B-it-litert-lm/resolve/e6a3892a8c22cf87ff99583996149cf3cb32452b/gemma-4-E4B-it.litertlm`,
     sizeBytes: 3659530240,
     sha256: '0b2a8980ce155fd97673d8e820b4d29d9c7d99b8fa6806f425d969b145bd52e0',
     sizeLabel: '3.65 GB',
     quality: 'excellent',
     ramRequired: '~6 GB',
-    license: 'Gemma',
+    license: 'Apache 2.0',
     toolCalling: true,
   },
   // ─── Web-only models (too large for mobile, great on PC) ────

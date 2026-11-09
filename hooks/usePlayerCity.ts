@@ -35,8 +35,13 @@ export function usePlayerCity() {
   }, []);
 
   const selectCity = useCallback(async (nextCity: City) => {
-    await writeCity(nextCity);
     setCity(nextCity);
+    try {
+      await writeCity(nextCity);
+    } catch {
+      // Do not trap the user in the required city picker when storage is blocked.
+      // This choice exists only in memory until a later write succeeds.
+    }
   }, []);
 
   return { city, selectCity, cityLoaded: loaded };

@@ -46,6 +46,7 @@ export const translations = {
 
     // Crafting
     itemValue: "Valeur de l'item",
+    itemValueUnavailable: "La valeur de cet item est inconnue dans le catalogue. Saisissez sa valeur d'objet en jeu (pas son prix de marché) pour calculer les frais.",
     stationTax: 'Taxe station (par 100 nutrition)',
     nutritionPerItem: 'Nutrition par item',
     totalNutrition: 'Nutrition totale',
@@ -212,6 +213,7 @@ export const translations = {
 
     // Crafting
     itemValue: 'Item Value',
+    itemValueUnavailable: 'This item\'s value is unknown in the catalog. Enter its in-game Item Value (not its market price) to calculate the fee.',
     stationTax: 'Station Tax (per 100 nutrition)',
     nutritionPerItem: 'Nutrition per item',
     totalNutrition: 'Total nutrition',
@@ -379,6 +381,7 @@ export const translations = {
 
     // Crafting
     itemValue: 'Valor del item',
+    itemValueUnavailable: 'El valor de este objeto no está disponible en el catálogo. Introduce su valor de objeto en el juego (no su precio de mercado) para calcular el coste.',
     stationTax: 'Impuesto estación (por 100 nutrición)',
     nutritionPerItem: 'Nutrición por item',
     totalNutrition: 'Nutrición total',

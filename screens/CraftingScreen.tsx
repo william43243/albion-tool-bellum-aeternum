@@ -4,6 +4,8 @@ import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateCraftingFee } from '../lib/calculations';
 import { Language } from '../lib/i18n';
 import { parseUserNumber } from '../lib/numberParsing';
+import { selectCraftingItemValue, needsManualCraftingItemValue } from '../lib/craftingItemValue';
+import { useLocalizedNumberInput } from '../hooks/useLocalizedNumberInput';
 import NumberInput from '../components/NumberInput';
 import ResultCard from '../components/ResultCard';
 import PremiumInfoPanel from '../components/PremiumInfoPanel';
@@ -15,20 +17,23 @@ interface Props {
 }
 
 export default function CraftingScreen({ t, lang }: Props) {
-  const [itemValue, setItemValue] = useState('');
-  const [stationTax, setStationTax] = useState('');
-  const [quantity, setQuantity] = useState('1');
+  const [itemValue, setItemValue] = useLocalizedNumberInput<string>('', lang);
+  const [catalogValueMissing, setCatalogValueMissing] = useState(false);
+  const [stationTax, setStationTax] = useLocalizedNumberInput<string>('', lang);
+  const [quantity, setQuantity] = useLocalizedNumberInput<string>('1', lang);
   const [showItemPicker, setShowItemPicker] = useState(false);
 
+  const iv = useMemo(() => parseUserNumber(itemValue, false, lang), [itemValue, lang]);
+  const manualItemValueNeeded = needsManualCraftingItemValue(catalogValueMissing, iv);
+
   const result = useMemo(() => {
-    const iv = parseUserNumber(itemValue, false, lang);
     const tax = stationTax.trim()
       ? parseUserNumber(stationTax, false, lang)
       : { value: 0, valid: true };
     const qty = parseUserNumber(quantity, true, lang);
     if (!iv.valid || !tax.valid || !qty.valid || iv.value <= 0 || qty.value <= 0) return null;
     return calculateCraftingFee(iv.value, tax.value, qty.value);
-  }, [itemValue, stationTax, quantity, lang]);
+  }, [iv, stationTax, quantity, lang]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -48,6 +53,12 @@ export default function CraftingScreen({ t, lang }: Props) {
         onChangeText={setItemValue}
         placeholder="ex: 1024"
       />
+
+      {manualItemValueNeeded && (
+        <View style={styles.infoBox} accessibilityRole="alert">
+          <Text style={styles.infoText}>{t('itemValueUnavailable')}</Text>
+        </View>
+      )}
 
       <NumberInput
         locale={lang}
@@ -121,7 +132,9 @@ export default function CraftingScreen({ t, lang }: Props) {
         visible={showItemPicker}
         onClose={() => setShowItemPicker(false)}
         onSelect={(item) => {
-          setItemValue(String(item.iv));
+          const selection = selectCraftingItemValue(item.iv, lang);
+          setItemValue(selection.itemValue);
+          setCatalogValueMissing(selection.catalogValueMissing);
           setShowItemPicker(false);
         }}
         lang={lang}

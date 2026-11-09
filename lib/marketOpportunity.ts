@@ -27,11 +27,13 @@ export function compatibleIdentity(a: MarketIdentity, b: MarketIdentity): boolea
 export function evaluateOpportunity(input: OpportunityInput, mode: TradeMode): Opportunity | null {
   const { identity, buy, sell, isPremium } = input;
   if (buy.item_id !== identity.itemId || sell.item_id !== identity.itemId || buy.quality !== identity.quality || sell.quality !== identity.quality) return null;
-  const buyObs = priceObservation(buy, 'sell');
-  const sellObs = priceObservation(sell, 'buy');
-  if (!buyObs || !sellObs || buy.city === sell.city) return null;
   const selected = MODES.find((m) => m.mode === mode);
   if (!selected) return null;
+  // The API side names describe existing orders. Instant actions consume the
+  // opposite side; a new order uses its own side as a non-guaranteed target.
+  const buyObs = priceObservation(buy, selected.buyOrder ? 'buy' : 'sell');
+  const sellObs = priceObservation(sell, selected.sellOrder ? 'sell' : 'buy');
+  if (!buyObs || !sellObs || buy.city === sell.city) return null;
   const quantity = Math.max(1, Math.floor(input.quantity ?? 1));
   const result = calculateMarketplaceProfit(buyObs.value, sellObs.value, quantity, isPremium, selected.buyOrder, selected.sellOrder);
   const route = getRoute(buy.city, sell.city);

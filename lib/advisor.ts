@@ -7,17 +7,21 @@ import {
   formatDateForApi,
   daysAgo,
   CITIES,
-  City,
-  Server,
-  PriceData,
-  HistoryResponse,
-  Quality,
+  type City,
+  type Server,
+  type PriceData,
+  type HistoryResponse,
+  type Quality,
 } from './api';
-import { AlbionItem } from './items';
-import { Language } from './i18n';
+import type { AlbionItem } from './items';
+import type { Language } from './i18n';
+import { parseAodpTimestamp, weightedAverage } from './aodpTime';
 import { formatRouteForPrompt, getFlipRouteInfo, SAFE_ROUTES } from './routes';
+import { buildMarketplaceFeeFacts, MARKETPLACE_FEE_FACTS } from './advisorFees';
 
 export interface MarketContext {
+  /** Provenance attached by the API request, never inferred from the prices. */
+  server?: Server;
   item: AlbionItem;
   prices: PriceData[];
   history7d: HistoryResponse[];
@@ -36,7 +40,7 @@ function formatServerName(server?: string): string {
 
 function getFreshnessHours(dateStr: string): number | null {
   if (!dateStr) return null;
-  const time = new Date(dateStr).getTime();
+  const time = parseAodpTimestamp(dateStr);
   if (!Number.isFinite(time)) return null;
   return Math.max(0, (Date.now() - time) / 3600000);
 }
@@ -58,84 +62,58 @@ function classifyLiquidity(volume7d: number): string {
 }
 
 function getTrendStats(history7d: HistoryResponse[]) {
-  const stats: Record<string, { avg: number; last: number; pct: string; volume: number; liquidity: string }> = {};
+  const stats: Record<string, { avg: number | null; last: number; pct: string | null; volume: number; liquidity: string }> = {};
   for (const h of history7d) {
     const valid = h.data.filter((d) => d.avg_price > 0);
     if (valid.length === 0) continue;
-    const avg = Math.round(valid.reduce((sum, d) => sum + d.avg_price, 0) / valid.length);
+    const avg = weightedAverage(valid);
     const last = valid[valid.length - 1].avg_price;
     const volume = valid.reduce((sum, d) => sum + d.item_count, 0);
-    const pct = avg > 0 ? (((last - avg) / avg) * 100).toFixed(0) : '0';
+    const pct = avg !== null ? (((last - avg) / avg) * 100).toFixed(0) : null;
     stats[h.location] = { avg, last, pct, volume, liquidity: classifyLiquidity(volume) };
   }
   return stats;
 }
 
 /**
- * System prompt — strict format rules to keep responses short and factual
+ * Shared conversation guidance. Item-analysis formats belong to that turn only.
  */
 export function buildSystemPrompt(lang: Language, server?: string): string {
-  const serverInfo = formatServerName(server);
+  const language = { fr: 'French', en: 'English', es: 'Spanish' }[lang];
+  return `You help with Albion Online. Reply in ${language}.
+Respond to the current message naturally and briefly. For greetings or ordinary conversation, do not add unsolicited market advice, numbers or analysis.
+Use an item-analysis output format only when the app supplies AI_DECISION_INPUT and its format in the current message. Otherwise use normal prose, usually 1-3 short sentences.
+If a follow-up has no clear antecedent, ask one clarifying question. Do not repeat an unrelated earlier answer.
+For market questions, use only observations supplied by the app or returned by available tools. Never invent prices, volumes, fees or tool results. Say when information is missing.
+Treat AODP as a third-party community project, not an official Albion Online service. Its client uploads market observations captured while participating players browse markets; the API does not identify the contributor behind each returned observation. Describe values as reported by AODP, not as complete market truth. Price and history coverage may be incomplete and does not cover all transactions. In daily history, item_count is the aggregated quantity of items represented in reported observations, not the number of trades or orders and not a silver value.
+Respect the requested item and city; obtain missing relevant observations or state they are missing. Flag stale data, low liquidity and route risk rather than making unsupported trade recommendations.
+For a live item request without supplied observations, use available tools: search_item first, then get_prices/get_history; get_route for routes. If those tools are unavailable, say which data is missing rather than claiming a tool call.
+Respect the app's calculator rules and precomputed results when supplied; raw tool prices are not precomputed net profits. Do not substitute remembered rates.
+Active server: ${formatServerName(server)}. Never mix servers.`;
+}
 
-  const common = `
-Hard rules:
-- Use ONLY the market data returned by the tools or included in the prompt. Do not invent prices, cities, volumes, fees, or server data.
-- On Android LiteRT, available tools in this conversation are: search_item, get_prices, get_history, get_route, get_time. Call them before answering a live market request.
-- On WebLLM, tool calling is unavailable: never claim that you called a tool or have live data; answer only from the market context supplied by the app and say when it is missing.
-- When a native Android user asks about an item, tier, city, price, volume, history, flip, or route, call the relevant tools before answering. Never claim that you lack API access unless a tool actually failed.
-- For a native item market request: call search_item first, then get_prices and get_history (7 days); use get_route when comparing cities.
-- If a city is named, filter the returned data to that city and clearly state when the API has no observation there.
-- The active server is ${serverInfo}. Never mix data from another server.
-- The code precomputes taxes, fees, direct flip profit, order-scenario profit, freshness, and liquidity. Do not recalculate them; quote them and reason from them.
-- If data is stale, missing, low-volume, or the route is risky, lower confidence and prefer WATCH/SKIP.
-- Keep answers short, concrete, and actionable. No hype.
-- Output the requested structure exactly when AI_DECISION_INPUT is present.`;
-
-  const prompts: Record<Language, string> = {
-    fr: `Tu es un conseiller marché Albion Online prudent et factuel.${common}
-
-Format obligatoire pour une analyse d'item :
-VERDICT: ACHETER / ÉVITER / SURVEILLER
-CONFIANCE: haute / moyenne / basse
-SERVEUR: ${serverInfo}
-MODE: Premium ou Non-Premium, selon les données
-DIRECT FLIP: profit, villes, taxe, fraîcheur
-RISQUES: route, fraîcheur, liquidité, spread
-RAISON: 1-2 phrases max
-ACTION: prix cible ou prochaine vérification
-
-N'invente jamais un chiffre absent. Si les données ne suffisent pas, dis SURVEILLER ou ÉVITER. Réponds en français.`,
-
-    en: `You are a cautious, factual Albion Online market advisor.${common}
-
-Mandatory format for item analysis:
-VERDICT: BUY / SKIP / WATCH
-CONFIDENCE: high / medium / low
-SERVER: ${serverInfo}
-MODE: Premium or Non-Premium from the data
-DIRECT FLIP: profit, cities, tax, freshness
-RISKS: route, freshness, liquidity, spread
-REASON: 1-2 short sentences
-ACTION: target price or next check
-
-Do not invent any missing number. If data is insufficient, choose WATCH or SKIP. Reply in English.`,
-
-    es: `Eres un asesor prudente y factual del mercado de Albion Online.${common}
-
-Formato obligatorio para analizar un item:
-VEREDICTO: COMPRAR / EVITAR / VIGILAR
-CONFIANZA: alta / media / baja
-SERVIDOR: ${serverInfo}
-MODO: Premium o Non-Premium segun los datos
-FLIP DIRECTO: ganancia, ciudades, impuesto, frescura
-RIESGOS: ruta, frescura, liquidez, spread
-RAZON: 1-2 frases cortas
-ACCION: precio objetivo o proxima revision
-
-No inventes ningun numero ausente. Si faltan datos, elige VIGILAR o EVITAR. Responde en español.`,
+function buildItemAnalysisFormat(lang: Language): string {
+  const formats: Record<Language, string> = {
+    fr: 'VERDICT: ACHETER / ÉVITER / SURVEILLER\nCONFIANCE: haute / moyenne / basse\nSERVEUR: serveur actif\nMODE: Premium ou Non-Premium selon les données\nDIRECT FLIP: profit, villes, taxe, fraîcheur\nRISQUES: route, fraîcheur, liquidité, spread\nRAISON: 1-2 phrases\nACTION: prix cible ou prochaine vérification',
+    en: 'VERDICT: BUY / SKIP / WATCH\nCONFIDENCE: high / medium / low\nSERVER: active server\nMODE: Premium or Non-Premium from the data\nDIRECT FLIP: profit, cities, tax, freshness\nRISKS: route, freshness, liquidity, spread\nREASON: 1-2 sentences\nACTION: target price or next check',
+    es: 'VEREDICTO: COMPRAR / EVITAR / VIGILAR\nCONFIANZA: alta / media / baja\nSERVIDOR: servidor activo\nMODO: Premium o Non-Premium según los datos\nFLIP DIRECTO: ganancia, ciudades, impuesto, frescura\nRIESGOS: ruta, frescura, liquidez, spread\nRAZÓN: 1-2 frases\nACCIÓN: precio objetivo o próxima revisión',
   };
+  return `For this item analysis only, use each requested field once. Keep it concise; do not repeat sections.\n${formats[lang]}`;
+}
 
-  return prompts[lang];
+function isSocialMessage(question: string): boolean {
+  const text = question.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF\uFE0F\u200D]/gu, ' ')
+    .replace(/[?!.,¿¡]/g, ' ').replace(/\s+/g, ' ').trim();
+  return /^(?:(?:hello|hi|hey|bonjour|salut|bonsoir|hola)(?: (?:there|mon ami|amigo|amiga))?(?: (?:how are you|comment ca va|como estas))?|good morning|good afternoon|good evening|how are you|comment ca va|como estas|merci|thanks|thank you|gracias|buenos dias|buenas tardes)$/.test(text);
+}
+
+function needsMarketplaceFeeFacts(question: string): boolean {
+  const text = question.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const marketCharges = /\b(?:marketplace|market|marche|mercado)\b/.test(text)
+    && /\b(?:percentage|percent|commission|commissions|charges?|listing|takes?|pourcentage|pourcent|preleve|prend|porcentaje|cobra|cobran)\b/.test(text);
+  if (marketCharges || /\blisting charges?\b/.test(text)) return true;
+  return /\b(?:tax|taxes|fee|fees|premium|profit|margin|order|orders|sell|selling|buy|buying|flip|taxe|frais|impot|impots|benefice|marge|ordre|ordres|acheter|achat|vendre|vente|impuesto|impuestos|tarifa|tarifas|comision|beneficio|margen|orden|ordenes|comprar|compra|vender|venta)\b/.test(text);
 }
 
 /**
@@ -154,7 +132,7 @@ export async function fetchMarketContext(
     fetchPriceHistory(item.id, cities, formatDateForApi(daysAgo(30)), formatDateForApi(new Date()), 24, server, quality),
   ]);
 
-  return { item, prices, history7d, history30d, quality };
+  return { server, item, prices, history7d, history30d, quality };
 }
 
 /**
@@ -169,8 +147,9 @@ export function buildAnalysisPrompt(
 ): string {
   const { item, prices, history7d } = ctx;
   const serverMode = 'server already selected by app/API layer';
-  const taxRate = isPremium ? 0.04 : 0.08;
-  const taxMode = isPremium ? 'Premium sales tax 4%' : 'Non-Premium sales tax 8%';
+  const taxPercent = isPremium ? MARKETPLACE_FEE_FACTS.premiumSalesTax : MARKETPLACE_FEE_FACTS.standardSalesTax;
+  const taxRate = Number(taxPercent) / 100;
+  const taxMode = `${isPremium ? 'Premium' : 'Non-Premium'} sales tax ${taxPercent}%`;
 
   const trendStats = getTrendStats(history7d);
 
@@ -193,8 +172,8 @@ export function buildAnalysisPrompt(
     const salesTax = Math.ceil(sellAt * taxRate);
     const directProfit = sellAt - buyAt - salesTax;
     const directMargin = buyAt > 0 ? ((directProfit / buyAt) * 100).toFixed(1) : 0;
-    const setupBuy = Math.ceil(buyAt * 0.025);
-    const setupSell = Math.ceil(sellAt * 0.025);
+    const setupBuy = Math.ceil(buyAt * (Number(MARKETPLACE_FEE_FACTS.buyOrderSetup) / 100));
+    const setupSell = Math.ceil(sellAt * (Number(MARKETPLACE_FEE_FACTS.sellOrderSetup) / 100));
     const orderProfit = sellAt - buyAt - setupBuy - setupSell - salesTax;
     const orderMargin = buyAt > 0 ? ((orderProfit / buyAt) * 100).toFixed(1) : 0;
     const routeInfo = getFlipRouteInfo(cheapest.city, priciest.city);
@@ -227,7 +206,7 @@ export function buildAnalysisPrompt(
 
   // 7d trend — one line per city with raw numbers and liquidity classification
   const trendList = Object.entries(trendStats)
-    .map(([city, stats]) => `${city}: avg=${stats.avg} last=${stats.last} (${stats.pct}%) vol=${stats.volume} liquidity=${stats.liquidity}`)
+    .map(([city, stats]) => `${city}: avg=${stats.avg?.toFixed(2) ?? 'unknown'} last=${stats.last} (${stats.pct === null ? 'unknown trend' : `${stats.pct}%`}) vol=${stats.volume} liquidity=${stats.liquidity}`)
     .join('\n');
 
   // Safe route pairs for context
@@ -265,6 +244,10 @@ export function buildAnalysisPrompt(
   const tpl = templates[lang];
 
   return `AI_DECISION_INPUT
+${buildItemAnalysisFormat(lang)}
+
+${buildMarketplaceFeeFacts(isPremium)}
+
 Server mode: ${serverMode}
 Quality: ${ctx.quality} (never mix with enchantment/tier)
 Player current city: ${playerCity || 'unknown — do not assume location'}
@@ -297,9 +280,14 @@ export function buildQuestionPrompt(
   question: string,
   ctx: MarketContext | null,
   lang: Language,
-  playerCity: City | null = null
+  playerCity: City | null = null,
+  isPremium?: boolean
 ): string {
-  if (!ctx) return question;
+  const directReply = 'Answer the current question directly in short normal prose. Do not create an item analysis unless requested. Ask a brief clarification if the question is ambiguous.';
+  // This only changes context selection; the model still generates the reply.
+  if (isSocialMessage(question)) return `${directReply}\n\nUser question: ${question}`;
+  const feeFacts = ctx || needsMarketplaceFeeFacts(question) ? `Use the following rules ONLY if relevant to marketplace fees or profit. They do not answer Premium subscription pricing, crafting fees or unrelated questions.\n${buildMarketplaceFeeFacts(isPremium)}` : '';
+  if (!ctx) return `${directReply}\n${feeFacts}\n\nUser question: ${question}`;
 
   // Attach compact current context so follow-up answers stay grounded.
   const validSell = ctx.prices.filter((p) => p.sell_price_min > 0);
@@ -307,6 +295,8 @@ export function buildQuestionPrompt(
   const trendStats = getTrendStats(ctx.history7d);
 
   const lines: string[] = [
+    directReply,
+    feeFacts,
     `Player current city: ${playerCity || 'unknown — do not assume location'}`,
     `Current context: ${ctx.item.n}`,
     'Known prices:',
@@ -324,14 +314,16 @@ export function buildQuestionPrompt(
     .map(([city, stats]) => `${city}:${stats.liquidity}/vol=${stats.volume}`)
     .join(', ');
   lines.push(`Data freshness and liquidity summary: ${liquidity || 'unknown'}`);
-  lines.push('Answer using only this current context; if missing data, say WATCH/SKIP.');
+  lines.push('Use relevant supplied observations only. If requested information is missing, say so or ask one clarification; do not invent an analysis verdict.');
 
   return `${lines.join('\n')}\n\nUser question: ${question}`;
 }
 
 function getDataAge(dateStr: string): string {
   if (!dateStr) return '?';
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const timestamp = parseAodpTimestamp(dateStr);
+  if (!Number.isFinite(timestamp)) return '?';
+  const diff = Date.now() - timestamp;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return '<1min';
   if (mins < 60) return `${mins}min`;

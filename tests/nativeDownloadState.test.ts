@@ -7,7 +7,8 @@ const source = readFileSync(
   'utf8',
 );
 const bridgeSource = readFileSync('lib/litert.ts', 'utf8');
-const advisorSource = readFileSync('screens/AdvisorScreen.tsx', 'utf8');
+// Source assertions are independent of Git's checkout line-ending convention.
+const advisorSource = readFileSync('screens/AdvisorScreen.tsx', 'utf8').replace(/\r\n/g, '\n');
 
 test('download APIs wait for persisted-state restoration', () => {
   assert.match(source, /downloadStateReady\.await\(\)/);

@@ -2,14 +2,14 @@ FROM node:22.17.0-alpine3.22 AS builder
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 COPY . .
-RUN npx expo export --platform web
+RUN npm run prepare:data && npm run check:data && npx expo export --platform web
 
 # Build analytics server dependencies
 WORKDIR /analytics
-COPY analytics/package.json ./
-RUN npm install --omit=dev
+COPY analytics/package.json analytics/package-lock.json ./
+RUN npm ci --omit=dev
 
 # ── Production ──
 FROM node:22.17.0-alpine3.22

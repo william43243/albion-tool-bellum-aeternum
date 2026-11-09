@@ -94,10 +94,11 @@ export async function initialize(
   systemPrompt: string,
   serverBaseUrl: string,
   supportsVision = false,
-  supportsTools = false
+  supportsTools = false,
+  preferCpuText = false
 ) {
   if (isWeb) return (await getWebLLMModule()).initialize(modelFilename, systemPrompt, serverBaseUrl);
-  return LiteRT.initialize(modelFilename, systemPrompt, serverBaseUrl, supportsVision, supportsTools);
+  return LiteRT.initialize(modelFilename, systemPrompt, serverBaseUrl, supportsVision, supportsTools, preferCpuText);
 }
 
 export function sendMessage(message: string, callbacks: LiteRT.StreamCallbacks) {

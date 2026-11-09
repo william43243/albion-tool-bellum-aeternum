@@ -27,9 +27,12 @@ import {
 import { SERVERS } from '../lib/api';
 import * as LLM from '../lib/llm';
 import * as ImagePicker from 'expo-image-picker';
-import { AVAILABLE_MODELS, ModelInfo, formatBytes, getModelsForPlatform, getModelFilename, getModelSizeLabel } from '../lib/models';
+import { AVAILABLE_MODELS, ModelInfo, formatBytes, getModelsForPlatform, getModelFilename, getModelSizeLabel, getModelById } from '../lib/models';
 import { captureAnalyticsAuthorization, trackAIPrompt, trackAIModelDownload, trackAIModelStart, trackAIImageSent } from '../lib/analytics';
 import { shouldCancelDownload } from '../lib/downloadLifecycle';
+import { createAdvisorSession } from '../lib/advisorSession';
+import { getMarketplaceFeeAnswer } from '../lib/advisorFees';
+import { evaluateAdvisorDecision, formatAdvisorDecision } from '../lib/advisorDecision';
 
 interface Props {
   t: (key: any) => any;
@@ -43,6 +46,7 @@ interface Props {
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  source?: 'model' | 'calculator';
 }
 
 type Screen = 'models' | 'chat';
@@ -66,20 +70,27 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(
     Platform.OS === 'web' ? false : null
   );
-  const [backendInfo, setBackendInfo] = useState<{ backendUsed: string; isMediaTek: boolean } | null>(null);
+  const [backendInfo, setBackendInfo] = useState<{ backendUsed: string; isMediaTek: boolean; hasVision: boolean; maxOutputTokens?: number } | null>(null);
   const isWeb = Platform.OS === 'web';
+  const calculatorOnlyAnalysis = getModelById(activeModelId || '')?.itemAnalysisMode === 'calculator-only';
+  const unverifiedAIWarning = lang === 'fr'
+    ? 'Chat IA expérimental : réponse non validée, pouvant contredire les calculs. Ne pas utiliser comme recommandation de trade.'
+    : lang === 'es'
+    ? 'Chat IA experimental: respuesta sin validar, puede contradecir los cálculos. No usar como recomendación comercial.'
+    : 'Experimental AI chat: unvalidated output can contradict calculations. Do not use it as a trade recommendation.';
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [streamBuffer, setStreamBuffer] = useState('');
+  const streamTextRef = useRef('');
   const [selectedItem, setSelectedItem] = useState<AlbionItem | null>(null);
   const [marketCtx, setMarketCtx] = useState<MarketContext | null>(null);
   const [fetchingData, setFetchingData] = useState(false);
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [tokenCount, setTokenCount] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const cancelDownloadRef = useRef<(() => Promise<boolean>) | null>(null);
   const applyActiveDownloadRef = useRef<((active: Awaited<ReturnType<typeof LLM.getActiveDownload>>) => void) | null>(null);
@@ -91,22 +102,77 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const latestDownloadStateRef = useRef<{ downloadId: number; terminal: boolean } | null>(null);
   const previousServerRef = useRef<Server>(server);
   const resetInFlightRef = useRef<Promise<boolean> | null>(null);
+  const resetSessionRef = useRef<number | null>(null);
+  const advisorSession = useRef(createAdvisorSession(server)).current;
+  advisorSession.configure(server);
+  const renderSession = advisorSession.capture();
+  const renderRequest = advisorSession.captureRequest();
+  const renderStream = advisorSession.captureStream();
+  const activeModelRef = useRef(activeModelId);
+  activeModelRef.current = activeModelId;
+  const modelAttemptRef = useRef(0);
+  const initializedModelRef = useRef<string | null>(null);
+  const premiumRef = useRef(isPremium);
+  premiumRef.current = isPremium;
 
   // ~4 chars per token is a rough estimate for English/French
   const MAX_TOKENS = 4096;
-  const SYSTEM_PROMPT_TOKENS = 250; // approx
+  const SYSTEM_PROMPT_TOKENS = Math.ceil(buildSystemPrompt(lang, server).length / 4); // estimate, not tokenizer output
   const WARNING_THRESHOLD = MAX_TOKENS * 0.75; // warn at 75%
   const RESET_THRESHOLD = MAX_TOKENS * 0.90;   // auto-reset at 90%
 
   const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
 
+  const clearSessionContext = useCallback(() => {
+    const session = advisorSession.invalidate();
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    setStreaming(false);
+    setStreamBuffer('');
+    streamTextRef.current = '';
+    setMarketCtx(null);
+    setSelectedItem(null);
+    setFetchingData(false);
+    setShowItemPicker(false);
+    setTokenCount(SYSTEM_PROMPT_TOKENS);
+    return session;
+  }, [advisorSession, SYSTEM_PROMPT_TOKENS]);
+
   const resetNativeConversation = useCallback(async (): Promise<boolean> => {
-    if (resetInFlightRef.current) return resetInFlightRef.current;
-    const pending = LLM.resetConversation(buildSystemPrompt(lang, server), SERVERS[server])
-      .finally(() => { resetInFlightRef.current = null; });
+    if (!advisorSession.matchesServer(server)) return false;
+    const session = advisorSession.capture();
+    if (resetSessionRef.current === session && resetInFlightRef.current) return resetInFlightRef.current;
+    advisorSession.suspend();
+    setEngineState('loading');
+    const pending = advisorSession.enqueue(async () => {
+      if (!advisorSession.isCurrent(session)) return false;
+      if (!activeModelRef.current || initializedModelRef.current !== activeModelRef.current) {
+        throw new Error('The selected AI model did not finish initializing. Start it again.');
+      }
+      return LLM.resetConversation(buildSystemPrompt(lang, server), SERVERS[server]);
+    }).then((success) => {
+      if (!advisorSession.isCurrent(session)) return false;
+      if (!success) throw new Error('Could not reset the AI conversation');
+      advisorSession.markReady(session);
+      setEngineState('ready');
+      setScreen('chat');
+      return true;
+    }).catch((error) => {
+      if (advisorSession.isCurrent(session)) {
+        setEngineState('error');
+        Alert.alert(t('error'), error?.message || String(error));
+      }
+      return false;
+    }).finally(() => {
+      if (resetInFlightRef.current === pending) {
+        resetInFlightRef.current = null;
+        resetSessionRef.current = null;
+      }
+    });
     resetInFlightRef.current = pending;
+    resetSessionRef.current = session;
     return pending;
-  }, [lang, server]);
+  }, [advisorSession, lang, server, t]);
 
   // Load downloaded models on mount + refresh when app comes back to foreground
   useEffect(() => {
@@ -448,11 +514,16 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
             text: lang === 'fr' ? 'Supprimer' : 'Delete',
             style: 'destructive',
             onPress: async () => {
-              if (activeModelId === model.id) {
-                await LLM.destroy();
+              if (activeModelRef.current === model.id) {
+                clearSessionContext();
+                modelAttemptRef.current += 1;
+                initializedModelRef.current = null;
                 setEngineState('idle');
+                activeModelRef.current = null;
                 setActiveModelId(null);
                 setScreen('models');
+                setMessages([]);
+                await advisorSession.enqueue(() => LLM.destroy());
               }
               await LLM.deleteModel(getModelFilename(model, Platform.OS));
               refreshDownloadedModels();
@@ -462,32 +533,52 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         ]
       );
     },
-    [activeModelId, blockedTerminalModelId, lang, t]
+    [advisorSession, clearSessionContext, blockedTerminalModelId, lang, t]
   );
 
   // ─── Engine Init ─────────────────────────────────────────────
 
   const handleStartModel = useCallback(
-    async (model: ModelInfo) => {
+    async (model: ModelInfo, preferCpuText = false) => {
+      if (!advisorSession.matchesServer(server)) return;
+      const session = clearSessionContext();
+      const modelAttempt = ++modelAttemptRef.current;
+      initializedModelRef.current = null;
       const analyticsAuthorization = captureAnalyticsAuthorization();
       setEngineState('loading');
+      setBackendInfo(null);
+      activeModelRef.current = model.id;
       setActiveModelId(model.id);
+      setMessages([]);
       try {
         const systemPrompt = buildSystemPrompt(lang, server);
         const serverUrl = SERVERS[server];
         const filename = getModelFilename(model, Platform.OS);
-        const initResult = await LLM.initialize(
-          filename,
-          systemPrompt,
-          serverUrl,
-          model.multimodal === true,
-          model.toolCalling === true
-        );
-        setBackendInfo(
-          typeof initResult === 'object' && initResult !== null
-            ? { backendUsed: initResult.backendUsed, isMediaTek: initResult.isMediaTek }
-            : null
-        );
+        await advisorSession.enqueue(async () => {
+          const result = await LLM.initialize(
+            filename,
+            systemPrompt,
+            serverUrl,
+            model.multimodal === true,
+            model.toolCalling === true,
+            preferCpuText
+          );
+          // A server switch may supersede the UI session without superseding
+          // this model. Its queued reset still needs a successful initialization.
+          if (modelAttemptRef.current === modelAttempt) {
+            initializedModelRef.current = model.id;
+            // Capabilities belong to the model, not the server session. A queued
+            // server reset must retain them when initialization finishes late.
+            setBackendInfo(
+              typeof result === 'object' && result !== null
+                ? { backendUsed: result.backendUsed, isMediaTek: result.isMediaTek, hasVision: result.hasVision === true, maxOutputTokens: result.maxOutputTokens }
+                : null
+            );
+          }
+          return result;
+        });
+        if (!advisorSession.isCurrent(session)) return;
+        advisorSession.markReady(session);
         setEngineState('ready');
         setMessages([
           {
@@ -498,19 +589,63 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         setScreen('chat');
         trackAIModelStart(model.id, analyticsAuthorization);
       } catch (e: any) {
+        if (!advisorSession.isCurrent(session)) return;
         setEngineState('error');
+        activeModelRef.current = null;
         setActiveModelId(null);
         Alert.alert(t('error'), e.message);
       }
     },
-    [lang, server, t]
+    [advisorSession, clearSessionContext, lang, server, t]
   );
 
   // ─── Chat Logic ──────────────────────────────────────────────
 
+  const interruptStream = useCallback(async (
+    ticket: { session: number; stream: number }, reason: string, partial: string
+  ) => {
+    if (!advisorSession.isStreamCurrent(ticket)) return;
+    // Invalidate BEFORE cleanup: a rejected send promise can still call onError
+    // after event subscriptions are removed. Stale callbacks must stay inert.
+    advisorSession.invalidate();
+    const cleanup = cleanupRef.current;
+    cleanupRef.current = null;
+    setStreaming(false);
+    setStreamBuffer('');
+    streamTextRef.current = '';
+    setTokenCount(SYSTEM_PROMPT_TOKENS);
+    const notice = lang === 'fr'
+      ? 'Réponse interrompue et potentiellement incomplète. Réinitialisation du contexte IA avant de continuer.'
+      : lang === 'es'
+      ? 'Respuesta interrumpida y posiblemente incompleta. Reiniciando el contexto antes de continuar.'
+      : 'Response interrupted and possibly incomplete. Resetting the AI context before continuing.';
+    setMessages((prev) => [
+      ...prev,
+        ...(partial.trim() ? [{ role: 'assistant' as const, source: 'model' as const, content: partial }] : []),
+      { role: 'system', content: `${reason}\n${notice}` },
+    ]);
+    try {
+      cleanup?.();
+    } catch (error: any) {
+      setEngineState('error');
+      Alert.alert(t('error'), error?.message || 'Could not request inference cancellation');
+      return;
+    }
+    // A delayed/failed native cancellation or reset must never mark us ready.
+    await resetNativeConversation();
+  }, [advisorSession, lang, t, SYSTEM_PROMPT_TOKENS, resetNativeConversation]);
+
+  const handleStop = useCallback(async () => {
+    if (!renderStream || !advisorSession.isStreamCurrent(renderStream)) return;
+    const reason = lang === 'fr' ? 'Arrêt demandé.' : lang === 'es' ? 'Detención solicitada.' : 'Stop requested.';
+    await interruptStream(renderStream, reason, streamTextRef.current);
+  }, [advisorSession, renderStream, lang, interruptStream]);
+
   const sendToLLM = useCallback(
-    (prompt: string, userDisplay?: string) => {
-      if (streaming || resetInFlightRef.current) return;
+    (prompt: string, userDisplay?: string, session = renderSession, request = renderRequest) => {
+      if (!advisorSession.matchesServer(server) || !advisorSession.isRequestCurrent(request) || resetInFlightRef.current) return;
+      const streamTicket = advisorSession.beginStream(session);
+      if (!streamTicket) return;
 
       // Track tokens for the prompt sent
       const promptTokens = estimateTokens(prompt);
@@ -522,22 +657,27 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
       setStreaming(true);
       setStreamBuffer('');
+      streamTextRef.current = '';
       let fullResponse = '';
 
       trackAIPrompt(activeModelId || 'unknown');
 
-      cleanupRef.current = LLM.sendMessage(prompt, {
+      const cleanup = LLM.sendMessage(prompt, {
         onToken: (token) => {
+          if (!advisorSession.isStreamCurrent(streamTicket)) return;
           fullResponse += token;
+          streamTextRef.current = fullResponse;
           setStreamBuffer(fullResponse);
         },
         onDone: () => {
+          if (!advisorSession.isStreamCurrent(streamTicket)) return;
+          advisorSession.endStream(streamTicket);
           const responseTokens = estimateTokens(fullResponse);
           const newTotal = tokenCount + promptTokens + responseTokens;
           setTokenCount(newTotal);
 
           const msgsToAdd: ChatMessage[] = [
-            { role: 'assistant', content: fullResponse },
+            { role: 'assistant', source: 'model', content: fullResponse },
           ];
 
           // Auto-reset at 90% context
@@ -565,70 +705,101 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
           setMessages((prev) => [...prev, ...msgsToAdd]);
           setStreamBuffer('');
+          streamTextRef.current = '';
           setStreaming(false);
           cleanupRef.current = null;
         },
         onError: (error) => {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'assistant', content: `Error: ${error}` },
-          ]);
-          setStreamBuffer('');
-          setStreaming(false);
-          cleanupRef.current = null;
+          if (!advisorSession.isStreamCurrent(streamTicket)) return;
+          void interruptStream(streamTicket, `Error: ${error}`, fullResponse);
         },
       });
+      if (advisorSession.isStreamCurrent(streamTicket)) cleanupRef.current = cleanup;
+      else cleanup(); // a synchronous terminal callback must not leave stale cleanup
     },
-    [streaming, tokenCount, lang, server, activeModelId, resetNativeConversation]
+    [advisorSession, renderSession, renderRequest, tokenCount, lang, server, activeModelId, resetNativeConversation, interruptStream]
   );
   const handleItemSelect = useCallback(
     async (item: AlbionItem, analysisCity: City | null = playerCity) => {
+      if (!advisorSession.matchesServer(server) || !advisorSession.isReady(renderSession) || advisorSession.isStreaming()) return;
+      const request = advisorSession.beginRequest();
       setSelectedItem(item);
+      setMarketCtx(null);
       setShowItemPicker(false);
       setFetchingData(true);
 
       try {
         const ctx = await fetchMarketContext(item, server);
+        if (!advisorSession.isRequestCurrent(request)) return;
         setMarketCtx(ctx);
-        if (engineState === 'ready') {
-          const prompt = buildAnalysisPrompt(ctx, lang, isPremium, analysisCity);
-          sendToLLM(prompt, `${t('advisorAnalyzing')} ${item.n}...`);
+        if (advisorSession.isReady(request.session)) {
+          if (getModelById(activeModelRef.current || '')?.itemAnalysisMode === 'calculator-only') {
+            // The tested Qwen contradicts its own loss calculation. Do not
+            // stream or rewrite an unvalidated recommendation. Publish the
+            // actual calculator/data assessment with explicit provenance.
+            const decision = evaluateAdvisorDecision(ctx, server, premiumRef.current);
+            const report = formatAdvisorDecision(decision, lang);
+            setMessages((prev) => [...prev,
+              { role: 'user', content: `${t('advisorAnalyzing')} ${item.n}...` },
+              { role: 'assistant', source: 'calculator', content: report },
+            ]);
+            return;
+          }
+          const prompt = buildAnalysisPrompt(ctx, lang, premiumRef.current, analysisCity);
+          sendToLLM(prompt, `${t('advisorAnalyzing')} ${item.n}...`, request.session, request);
         }
       } catch (e: any) {
-        Alert.alert(t('error'), e.message);
+        if (advisorSession.isRequestCurrent(request)) Alert.alert(t('error'), e.message);
+      } finally {
+        if (advisorSession.isRequestCurrent(request)) setFetchingData(false);
       }
-      setFetchingData(false);
     },
-    [server, engineState, lang, t, isPremium, playerCity, sendToLLM]
+    [advisorSession, renderSession, server, lang, t, isPremium, playerCity, sendToLLM]
   );
 
 
 
   const handleSend = useCallback(async () => {
+    const session = renderSession;
+    const request = renderRequest;
     const text = input.trim();
     if (resetInFlightRef.current) {
       try { await resetInFlightRef.current; } catch { return; }
     }
-    if (!text || streaming || engineState !== 'ready') return;
-    setInput('');
+    if (!text || fetchingData || !advisorSession.matchesServer(server) || !advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || advisorSession.isStreaming()) return;
+
+    // Simple fee questions are calculator facts, not an inference task. Keep the
+    // provenance visible and do not count this as a generated/native response.
+    const feeAnswer = getMarketplaceFeeAnswer(text, lang);
+    if (feeAnswer) {
+      advisorSession.beginRequest(); // retire callbacks captured before this turn
+      setInput((current) => current.trim() === text ? '' : current);
+      setMessages((prev) => [...prev, { role: 'user', content: text }, { role: 'assistant', source: 'calculator', content: feeAnswer }]);
+      return;
+    }
 
     // Fast path: "item T4, city" and "city item T4" launch market analysis directly.
     const parsed = parseMarketQuery(text);
     if (parsed.city && onCityDetected) await onCityDetected(parsed.city);
+    if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || advisorSession.isStreaming()) return;
+    setInput((current) => current.trim() === text ? '' : current);
     if (parsed.item) {
       await handleItemSelect(parsed.item, parsed.city || playerCity);
       return;
     }
 
-    const prompt = buildQuestionPrompt(text, marketCtx, lang, parsed.city || playerCity);
-    sendToLLM(prompt, text);
-  }, [input, streaming, engineState, marketCtx, lang, playerCity, onCityDetected, handleItemSelect, sendToLLM]);
+    const prompt = buildQuestionPrompt(text, marketCtx, lang, parsed.city || playerCity, premiumRef.current);
+    sendToLLM(prompt, text, session);
+  }, [advisorSession, renderSession, renderRequest, server, input, fetchingData, marketCtx, lang, isPremium, playerCity, onCityDetected, handleItemSelect, sendToLLM]);
 
   // ─── Image / Vision ──────────────────────────────────────────
 
   const sendImageToLLM = useCallback(
-    (imageUri: string) => {
-      if (streaming || resetInFlightRef.current) return;
+    (imageUri: string, session = renderSession, request = renderRequest) => {
+      if (backendInfo?.hasVision !== true) return;
+      if (!advisorSession.matchesServer(server) || !advisorSession.isRequestCurrent(request) || resetInFlightRef.current) return;
+      const streamTicket = advisorSession.beginStream(session);
+      if (!streamTicket) return;
 
       const prompt = input.trim() || (lang === 'fr' ? 'Décris cette image.' : 'Describe this image.');
       setInput('');
@@ -641,6 +812,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
       setStreaming(true);
       setStreamBuffer('');
+      streamTextRef.current = '';
       let fullResponse = '';
 
       // Convert content:// or file:// URI to path
@@ -649,18 +821,22 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
       trackAIImageSent(activeModelId || 'unknown');
 
-      cleanupRef.current = LLM.sendMessageWithImage(prompt, imagePath, {
+      const cleanup = LLM.sendMessageWithImage(prompt, imagePath, {
         onToken: (token) => {
+          if (!advisorSession.isStreamCurrent(streamTicket)) return;
           fullResponse += token;
+          streamTextRef.current = fullResponse;
           setStreamBuffer(fullResponse);
         },
         onDone: () => {
+          if (!advisorSession.isStreamCurrent(streamTicket)) return;
+          advisorSession.endStream(streamTicket);
           const responseTokens = estimateTokens(fullResponse);
           const newTotal = tokenCount + promptTokens + responseTokens;
           setTokenCount(newTotal);
 
           const msgsToAdd: ChatMessage[] = [
-            { role: 'assistant', content: fullResponse },
+            { role: 'assistant', source: 'model', content: fullResponse },
           ];
 
           if (newTotal >= RESET_THRESHOLD) {
@@ -676,25 +852,26 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
           setMessages((prev) => [...prev, ...msgsToAdd]);
           setStreamBuffer('');
+          streamTextRef.current = '';
           setStreaming(false);
           cleanupRef.current = null;
         },
         onError: (error) => {
-          setMessages((prev) => [
-            ...prev,
-            { role: 'assistant', content: `Error: ${error}` },
-          ]);
-          setStreamBuffer('');
-          setStreaming(false);
-          cleanupRef.current = null;
+          if (!advisorSession.isStreamCurrent(streamTicket)) return;
+          void interruptStream(streamTicket, `Error: ${error}`, fullResponse);
         },
       });
+      if (advisorSession.isStreamCurrent(streamTicket)) cleanupRef.current = cleanup;
+      else cleanup();
     },
-    [streaming, input, tokenCount, lang, server, activeModelId]
+    [advisorSession, renderSession, renderRequest, backendInfo, input, tokenCount, lang, server, activeModelId, resetNativeConversation, interruptStream]
   );
 
   const handlePickImage = useCallback(async () => {
-    if (streaming || engineState !== 'ready') return;
+    if (backendInfo?.hasVision !== true) return;
+    const session = renderSession;
+    const request = renderRequest;
+    if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || advisorSession.isStreaming()) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -702,14 +879,18 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
       allowsEditing: false,
     });
 
-    if (result.canceled || !result.assets?.[0]) return;
-    sendImageToLLM(result.assets[0].uri);
-  }, [streaming, engineState, sendImageToLLM]);
+    if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || result.canceled || !result.assets?.[0]) return;
+    sendImageToLLM(result.assets[0].uri, session, request);
+  }, [advisorSession, renderSession, renderRequest, backendInfo, sendImageToLLM]);
 
   const handleTakePhoto = useCallback(async () => {
-    if (streaming || engineState !== 'ready') return;
+    if (backendInfo?.hasVision !== true) return;
+    const session = renderSession;
+    const request = renderRequest;
+    if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || advisorSession.isStreaming()) return;
 
     const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request)) return;
     if (!perm.granted) {
       Alert.alert(t('error'), lang === 'fr' ? 'Permission caméra refusée' : 'Camera permission denied');
       return;
@@ -720,31 +901,22 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
       allowsEditing: false,
     });
 
-    if (result.canceled || !result.assets?.[0]) return;
-    sendImageToLLM(result.assets[0].uri);
-  }, [streaming, engineState]);
+    if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || result.canceled || !result.assets?.[0]) return;
+    sendImageToLLM(result.assets[0].uri, session, request);
+  }, [advisorSession, renderSession, renderRequest, backendInfo, sendImageToLLM, lang, t]);
 
   const handleReset = useCallback(async () => {
-    cleanupRef.current?.();
-    setStreaming(false);
-    setStreamBuffer('');
+    clearSessionContext();
     setMessages([]);
-    setMarketCtx(null);
-    setSelectedItem(null);
-    setTokenCount(SYSTEM_PROMPT_TOKENS);
-    try {
-      await resetNativeConversation();
-    } catch {}
-  }, [resetNativeConversation]);
+    await resetNativeConversation();
+  }, [clearSessionContext, resetNativeConversation]);
 
   useEffect(() => {
-    if (engineState !== 'ready' || previousServerRef.current === server) return;
+    if (previousServerRef.current === server && !advisorSession.hasServerChange()) return;
+    advisorSession.acknowledgeServerChange();
     previousServerRef.current = server;
-    cleanupRef.current?.();
-    setStreaming(false);
-    setStreamBuffer('');
-    setTokenCount(SYSTEM_PROMPT_TOKENS);
-    void resetNativeConversation();
+    clearSessionContext();
+    if (activeModelRef.current) void resetNativeConversation();
     setMessages((prev) => [
       ...prev,
       {
@@ -754,28 +926,30 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           : `Server changed: ${server}. AI context updated.`,
       },
     ]);
-  }, [server, lang, engineState, resetNativeConversation]);
+  }, [advisorSession, renderSession, server, lang, clearSessionContext, resetNativeConversation]);
 
   const handleBackToModels = useCallback(async () => {
-    cleanupRef.current?.();
-    setStreaming(false);
-    setStreamBuffer('');
+    clearSessionContext();
+    modelAttemptRef.current += 1;
+    initializedModelRef.current = null;
     setMessages([]);
-    setMarketCtx(null);
-    setSelectedItem(null);
-    await LLM.destroy();
     setEngineState('idle');
+    activeModelRef.current = null;
     setActiveModelId(null);
     setScreen('models');
-  }, []);
+    setBackendInfo(null);
+    await advisorSession.enqueue(() => LLM.destroy());
+  }, [advisorSession, clearSessionContext]);
 
   useEffect(() => {
+    advisorSession.mount();
     return () => {
+      advisorSession.dispose();
       cleanupRef.current?.();
       // DownloadManager owns the transfer and continues it across navigation.
       // Cancellation is reserved for the explicit Cancel button above.
     };
-  }, []);
+  }, [advisorSession]);
 
   // ─── MODEL SELECTION SCREEN ──────────────────────────────────
 
@@ -896,7 +1070,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                 </View>
                 <View style={styles.specItem}>
                   <Text style={styles.specLabel}>{lang === 'fr' ? 'Licence' : 'License'}</Text>
-                  <Text style={styles.specValue}>{model.license}</Text>
+                  <Text style={styles.specValue}>{Platform.OS === 'web' ? (model.webLicense ?? model.license) : model.license}</Text>
                 </View>
                 <View style={styles.specItem}>
                   <Text style={styles.specLabel}>Status</Text>
@@ -967,6 +1141,26 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                   )}
                 </View>
               )}
+              {!isWeb && model.cpuTextOption && isDownloaded && !isDownloading && (
+                <View style={{ marginTop: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.startBtn, { flex: 0 }]}
+                    onPress={() => handleStartModel(model, true)}
+                    disabled={engineState === 'loading'}
+                  >
+                    <Text style={styles.startBtnText}>
+                      {lang === 'fr' ? 'Démarrer CPU · texte seul' : lang === 'es' ? 'Iniciar CPU · solo texto' : 'Start CPU · text only'}
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modelDesc}>
+                    {lang === 'fr'
+                      ? "Peut réduire la mémoire : même modèle, sans images. Gain non garanti et vitesse variable selon le téléphone. Le bouton Démarrer conserve le mode GPU/vision automatique."
+                      : lang === 'es'
+                      ? 'Puede reducir memoria: mismo modelo, sin imágenes. Ahorro no garantizado y velocidad variable. Iniciar conserva el modo GPU/visión automático.'
+                      : 'May use less memory: same model, no images. Savings are not guaranteed; speed varies by phone. Start keeps automatic GPU/vision mode.'}
+                  </Text>
+                </View>
+              )}
             </View>
           );
         })}
@@ -984,8 +1178,8 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                 ? 'La IA corre en tu navegador con WebLLM + WebGPU. No se envian datos a servidores externos. El modelo se descarga y almacena localmente. Chrome 113+ o Edge 113+ requerido.'
                 : 'The AI runs in your browser using WebLLM + WebGPU. No data is sent to external servers. The model is downloaded and cached locally. Chrome 113+ or Edge 113+ required.')
               : (lang === 'fr'
-                ? "L'IA tourne entièrement sur ton téléphone grâce à LiteRT-LM avec accélération GPU. Aucune donnée n'est envoyée à un serveur externe. Le modèle analyse les prix du marché Albion en temps réel."
-                : 'The AI runs entirely on your phone using LiteRT-LM with GPU acceleration. No data is sent to external servers. The model analyzes Albion market prices in real-time.')}
+                ? "L'IA tourne entièrement sur ton téléphone grâce à LiteRT-LM sur CPU ou GPU. Aucune donnée n'est envoyée à un serveur externe. Le modèle analyse les prix du marché Albion en temps réel."
+                : 'The AI runs entirely on your phone using LiteRT-LM on CPU or GPU. No data is sent to external servers. The model analyzes Albion market prices in real-time.')}
           </Text>
         </View>
       </ScrollView>
@@ -1022,6 +1216,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           <TouchableOpacity
             style={styles.headerItemBtn}
             onPress={() => setShowItemPicker(true)}
+            disabled={streaming || engineState !== 'ready'}
           >
             <Text style={styles.headerItemBtnText} numberOfLines={1}>
               {selectedItem ? selectedItem.n : t('selectItem')}
@@ -1032,6 +1227,22 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           </TouchableOpacity>
         </View>
       </View>
+
+      {!isWeb && backendInfo && (
+        <Text style={styles.diskInfo}>
+          {backendInfo.backendUsed.toUpperCase()} · {backendInfo.hasVision
+            ? (lang === 'fr' ? 'Texte + images' : lang === 'es' ? 'Texto + imágenes' : 'Text + images')
+            : (lang === 'fr' ? 'Texte seul · images désactivées' : lang === 'es' ? 'Solo texto · imágenes desactivadas' : 'Text only · images disabled')}
+          {backendInfo.maxOutputTokens ? ` · ${lang === 'fr' ? 'Sortie limitée' : lang === 'es' ? 'Salida limitada' : 'Output capped'}: ${backendInfo.maxOutputTokens} tokens (${lang === 'fr' ? 'fin parfois tronquée' : lang === 'es' ? 'puede truncarse' : 'may be truncated'})` : ''}
+        </Text>
+      )}
+
+      {calculatorOnlyAnalysis && (
+        <Text style={styles.analysisSafetyNotice}>
+          {lang === 'fr' ? 'Qwen : analyses d’items calculées localement, non générées. ' : lang === 'es' ? 'Qwen: análisis de objetos calculados localmente, no generados. ' : 'Qwen: item analyses are calculated locally, not generated. '}
+          {unverifiedAIWarning}
+        </Text>
+      )}
 
       {/* Chat messages */}
       <ScrollView ref={scrollRef} style={styles.chatArea} contentContainerStyle={styles.chatContent}>
@@ -1054,6 +1265,9 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                 : styles.assistantBubble,
             ]}
           >
+            {calculatorOnlyAnalysis && msg.role === 'assistant' && msg.source !== 'calculator' && (
+              <Text style={styles.analysisSafetyNotice}>{unverifiedAIWarning}</Text>
+            )}
             <Text
               style={[
                 styles.messageText,
@@ -1072,6 +1286,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
         {streaming && streamBuffer.length > 0 && (
           <View style={[styles.messageBubble, styles.assistantBubble]}>
+            {calculatorOnlyAnalysis && <Text style={styles.analysisSafetyNotice}>{unverifiedAIWarning}</Text>}
             <Text style={[styles.messageText, styles.assistantText]} selectable>
               {streamBuffer}
             </Text>
@@ -1088,19 +1303,19 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
       {/* Input bar */}
       <View style={styles.inputBar}>
-        {!isWeb && (
+        {!isWeb && backendInfo?.hasVision === true && (
           <>
             <TouchableOpacity
               style={styles.imageBtn}
               onPress={handlePickImage}
-              disabled={streaming}
+              disabled={streaming || fetchingData || engineState !== 'ready'}
             >
               <Text style={styles.imageBtnText}>{'\u{1F5BC}'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.imageBtn}
               onPress={handleTakePhoto}
-              disabled={streaming}
+              disabled={streaming || fetchingData || engineState !== 'ready'}
             >
               <Text style={styles.imageBtnText}>{'\u{1F4F7}'}</Text>
             </TouchableOpacity>
@@ -1117,13 +1332,22 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           returnKeyType="send"
           multiline
         />
-        <TouchableOpacity
-          style={[styles.sendBtn, (!input.trim() || streaming) && styles.sendBtnDisabled]}
+        {streaming ? (
+          <TouchableOpacity
+            style={[styles.sendBtn, { width: 'auto', paddingHorizontal: SPACING.sm, backgroundColor: COLORS.loss }]}
+            onPress={handleStop}
+            accessibilityRole="button"
+            accessibilityLabel={lang === 'fr' ? 'Arrêter la génération' : lang === 'es' ? 'Detener generación' : 'Stop generation'}
+          >
+            <Text style={styles.sendBtnText}>{lang === 'fr' ? 'Arrêter' : lang === 'es' ? 'Detener' : 'Stop'}</Text>
+          </TouchableOpacity>
+        ) : <TouchableOpacity
+          style={[styles.sendBtn, (!input.trim() || streaming || fetchingData || engineState !== 'ready') && styles.sendBtnDisabled]}
           onPress={handleSend}
-          disabled={!input.trim() || streaming}
+          disabled={!input.trim() || streaming || fetchingData || engineState !== 'ready'}
         >
           <Text style={styles.sendBtnText}>{'\u{27A4}'}</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
       </View>
 
       <ItemPicker
@@ -1139,6 +1363,12 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 // ─── STYLES ──────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  analysisSafetyNotice: {
+    color: COLORS.warning,
+    fontSize: FONT_SIZE.xs,
+    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

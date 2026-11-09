@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
-import Svg, { Line as SvgLine, Polyline as SvgPolyline } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Line as SvgLine, Polyline as SvgPolyline } from 'react-native-svg';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import {
   fetchPriceHistory,
@@ -28,7 +28,8 @@ import { AlbionItem } from '../lib/items';
 import { Language } from '../lib/i18n';
 import { createLiveTrackingController, LiveCadence, LIVE_INTERVALS } from '../lib/liveTrackingController';
 import { LivePoint } from '../lib/liveTracking';
-import { mergeLivePointsIntoHistory, unionLiveTimestamps, decimateLiveTimestamps, createLiveChartProjection, projectLiveChartPoint, splitLiveChartLineSegments } from '../lib/liveChart';
+import { prepareHistoryChart } from '../lib/historyChart';
+import { parseAodpTimestamp } from '../lib/aodpTime';
 import ItemPicker from '../components/ItemPicker';
 import QualitySelector from '../components/QualitySelector';
 
@@ -82,7 +83,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
   const [liveDashedSegments, setLiveDashedSegments] = useState<import('../lib/liveChart').LiveChartSegment[]>([]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const liveController = useRef(createLiveTrackingController({
-    fetchPrices: (config) => fetchCurrentPricesLiveBatch(config.itemIds, config.cities, config.server, config.quality),
+    fetchPrices: (config, signal) => fetchCurrentPricesLiveBatch(config.itemIds, config.cities, config.server, config.quality, { signal }),
     onUpdate: (snapshot) => { setLivePoints(snapshot.points); setLiveSeriesCount(snapshot.seriesCount); setLiveDashedSegments(snapshot.dashedSegments); setLiveStatus(snapshot.status); setLivePollAt(snapshot.lastPollAt); setLiveError(snapshot.error?.message); setLiveSuspended(snapshot.state === 'suspended'); },
   }));
   const liveConfigKey = `${selectedItems.map(i => i.id).join(',')}|${[...selectedCities].join(',')}|${server}|${quality}`;
@@ -91,10 +92,26 @@ export default function HistoryScreen({ t, lang, server }: Props) {
     const timer = setInterval(() => setNowMs(Date.now()), 60_000);
     return () => clearInterval(timer);
   }, []);
-  useEffect(() => { if (liveEnabled) { liveController.current.stop(); setLiveEnabled(false); setLiveSuspended(false); setLivePoints([]); } }, [liveConfigKey]);
+  useEffect(() => {
+    liveController.current.stop();
+    setLiveEnabled(false);
+    setLiveSuspended(false);
+    setLivePoints([]);
+    setLiveDashedSegments([]);
+  }, [liveConfigKey]);
   const [historyData, setHistoryData] = useState<HistoryResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const requestGeneration = useRef(0);
+  const historyConfigKey = `${liveConfigKey}|${period}|${timeScale}`;
+  const historyConfigRef = useRef(historyConfigKey);
+  historyConfigRef.current = historyConfigKey;
+  useEffect(() => {
+    // Invalidate completed and in-flight results whenever their inputs change.
+    requestGeneration.current += 1;
+    setHistoryData([]);
+    setLoading(false);
+    return () => { requestGeneration.current += 1; };
+  }, [historyConfigKey]);
 
   const periodLabels: Record<string, string> = {
     '7d': t('days7'),
@@ -126,6 +143,8 @@ export default function HistoryScreen({ t, lang, server }: Props) {
     }
     setLoading(true);
     const generation = ++requestGeneration.current;
+    const requestedConfig = historyConfigKey;
+    const isCurrentRequest = () => generation === requestGeneration.current && requestedConfig === historyConfigRef.current;
     try {
       const startDate = formatDateForApi(daysAgo(period));
       const endDate = formatDateForApi(new Date());
@@ -134,63 +153,25 @@ export default function HistoryScreen({ t, lang, server }: Props) {
       const allData: HistoryResponse[] = [];
       for (const item of selectedItems) {
         const data = await fetchPriceHistory(item.id, cities, startDate, endDate, timeScale, server, quality);
+        if (!isCurrentRequest()) return;
         allData.push(...data);
       }
-      if (generation !== requestGeneration.current) return;
+      if (!isCurrentRequest()) return;
       setHistoryData(allData);
     } catch (e) {
-      Alert.alert(t('error'), String(e));
+      if (isCurrentRequest()) Alert.alert(t('error'), String(e));
+    } finally {
+      if (isCurrentRequest()) setLoading(false);
     }
-    setLoading(false);
-  }, [selectedItems, selectedCities, period, timeScale, server, quality]);
+  }, [selectedItems, selectedCities, period, timeScale, server, quality, historyConfigKey]);
 
-  // Prepare cleaned chart data
-  const chartInfo = React.useMemo(() => {
-    if (historyData.length === 0) return null;
-
-    const displayHistory = mergeLivePointsIntoHistory(historyData, livePoints);
-    const validEntries = displayHistory
-      .filter((h) => h.data.some((d) => d.avg_price > 0))
-      .map((entry) => ({ entry, values: new Map(entry.data.filter((d) => d.avg_price > 0).map((d) => [d.timestamp, d.avg_price])) }))
-      .filter((series) => series.values.size > 0);
-    if (validEntries.length === 0) return null;
-
-    const axisTimestamps = unionLiveTimestamps([
-      ...validEntries.map(({ values }) => ({ timestamps: values.keys() })),
-      ...liveDashedSegments.map((segment) => ({ timestamps: [segment.from.timestamp, segment.to.timestamp] })),
-    ]);
-    const chartTimestamps = unionLiveTimestamps([
-      { timestamps: decimateLiveTimestamps(axisTimestamps) },
-      ...liveDashedSegments.map((segment) => ({ timestamps: [segment.from.timestamp, segment.to.timestamp] })),
-    ]);
-    const labels = chartTimestamps.map((timestamp) => {
-      const date = new Date(timestamp);
-      return `${date.getDate()}/${date.getMonth() + 1}`;
-    });
-    const datasets: { data: number[]; color: (opacity: number) => string; strokeWidth: number }[] = [];
-    const lineSeries: import('../lib/liveChart').LiveChartSeries[] = [];
-    const legendEntries: { label: string; color: string; min: number; max: number; avg: number; last: number }[] = [];
-    const chartValues: number[] = [];
-    for (const { entry, values } of validEntries) {
-      const color = CITY_COLORS[entry.location] || '#FFFFFF';
-      const points = [...values.values()];
-      if (chartTimestamps.length >= 2) {
-        const data = chartTimestamps.map((timestamp) => values.get(timestamp) ?? null);
-        chartValues.push(...data.filter((value): value is number => value !== null));
-        datasets.push({ data: data as unknown as number[], color: () => 'transparent', strokeWidth: 0 });
-        lineSeries.push({ key: `${entry.item_id}|${entry.location}|${entry.quality}`, city: entry.location, color, points: chartTimestamps.flatMap((timestamp) => { const value = values.get(timestamp); return value === undefined ? [] : [{ key: `${entry.item_id}|${entry.location}|${entry.quality}`, itemId: entry.item_id, city: entry.location as import('../lib/api').City, quality: entry.quality as Quality, timestamp, value }]; }), dashedSegments: [] });
-      }
-      const min = Math.min(...points); const max = Math.max(...points);
-      const avg = Math.round(points.reduce((sum, value) => sum + value, 0) / points.length);
-      const lastTimestamp = [...values.keys()].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
-      const itemName = selectedItems.length > 1 ? `${entry.item_id.replace(/^T\d_/, '')} - ${entry.location}` : entry.location;
-      legendEntries.push({ label: itemName, color, min, max, avg, last: values.get(lastTimestamp) as number });
-    }
-    const chartWidth = Math.max(screenWidth - SPACING.md, chartTimestamps.length * 60);
-    const projection = createLiveChartProjection(chartTimestamps, chartValues, chartWidth);
-    const lineSegments = splitLiveChartLineSegments(lineSeries, chartTimestamps);
-    return { labels, datasets, legendEntries, projection, lineSegments, hasTruncatedSeries: validEntries.some(({ values }) => values.size !== axisTimestamps.length), noCommonTimestamps: chartTimestamps.length === 0 };
-  }, [historyData, selectedItems, livePoints, liveDashedSegments]);
+  // Keep the presentation model testable without native rendering dependencies.
+  const chartInfo = React.useMemo(() => prepareHistoryChart({
+    historyData, livePoints, liveDashedSegments,
+    multipleItems: selectedItems.length > 1,
+    colors: CITY_COLORS,
+    width: screenWidth - SPACING.md,
+  }), [historyData, selectedItems, livePoints, liveDashedSegments]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -327,7 +308,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
             const allTimestamps = historyData
               .flatMap((h) => h.data.map((d) => d.timestamp))
               .filter(Boolean)
-              .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+              .sort((a, b) => parseAodpTimestamp(b) - parseAodpTimestamp(a));
             const latest = allTimestamps[0];
             if (!latest) return null;
             return (
@@ -346,7 +327,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
                 labels: chartInfo.labels,
                 datasets: chartInfo.datasets,
               }}
-              width={Math.max(screenWidth - SPACING.md, chartInfo.labels.length * 60)}
+              width={chartInfo.projection.width}
               height={220}
               chartConfig={{
                 backgroundColor: 'transparent',
@@ -383,10 +364,14 @@ export default function HistoryScreen({ t, lang, server }: Props) {
               style={styles.chart}
             />
             <Svg pointerEvents="none" width={chartInfo.projection.width} height={chartInfo.projection.height} style={{ position: 'absolute', left: 0, top: 0 }}>
-              {chartInfo.lineSegments.map((segment, index) => <SvgPolyline key={`solid-${index}`} points={segment.points.map((point) => { const xy = projectLiveChartPoint(point.timestamp, point.value, chartInfo.projection); return `${xy.x},${xy.y}`; }).join(' ')} fill="none" stroke={segment.color} strokeWidth="3" />)}
+              {chartInfo.lineSegments.map((segment, index) => <SvgPolyline key={`solid-${index}`} points={segment.points.map((point) => { const xy = chartInfo.projectPoint(point.timestamp, point.value); return `${xy.x},${xy.y}`; }).join(' ')} fill="none" stroke={segment.color} strokeWidth="3" />)}
+              {chartInfo.isolatedPoints.map((point) => {
+                const xy = chartInfo.projectPoint(point.timestamp, point.value);
+                return <SvgCircle key={point.key + '|' + point.timestamp} cx={xy.x} cy={xy.y} r="4" fill={point.color} />;
+              })}
               {liveDashedSegments.map((segment, index) => {
-                const from = projectLiveChartPoint(segment.from.timestamp, segment.from.value, chartInfo.projection);
-                const to = projectLiveChartPoint(segment.to.timestamp, segment.to.value, chartInfo.projection);
+                const from = chartInfo.projectPoint(segment.from.timestamp, segment.from.value);
+                const to = chartInfo.projectPoint(segment.to.timestamp, segment.to.value);
                 return <SvgLine key={`dashed-${index}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={CITY_COLORS[segment.city] || COLORS.primary} strokeWidth="3" strokeDasharray="8 5" />;
               })}
             </Svg>
@@ -444,7 +429,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
                 </View>
                 <View style={styles.statsCell}>
                   <Text style={[styles.statsCellText, { color: COLORS.primary }]}>
-                    {formatSilver(entry.avg)}
+                    {entry.avg === null ? '—' : formatSilver(entry.avg)}
                   </Text>
                 </View>
                 <View style={styles.statsCell}>
@@ -465,6 +450,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
           {chartInfo.legendEntries.length > 0 && (
             <View style={styles.trendContainer}>
               {chartInfo.legendEntries.map((entry, idx) => {
+                if (entry.avg === null) return null;
                 const trend = entry.last > entry.avg ? 'up' : entry.last < entry.avg ? 'down' : 'stable';
                 const trendIcon = trend === 'up' ? '\u2191' : trend === 'down' ? '\u2193' : '\u2192';
                 const trendColor = trend === 'up' ? COLORS.profit : trend === 'down' ? COLORS.loss : COLORS.textMuted;
@@ -487,7 +473,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
         </View>
       )}
 
-      {historyData.length === 0 && !loading && (
+      {!chartInfo && !loading && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>{'\u{1F4CA}'}</Text>
           <Text style={styles.emptyText}>

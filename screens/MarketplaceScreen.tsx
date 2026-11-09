@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import PriceAlertsPanel from '../components/PriceAlertsPanel';
+import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +14,9 @@ import { calculateMarketplaceProfit, MarketplaceStrategy, breakEvenSellPrice } f
 import { Language } from '../lib/i18n';
 import { fetchCurrentPrices, fetchCurrentPricesBatch, CITIES, City, Server, formatDataAge, PriceData, Quality } from '../lib/api';
 import { parseUserNumber } from '../lib/numberParsing';
+import { resolveMarketplacePrices } from '../lib/marketplacePrices';
+import { createLatestRequestScope } from '../lib/latestRequest';
+import { summarizeWatchlistPrices } from '../lib/watchlistPrices';
 import { captureAnalyticsAuthorization, trackMarketCalculation, trackPriceFetch } from '../lib/analytics';
 import { AlbionItem } from '../lib/items';
 import NumberInput from '../components/NumberInput';
@@ -22,6 +26,7 @@ import PremiumInfoPanel from '../components/PremiumInfoPanel';
 import ItemPicker from '../components/ItemPicker';
 import QualitySelector from '../components/QualitySelector';
 import { useWatchlist } from '../hooks/useWatchlist';
+import { useLocalizedNumberInput } from '../hooks/useLocalizedNumberInput';
 
 interface Props {
   t: (key: any) => any;
@@ -32,24 +37,36 @@ interface Props {
 }
 
 export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiumChange }: Props) {
-  const [buyPrice, setBuyPrice] = useState('');
-  const [sellPrice, setSellPrice] = useState('');
-  const [quantity, setQuantity] = useState('1');
+  const [manualBuyPrice, setManualBuyPrice] = useLocalizedNumberInput<string | null>(null, lang);
+  const [manualSellPrice, setManualSellPrice] = useLocalizedNumberInput<string | null>(null, lang);
+  const [liveQuote, setLiveQuote] = useState<PriceData | null>(null);
+  const [quantity, setQuantity] = useLocalizedNumberInput<string>('1', lang);
   const [useBuyOrder, setUseBuyOrder] = useState(true);
   const [useSellOrder, setUseSellOrder] = useState(true);
   const [showItemPicker, setShowItemPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedCity, setSelectedCity] = useState<City>('Caerleon');
-  const [priceDate, setPriceDate] = useState<{ sell: string; buy: string } | null>(null);
   const [quality, setQuality] = useState<Quality>(1);
   const { entries: watchlist, loaded: watchlistLoaded, add: addWatch, remove: removeWatch } = useWatchlist(server);
   const [watchResults, setWatchResults] = useState<PriceData[]>([]);
   const [watchLoading, setWatchLoading] = useState(false);
-  const requestGeneration = useRef(0);
-  useEffect(() => {
-    requestGeneration.current += 1;
-    setBuyPrice(''); setSellPrice(''); setPriceDate(null);
-  }, [server, selectedCity]);
+  const priceRequests = useRef(createLatestRequestScope()).current;
+  const watchRequests = useRef(createLatestRequestScope()).current;
+  const watchlistKey = watchlist.map((entry) => `${entry.itemId}:${entry.quality}`).join('|');
+  useLayoutEffect(() => {
+    priceRequests.invalidate();
+    setLiveQuote(null); setManualBuyPrice(null); setManualSellPrice(null);
+    setLoading(false);
+    return () => priceRequests.invalidate();
+  }, [server, selectedCity, quality, priceRequests]);
+  useLayoutEffect(() => {
+    watchRequests.invalidate();
+    setWatchResults([]); setWatchLoading(false);
+    return () => watchRequests.invalidate();
+  }, [server, watchlistKey, watchRequests]);
+  const { buyPrice, sellPrice, priceDate } = resolveMarketplacePrices(
+    liveQuote, useBuyOrder, useSellOrder, { buy: manualBuyPrice, sell: manualSellPrice }, lang,
+  );
   const result = useMemo(() => {
     const buyParsed = parseUserNumber(buyPrice, false, lang);
     const sellParsed = parseUserNumber(sellPrice, false, lang);
@@ -63,56 +80,63 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
 
   const comparisonRows = useMemo(() => {
     if (!result) return [];
-    const buy = parseUserNumber(buyPrice, false, lang).value;
-    const sell = parseUserNumber(sellPrice, false, lang).value;
     const qty = parseUserNumber(quantity, true, lang).value;
     const modes: MarketplaceStrategy[] = ['instant-instant', 'order-instant', 'instant-order', 'order-order'];
     return modes.map((mode) => {
       const flags = { useBuyOrder: mode === 'order-instant' || mode === 'order-order', useSellOrder: mode === 'instant-order' || mode === 'order-order' };
-      const value = calculateMarketplaceProfit(buy, sell, qty, isPremium, flags.useBuyOrder, flags.useSellOrder);
-      return { mode, value, breakEven: breakEvenSellPrice(buy, qty, isPremium, mode) };
-    });
-  }, [result, buyPrice, sellPrice, quantity, isPremium, lang]);
+      const prices = resolveMarketplacePrices(liveQuote, flags.useBuyOrder, flags.useSellOrder, { buy: manualBuyPrice, sell: manualSellPrice }, lang);
+      const buy = parseUserNumber(prices.buyPrice, false, lang);
+      const sell = parseUserNumber(prices.sellPrice, false, lang);
+      if (!buy.valid || buy.value <= 0 || !sell.valid || sell.value <= 0) return null;
+      const value = calculateMarketplaceProfit(buy.value, sell.value, qty, isPremium, flags.useBuyOrder, flags.useSellOrder);
+      return { mode, value, breakEven: breakEvenSellPrice(buy.value, qty, isPremium, mode) };
+    }).filter((row): row is NonNullable<typeof row> => row !== null);
+  }, [result, liveQuote, manualBuyPrice, manualSellPrice, quantity, isPremium, lang]);
 
   const handleFetchPrices = async (item: AlbionItem) => {
-    const generation = ++requestGeneration.current;
     const analyticsAuthorization = captureAnalyticsAuthorization();
-    setLoading(true);
-    try {
-      const prices = await fetchCurrentPrices(item.id, [selectedCity], server, quality);
-      if (generation !== requestGeneration.current) { setLoading(false); return; }
-      const cityPrice = prices.find((p) => p.city === selectedCity && p.quality === quality);
-      if (cityPrice) {
-        addWatch({ itemId: item.id, itemName: item.n, quality });
-        setBuyPrice(cityPrice.buy_price_max > 0 ? String(cityPrice.buy_price_max) : '');
-        setSellPrice(cityPrice.sell_price_min > 0 ? String(cityPrice.sell_price_min) : '');
-        trackPriceFetch(item.id, selectedCity, analyticsAuthorization);
-        trackMarketCalculation(analyticsAuthorization);
-        setPriceDate({
-          sell: cityPrice.sell_price_min_date || '',
-          buy: cityPrice.buy_price_max_date || '',
-        });
-      } else {
-        Alert.alert(t('error'), t('noData'));
-      }
-    } catch (e) {
-      Alert.alert(t('error'), String(e));
-    }
-    setLoading(false);
+    setLiveQuote(null); setManualBuyPrice(null); setManualSellPrice(null);
+    await priceRequests.run(
+      () => fetchCurrentPrices(item.id, [selectedCity], server, quality, { forceRefresh: true }),
+      {
+        onLoadingChange: setLoading,
+        onSuccess: (prices) => {
+          const cityPrice = prices.find((p) => p.item_id === item.id && p.city === selectedCity && p.quality === quality);
+          if (cityPrice) {
+            addWatch({ itemId: item.id, itemName: item.n, quality });
+            setLiveQuote(cityPrice);
+            trackPriceFetch(item.id, selectedCity, analyticsAuthorization);
+            trackMarketCalculation(analyticsAuthorization);
+          } else {
+            Alert.alert(t('error'), t('noData'));
+          }
+        },
+        onError: (error) => Alert.alert(t('error'), String(error)),
+      },
+    );
   };
 
   const scanWatchlist = async () => {
-    if (!watchlist.length) return;
-    setWatchLoading(true);
-    try {
+    if (!watchlistLoaded || !watchlist.length) return;
+    setWatchResults([]);
+    await watchRequests.run(async (isCurrent) => {
       const grouped = new Map<Quality, string[]>();
       for (const entry of watchlist) grouped.set(entry.quality, [...(grouped.get(entry.quality) || []), entry.itemId]);
       const partial: PriceData[] = [];
       for (const [entryQuality, ids] of grouped) {
-        try { partial.push(...await fetchCurrentPricesBatch(ids, [...CITIES], server, entryQuality)); setWatchResults([...partial]); }
+        if (!isCurrent()) break;
+        try {
+          partial.push(...await fetchCurrentPricesBatch(ids, [...CITIES], server, entryQuality));
+          if (isCurrent()) setWatchResults([...partial]);
+        }
         catch { /* preserve successful batches and continue */ }
       }
-    } finally { setWatchLoading(false); }
+      return partial;
+    }, {
+      onLoadingChange: setWatchLoading,
+      onSuccess: setWatchResults,
+      onError: () => { /* retain any successful partial batches */ },
+    });
   };
 
   const copyResult = async () => {
@@ -129,12 +153,14 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
       <View style={styles.watchCard}>
         <View style={styles.watchHeader}>
           <Text style={styles.watchTitle}>{lang === 'fr' ? 'Favoris' : lang === 'es' ? 'Favoritos' : 'Watchlist'} ({watchlistLoaded ? watchlist.length : '…'})</Text>
-          <TouchableOpacity style={styles.watchScanBtn} onPress={scanWatchlist} disabled={watchLoading || !watchlist.length}><Text style={styles.watchScanText}>{watchLoading ? '…' : lang === 'fr' ? 'Scanner' : 'Scan'}</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.watchScanBtn} onPress={scanWatchlist} disabled={watchLoading || !watchlistLoaded || !watchlist.length}><Text style={styles.watchScanText}>{watchLoading ? '…' : lang === 'fr' ? 'Scanner' : 'Scan'}</Text></TouchableOpacity>
         </View>
         {watchlist.length === 0 ? <Text style={styles.watchEmpty}>{lang === 'fr' ? 'Sélectionne un item pour l’ajouter automatiquement.' : 'Select an item to add it automatically.'}</Text> : watchlist.map((entry) => {
-          const count = watchResults.filter((p) => p.item_id === entry.itemId && p.quality === entry.quality).length;
-          return <View style={styles.watchRow} key={`${entry.itemId}:${entry.quality}`}><Text style={styles.watchName} numberOfLines={1}>{entry.itemName} · Q{entry.quality}</Text><Text style={styles.watchCount}>{count ? `${count} villes` : '—'}</Text><TouchableOpacity onPress={() => removeWatch(entry)} style={styles.watchRemove}><Text style={styles.watchRemoveText}>×</Text></TouchableOpacity></View>;
+          const { hasResponse, count } = summarizeWatchlistPrices(watchResults, entry.itemId, entry.quality);
+          const cityCountLabel = lang === 'fr' ? 'villes avec données' : lang === 'es' ? 'ciudades con datos' : 'cities with data';
+          return <View style={styles.watchRow} key={`${entry.itemId}:${entry.quality}`}><Text style={styles.watchName} numberOfLines={1}>{entry.itemName} · Q{entry.quality}</Text><Text style={styles.watchCount}>{hasResponse ? `${count} ${cityCountLabel}` : '—'}</Text><TouchableOpacity onPress={() => removeWatch(entry)} style={styles.watchRemove}><Text style={styles.watchRemoveText}>×</Text></TouchableOpacity></View>;
         })}
+        <PriceAlertsPanel lang={lang} />
       </View>
 
       {/* Premium Toggle */}
@@ -145,10 +171,7 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
         labelOff={t('nonPremium')}
       />
 
-      <QualitySelector value={quality} lang={lang} onChange={(nextQuality) => {
-        setQuality(nextQuality);
-        setBuyPrice(''); setSellPrice(''); setPriceDate(null);
-      }} />
+      <QualitySelector value={quality} lang={lang} onChange={setQuality} />
 
       {/* Buy and sell orders are independent decisions. */}
       <View style={styles.orderToggle}>
@@ -224,14 +247,14 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
         locale={lang}
         label={t('buyPrice')}
         value={buyPrice}
-        onChangeText={setBuyPrice}
+        onChangeText={setManualBuyPrice}
         info={useBuyOrder ? t('setupFeeInfo') : undefined}
       />
       <NumberInput
         locale={lang}
         label={t('sellPrice')}
         value={sellPrice}
-        onChangeText={setSellPrice}
+        onChangeText={setManualSellPrice}
         info={t('salesTaxInfo')}
       />
       <NumberInput

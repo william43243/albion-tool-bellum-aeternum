@@ -1,0 +1,16 @@
+{
+  "description": "Android companion for Albion Online: market comparisons, net flip calculations, price history, interactive routes and alerts, with local AI and optional experimental OpenAI sign-in. Beta.",
+  "topics": [
+    "albion-online",
+    "android",
+    "react-native",
+    "expo",
+    "market-analysis",
+    "price-alerts",
+    "interactive-map",
+    "on-device-ai",
+    "litert-lm",
+    "openai",
+    "tool-calling"
+  ]
+}

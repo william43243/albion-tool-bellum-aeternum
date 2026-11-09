@@ -7,7 +7,8 @@ const packageLock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
 const appJson = JSON.parse(readFileSync('app.json', 'utf8'));
 const buildGradle = readFileSync('android/app/build.gradle', 'utf8');
 const gradleProperties = readFileSync('android/gradle.properties', 'utf8');
-const releaseWorkflow = readFileSync('.github/workflows/build-apk.yml', 'utf8');
+// Normalize checkout line endings without changing the shell content asserted below.
+const releaseWorkflow = readFileSync('.github/workflows/build-apk.yml', 'utf8').replace(/\r\n/g, '\n');
 const siteIndex = readFileSync('site/index.html', 'utf8');
 
 function requiredMatch(input: string, expression: RegExp, label: string): string {

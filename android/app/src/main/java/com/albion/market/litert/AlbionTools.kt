@@ -22,6 +22,14 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
         private const val MAX_RESPONSE_BYTES = 2 * 1024 * 1024
     }
 
+    @Volatile private var cancelled = false
+    @Volatile private var activeConnection: HttpURLConnection? = null
+    fun cancel() {
+        cancelled = true
+        val connection = activeConnection
+        com.albion.market.siwc.NetworkCleanup.execute { connection?.disconnect() }
+    }
+
     private val allowedServerBases = setOf(
         "https://west.albion-online-data.com/api/v2/stats",
         "https://europe.albion-online-data.com/api/v2/stats",
@@ -31,6 +39,12 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
     init { require(serverBaseUrl in allowedServerBases) { "Unsupported Albion server" } }
 
     private val itemsDb: List<JSONObject> by lazy { loadItemsDb() }
+
+    private fun exactLong(value: JSONObject, key: String, default: Long? = null): Long {
+        if (!value.has(key) && default != null) return default
+        val number = value.get(key)
+        return MarketNumeric.exactLong(number)
+    }
 
     private fun requireKnownItemId(raw: String): String {
         val itemId = raw.trim()
@@ -99,7 +113,7 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
         """.trimIndent()
         override fun execute(paramsJsonString: String): String {
             return try {
-                val itemId = JSONObject(paramsJsonString).getString("item_id")
+                val itemId = requireKnownItemId(JSONObject(paramsJsonString).getString("item_id"))
                 val quality = JSONObject(paramsJsonString).getInt("quality").coerceIn(1, 5)
                 val cities = "Caerleon,Bridgewatch,Fort Sterling,Lymhurst,Thetford,Martlock,Brecilien"
                 val response = httpGet("$serverBaseUrl/prices/${encodePath(itemId)}.json?locations=${encodeQuery(cities)}&qualities=$quality")
@@ -108,10 +122,11 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
                 val result = JSONObject(); val cityPrices = JSONArray(); val seen = mutableSetOf<String>()
                 for (i in 0 until prices.length()) {
                     val p = prices.getJSONObject(i)
-                    if (p.optInt("quality", 1) != quality) continue
+                    require(p.getString("item_id") == itemId) { "Mismatched item" }
+                    require(exactLong(p,"quality") == quality.toLong()) { "Mismatched quality" }
                     val city = p.optString("city")
-                    require(city.isNotEmpty() && seen.add(city)) { "Invalid or duplicate city" }
-                    val sellMin = p.optLong("sell_price_min", 0); val buyMax = p.optLong("buy_price_max", 0)
+                    require(city in cities.split(",") && seen.add(city)) { "Invalid or duplicate city" }
+                    val sellMin = exactLong(p,"sell_price_min",0); val buyMax = exactLong(p,"buy_price_max",0)
                     require(sellMin in 0L..Int.MAX_VALUE.toLong() && buyMax in 0L..Int.MAX_VALUE.toLong()) { "Invalid price" }
                     if (sellMin == 0L && buyMax == 0L) continue
                     val sellDate = if (sellMin > 0) p.getString("sell_price_min_date").also { parseAodpTimestamp(it) } else ""
@@ -122,49 +137,56 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
                         if (buyMax > 0) { put("buy", buyMax); put("buy_date", buyDate) }
                     })
                 }
-                result.put("item", itemId); result.put("prices", cityPrices); result.toString()
-            } catch (e: Exception) { JSONObject().put("error", e.message ?: "tool error").toString() }
+                result.put("item", itemId); result.put("prices", cityPrices); result.put("fetched_at_ms", System.currentTimeMillis()); result.put("source", serverBaseUrl); result.toString()
+            } catch (e: Exception) { JSONObject().put("error", "Unable to retrieve or validate market prices. Check the request and try again.").toString() }
         }
     }
 
     val getHistoryTool = object : OpenApiTool {
         override fun getToolDescriptionJsonString(): String = """
-        {"name":"get_history","description":"Get price history for an Albion item.","parameters":{"type":"object","properties":{"item_id":{"type":"string","description":"Item ID"},"quality":{"type":"integer","description":"Quality 1 to 5"},"days":{"type":"integer","description":"Days of history (7,30,90)"}},"required":["item_id","quality","days"]}}
+        {"name":"get_history","description":"Get observed daily price history over the last complete UTC days from AODP, a third-party community project, not an official Albion Online service. Its client uploads market observations captured as participating players browse markets; per-observation contributor attribution is not provided here. Report missing days and actual coverage; data may be incomplete and never represents all transactions. item_count is the aggregated quantity of items represented in reported observations, not a count of trades or orders and not a silver value. A weighted aggregate of reported bucket averages is not an exact transaction-level mean. 60 days is not necessarily two calendar months.","parameters":{"type":"object","properties":{"item_id":{"type":"string","description":"Item ID"},"quality":{"type":"integer","description":"Quality 1 to 5"},"days":{"type":"integer","description":"Complete UTC days of history (7,30,60,90)"},"city":{"type":"string","enum":["all","Caerleon","Bridgewatch","Fort Sterling","Lymhurst","Thetford","Martlock","Brecilien"],"description":"Use the specified city; all only for an all-city comparison"}},"required":["item_id","quality","days","city"]}}
         """.trimIndent()
         override fun execute(paramsJsonString: String): String {
             return try {
                 val params = JSONObject(paramsJsonString)
-                val itemId = params.getString("item_id"); val quality = params.getInt("quality").coerceIn(1, 5); val days = params.optInt("days", 7)
-                val cities = "Caerleon,Bridgewatch,Fort Sterling,Lymhurst,Thetford,Martlock,Brecilien"
-                val cal = Calendar.getInstance(); val endDate = formatApiDate(cal)
-                cal.add(Calendar.DAY_OF_YEAR, -days); val startDate = formatApiDate(cal)
+                val itemId = requireKnownItemId(params.getString("item_id")); val quality = exactLong(params,"quality").also { require(it in 1L..5L) }.toInt(); val days = exactLong(params,"days").also { require(it in setOf(7L,30L,60L,90L)) }.toInt()
+                val allowedCities = setOf("Caerleon","Bridgewatch","Fort Sterling","Lymhurst","Thetford","Martlock","Brecilien")
+                val requestedCity=params.optString("city","all"); require(requestedCity=="all" || requestedCity in allowedCities)
+                val cities=if(requestedCity=="all") allowedCities.joinToString(",") else requestedCity
+                val window=HistoryWindow(System.currentTimeMillis(),days)
+                val cal=Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+                cal.timeInMillis=window.end;val endDate=formatApiDate(cal)
+                cal.timeInMillis=window.start;val startDate=formatApiDate(cal)
                 val response = httpGet("$serverBaseUrl/history/${encodePath(itemId)}.json?locations=${encodeQuery(cities)}&date=${encodeQuery(startDate)}&end_date=${encodeQuery(endDate)}&time-scale=24&qualities=$quality")
-                val history = JSONArray(response); val citySummaries = JSONArray()
+                val history = JSONArray(response); require(history.length() <= 100) { "Too many history rows" }; val citySummaries = JSONArray(); val seenCities = mutableSetOf<String>()
                 for (i in 0 until history.length()) {
-                    val h = history.getJSONObject(i); if (h.optInt("quality", 1) != quality) continue; val data = h.getJSONArray("data")
-                    if (data.length() == 0) continue
-                    var weightedSum = 0L; var count = 0; var totalVol = 0L; var min = Long.MAX_VALUE; var max = 0L
-                    var lastTimestampMillis = Long.MIN_VALUE; var lastPrice = 0L; val seenTimes = mutableSetOf<Long>()
+                    val h = history.getJSONObject(i); require(exactLong(h,"quality") == quality.toLong() && h.getString("location") in cities.split(",") && seenCities.add(h.getString("location"))) { "Mismatched history identity" }; val data = h.getJSONArray("data")
+                    require(h.getString("item_id") == itemId && data.length() <= 1000) { "Invalid history rows" }
+                    val aggregate=HistoryAggregate(window); val observations=JSONArray()
                     for (j in 0 until data.length()) {
-                        val d = data.getJSONObject(j); val avg = d.getLong("avg_price"); val volume = d.getLong("item_count")
-                        val timestampMillis = parseAodpTimestamp(d.getString("timestamp"))
-                        require(avg in 0L..Int.MAX_VALUE.toLong() && volume in 0L..Int.MAX_VALUE.toLong() && seenTimes.add(timestampMillis)) { "Invalid history point" }
-                        if (avg <= 0) continue
-                        weightedSum = Math.addExact(weightedSum, Math.multiplyExact(avg, volume))
-                        totalVol = Math.addExact(totalVol, volume)
-                        count++
-                        if (avg < min) min = avg; if (avg > max) max = avg
-                        if (timestampMillis > lastTimestampMillis) { lastTimestampMillis = timestampMillis; lastPrice = avg }
+                        val d=data.getJSONObject(j)
+                        val timestamp=parseAodpTimestamp(d.getString("timestamp")); val price=exactLong(d,"avg_price"); val volume=exactLong(d,"item_count")
+                        aggregate.add(timestamp,price,volume)
+                        if(window.includes(timestamp) && price>0 && volume>0) observations.put(JSONObject().put("timestamp_ms",timestamp).put("avg_price",price).put("volume",volume))
                     }
-                    if (count == 0) continue
-                    val weightedAverage = if (totalVol > 0) weightedSum / totalVol else min + (max - min) / 2
+                    val weightedAverage=aggregate.averageFloor()
+                    fun stamp(ms:Long)=SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'",Locale.US).apply{timeZone=TimeZone.getTimeZone("UTC")}.format(Date(ms))
                     citySummaries.put(JSONObject().apply {
-                        put("city", h.optString("location")); put("quality", quality); put("avg", weightedAverage)
-                        put("min", min); put("max", max); put("last", lastPrice); put("volume", totalVol)
+                        put("city", h.optString("location")); put("quality", quality); put("observations", observations); put("avg", weightedAverage ?: JSONObject.NULL)
+                        put("min", if(aggregate.usable>0)aggregate.min else JSONObject.NULL); put("max", if(aggregate.usable>0)aggregate.max else JSONObject.NULL); put("last", if(aggregate.usable>0)aggregate.lastPrice else JSONObject.NULL); put("volume", aggregate.totalVol)
+                        put("first_observed_bucket",if(aggregate.usable>0)stamp(aggregate.first) else JSONObject.NULL)
+                        put("last_timestamp",if(aggregate.usable>0)stamp(aggregate.last) else JSONObject.NULL)
+                        put("requested_start_inclusive",stamp(window.start));put("requested_end_exclusive",stamp(window.end))
+                        put("requested_days",days);put("observed_buckets",aggregate.observed);put("usable_buckets",aggregate.usable)
+                        put("observed_usable_days",aggregate.observedUsableDays());put("missing_or_unusable_days",aggregate.missingOrUnusableDays());put("excluded_boundary_buckets",aggregate.excluded)
+                        put("coverage",if(aggregate.observedUsableDays()==days)"observations_on_all_days_not_all_trades_verified" else "partial_or_missing")
+                        put("weighted_sum",aggregate.weightedSum.toString());put("weight_total",aggregate.totalVol.toString())
+                        put("average_basis","quantity_weighted_reported_daily_averages; underlying trade precision unknown")
+                        put("average_rounding", "integer_floor"); put("fetched_at_ms", System.currentTimeMillis())
                     })
                 }
-                JSONObject().apply { put("item", itemId); put("period", "${days}d"); put("cities", citySummaries) }.toString()
-            } catch (e: Exception) { JSONObject().put("error", e.message ?: "tool error").toString() }
+                JSONObject().apply { put("item", itemId); put("period", "${days} complete UTC days"); put("source",serverBaseUrl); put("bucket_hours",24); put("requested_city",requestedCity); put("cities", citySummaries);put("coverage_warning","Missing days are not zero-price days. No guarantee of complete market transactions. Cities absent from results have no returned observations.") }.toString()
+            } catch (e: Exception) { JSONObject().put("error", "Unable to retrieve or validate market history. Check the request and try again.").toString() }
         }
     }
 
@@ -173,42 +195,38 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
         {"name":"get_time","description":"Get current date and time.","parameters":{"type":"object","properties":{}}}
         """.trimIndent()
         override fun execute(paramsJsonString: String): String {
-            val now = Calendar.getInstance()
-            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+            val now = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+            val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
             val day = SimpleDateFormat("EEEE", Locale.ENGLISH).format(now.time)
             return """{"datetime":"${sdf.format(now.time)}","day":"$day"}"""
         }
     }
 
-    val getRouteTool = object : OpenApiTool {
-        override fun getToolDescriptionJsonString(): String = """
-        {"name":"get_route","description":"Get travel route info between two Albion cities (zones, danger, red zones).","parameters":{"type":"object","properties":{"city_from":{"type":"string","description":"From city"},"city_to":{"type":"string","description":"To city"}},"required":["city_from","city_to"]}}
-        """.trimIndent()
-        override fun execute(paramsJsonString: String): String {
-            val params = JSONObject(paramsJsonString)
-            val from = params.getString("city_from"); val to = params.getString("city_to")
-            if (from.contains("Brecilien") || to.contains("Brecilien"))
-                return JSONObject().apply { put("from", from); put("to", to); put("info", "Avalon Roads only, no safe overland route") }.toString()
-            val route = ROUTES.find { (it.from == from && it.to == to) || (it.from == to && it.to == from) }
-                ?: return JSONObject().apply { put("from", from); put("to", to); put("error", "Route not found") }.toString()
-            return JSONObject().apply {
-                put("from", from); put("to", to); put("zones", route.zones)
-                put("red_zones", route.red); put("safe", route.red == 0); put("note", route.note)
-            }.toString()
-        }
-    }
+    private val worldMapTools by lazy { WorldMapTools(context) }
+    val getRouteTool: OpenApiTool get() = worldMapTools.route
 
-    fun allTools(): List<OpenApiTool> = listOf(searchItemTool, getPricesTool, getHistoryTool, getTimeTool, getRouteTool)
+    private val compareFlipTool by lazy { FlipComparisonTool(getPricesTool,worldMapTools,::parseAodpTimestamp) }
+
+    fun allTools(includeFlipComparison:Boolean=false): List<OpenApiTool> = listOf(searchItemTool, getPricesTool, getHistoryTool, getTimeTool, getRouteTool, worldMapTools.search, worldMapTools.show) + if(includeFlipComparison) listOf(compareFlipTool) else emptyList()
 
     private fun httpGet(urlStr: String): String {
+        check(!cancelled) { "Tool cancelled" }
+        val deadline = android.os.SystemClock.elapsedRealtime() + 30_000
         val conn = URL(urlStr).openConnection() as HttpURLConnection
-        conn.connectTimeout = CONNECT_TIMEOUT; conn.readTimeout = READ_TIMEOUT
+        activeConnection = conn
+        if (cancelled) { conn.disconnect(); throw IllegalStateException("Tool cancelled") }
+        conn.connectTimeout = CONNECT_TIMEOUT; conn.readTimeout = READ_TIMEOUT; conn.instanceFollowRedirects = false
         conn.setRequestProperty("User-Agent", "AlbionMarket/1.0")
         return try {
             val status = conn.responseCode
             if (status !in 200..299) throw IllegalStateException("AODP HTTP $status")
-            conn.inputStream.bufferedReader().readText()
-        } finally { conn.disconnect() }
+            conn.inputStream.use { input ->
+                val out = ByteArrayOutputStream(); val buffer = ByteArray(4096)
+                while(true) { check(!cancelled && android.os.SystemClock.elapsedRealtime() <= deadline) { "Tool cancelled or timed out" }; val count = input.read(buffer); if(count < 0) break
+                    require(out.size() + count <= MAX_RESPONSE_BYTES) { "AODP response too large" };out.write(buffer,0,count) }
+                out.toString("UTF-8")
+            }
+        } finally { conn.disconnect(); activeConnection = null }
     }
 
     private fun encodeQuery(value: String): String = URLEncoder.encode(value, "UTF-8")

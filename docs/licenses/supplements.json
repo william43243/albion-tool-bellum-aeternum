@@ -1,0 +1,498 @@
+{
+  "license:Apache-2.0": [
+    {
+      "file": "docs/licenses/upstream/apache-2.0.txt",
+      "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ],
+  "npm:@react-native/js-polyfills@0.88.1": [
+    {
+      "file": "docs/licenses/upstream/react-native-0.88.1.txt",
+      "source": "https://raw.githubusercontent.com/react/react-native/v0.88.1/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "npm:metro-runtime@0.87.1": [
+    {
+      "file": "docs/licenses/upstream/metro.txt",
+      "source": "https://raw.githubusercontent.com/react/metro/c7597f88c3e5b2a0d5e5915dfed2413aadcdfcce/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "npm:@react-native/asset-utils@0.88.1": [
+    {
+      "file": "docs/licenses/upstream/react-native-0.88.1.txt",
+      "source": "https://raw.githubusercontent.com/react/react-native/v0.88.1/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "npm:@react-native/normalize-colors@0.88.1": [
+    {
+      "file": "docs/licenses/upstream/react-native-0.88.1.txt",
+      "source": "https://raw.githubusercontent.com/react/react-native/v0.88.1/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "npm:@react-native/virtualized-lists@0.88.1": [
+    {
+      "file": "docs/licenses/upstream/react-native-0.88.1.txt",
+      "source": "https://raw.githubusercontent.com/react/react-native/v0.88.1/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "npm:paths-js@0.4.11": [
+    {
+      "file": "docs/licenses/upstream/paths-js.txt",
+      "source": "https://raw.githubusercontent.com/andreaferretti/paths-js/0.4.11/LICENSE",
+      "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+    }
+  ],
+  "com.facebook.fresco:animated-base:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:animated-drawable:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:animated-gif-lite:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:animated-gif:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:drawee:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:fbcore:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:fresco:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:imagepipeline-base:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:imagepipeline-native:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:imagepipeline-okhttp3:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:imagepipeline:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:memory-type-ashmem:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:memory-type-java:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:memory-type-native:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:middleware:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:nativeimagefilters:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:nativeimagetranscoder:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:soloader:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:ui-common:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:ui-core:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:urimod:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-core-common-impl:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-core-impl:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-core-java-impl:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-core:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-drawee-support:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-options:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-provider:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-renderer:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:vito-source:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.fresco:webpsupport:3.7.0": [
+    {
+      "file": "docs/licenses/upstream/fresco.txt",
+      "source": "https://raw.githubusercontent.com/facebook/fresco/v3.7.0/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.hermes:hermes-android:260318099.0.5": [
+    {
+      "file": "docs/licenses/upstream/hermes.txt",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/hermes-v260318099.0.5/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    },
+    {
+      "file": "docs/licenses/upstream/hermes-external_asmjit_asmjit_LICENSE.md",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/9a115f15785851f4ff2747ebb090ddd066fc8ad2/external/asmjit/asmjit/LICENSE.md",
+      "sha256": "c8d30b463d35bd5a14b868bae5d8345a1a77cbc6b4a94669f437c619f2ebef61",
+      "label": "external/asmjit/asmjit/LICENSE.md"
+    },
+    {
+      "file": "docs/licenses/upstream/hermes-external_boost_boost_1_86_0_LICENSE_1_0.txt",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/9a115f15785851f4ff2747ebb090ddd066fc8ad2/external/boost/boost_1_86_0/LICENSE_1_0.txt",
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+      "label": "external/boost/boost_1_86_0/LICENSE_1_0.txt"
+    },
+    {
+      "file": "docs/licenses/upstream/hermes-external_esprima_LICENSE.BSD",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/9a115f15785851f4ff2747ebb090ddd066fc8ad2/external/esprima/LICENSE.BSD",
+      "sha256": "94bcb9959136723aa4fb36e1a6c4d5c662a2369978cfae344dabfb83ae619e79",
+      "label": "external/esprima/LICENSE.BSD"
+    },
+    {
+      "file": "docs/licenses/upstream/hermes-external_icu_decls_license.html",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/9a115f15785851f4ff2747ebb090ddd066fc8ad2/external/icu_decls/license.html",
+      "sha256": "0f6b1df0f0deedbe33e0a371314e9c32249a0a539c5c2be9609211d6dbe0dc10",
+      "label": "external/icu_decls/license.html"
+    },
+    {
+      "file": "docs/licenses/upstream/hermes-external_llvh_LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/9a115f15785851f4ff2747ebb090ddd066fc8ad2/external/llvh/LICENSE.txt",
+      "sha256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee",
+      "label": "external/llvh/LICENSE.txt"
+    },
+    {
+      "file": "docs/licenses/upstream/hermes-external_llvh_include_llvh_Support_LICENSE.TXT",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/9a115f15785851f4ff2747ebb090ddd066fc8ad2/external/llvh/include/llvh/Support/LICENSE.TXT",
+      "sha256": "a012d664e4e01df52a65b2eeafdfb8aeb856fec0e6c372265d01b0109c3f5e2a",
+      "label": "external/llvh/include/llvh/Support/LICENSE.TXT"
+    },
+    {
+      "file": "docs/licenses/upstream/hermes-include_hermes_Regex_LICENSE.TXT",
+      "source": "https://raw.githubusercontent.com/facebook/hermes/9a115f15785851f4ff2747ebb090ddd066fc8ad2/include/hermes/Regex/LICENSE.TXT",
+      "sha256": "c1938c0e9e90639d1e8f5a7f6bebaab83a3642e0ee44295a4c69934686d0bda8",
+      "label": "include/hermes/Regex/LICENSE.TXT"
+    }
+  ],
+  "com.facebook.react:react-android:0.88.1": [
+    {
+      "file": "docs/licenses/upstream/react-native-0.88.1.txt",
+      "source": "https://raw.githubusercontent.com/react/react-native/v0.88.1/LICENSE",
+      "sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    }
+  ],
+  "com.facebook.yoga:proguard-annotations:1.19.0": [
+    {
+      "file": "docs/licenses/upstream/yoga.txt",
+      "source": "https://raw.githubusercontent.com/facebook/yoga/v1.19.0/LICENSE",
+      "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85"
+    }
+  ],
+  "com.github.bumptech.glide:annotations:5.0.5": [
+    {
+      "file": "docs/licenses/upstream/glide.txt",
+      "source": "https://raw.githubusercontent.com/bumptech/glide/v5.0.5/LICENSE",
+      "sha256": "52973598be02761fb153f9c237f6c6706841d666611bc1c5fd18edfdcb3d47fa"
+    }
+  ],
+  "com.github.bumptech.glide:disklrucache:5.0.5": [
+    {
+      "file": "docs/licenses/upstream/glide.txt",
+      "source": "https://raw.githubusercontent.com/bumptech/glide/v5.0.5/LICENSE",
+      "sha256": "52973598be02761fb153f9c237f6c6706841d666611bc1c5fd18edfdcb3d47fa"
+    }
+  ],
+  "com.github.bumptech.glide:gifdecoder:5.0.5": [
+    {
+      "file": "docs/licenses/upstream/glide.txt",
+      "source": "https://raw.githubusercontent.com/bumptech/glide/v5.0.5/LICENSE",
+      "sha256": "52973598be02761fb153f9c237f6c6706841d666611bc1c5fd18edfdcb3d47fa"
+    }
+  ],
+  "com.github.bumptech.glide:glide:5.0.5": [
+    {
+      "file": "docs/licenses/upstream/glide.txt",
+      "source": "https://raw.githubusercontent.com/bumptech/glide/v5.0.5/LICENSE",
+      "sha256": "52973598be02761fb153f9c237f6c6706841d666611bc1c5fd18edfdcb3d47fa"
+    }
+  ],
+  "com.parse.bolts:bolts-tasks:1.4.0": [
+    {
+      "file": "docs/licenses/upstream/bolts.txt",
+      "source": "https://raw.githubusercontent.com/BoltsFramework/Bolts-Android/1.4.0/LICENSE",
+      "sha256": "9e69750c616877af2dec86f961a53e39324c3655e25b1d6ceed06e9661ec072b"
+    }
+  ],
+  "npm:expo-router@58.0.30": [
+    {
+      "file": "docs/licenses/upstream/expo.txt",
+      "source": "https://raw.githubusercontent.com/expo/expo/sdk-58/LICENSE",
+      "sha256": "fb3ca4a837f5779e83cef89b78253a8949cfb9429c340309f62d0465ec6610b4"
+    }
+  ],
+  "com.facebook.infer.annotation:infer-annotation:0.18.0": [
+    {
+      "file": "docs/licenses/upstream/infer.txt",
+      "source": "https://raw.githubusercontent.com/facebook/infer/92e60ed4d9e2d5d091194db287ad8f854aae9bf0/LICENSE",
+      "sha256": "52412d7bc7ce4157ea628bbaacb8829e0a9cb3c58f57f99176126bc8cf2bfc85"
+    }
+  ],
+  "io.github.expo.kolibri:kolibri-android:0.2.4": [
+    {
+      "file": "docs/licenses/upstream/kolibri.txt",
+      "source": "https://raw.githubusercontent.com/expo/kolibri/afb099efe52588941346b02a88859d124c822730/LICENSE.txt",
+      "sha256": "fb3ca4a837f5779e83cef89b78253a8949cfb9429c340309f62d0465ec6610b4"
+    }
+  ],
+  "io.github.expo.kolibri:runtime:0.2.4": [
+    {
+      "file": "docs/licenses/upstream/kolibri.txt",
+      "source": "https://raw.githubusercontent.com/expo/kolibri/afb099efe52588941346b02a88859d124c822730/LICENSE.txt",
+      "sha256": "fb3ca4a837f5779e83cef89b78253a8949cfb9429c340309f62d0465ec6610b4"
+    }
+  ],
+  "io.github.expo.pika:pika-api:1.1.0": [
+    {
+      "file": "docs/licenses/upstream/pika.txt",
+      "source": "https://raw.githubusercontent.com/expo/pika/8456165a82a17c670614c91e12b784ab8245de57/LICENSE.txt",
+      "sha256": "921f777d6cb71423f5a0cd8f1a0847f087b97da62e4d48ffe63e3add13f50af5"
+    }
+  ],
+  "io.github.expo:expo-modules-v2-react:0.2.7": [
+    {
+      "file": "docs/licenses/upstream/expo-v2.txt",
+      "source": "https://raw.githubusercontent.com/expo/expo-modules-v2-android/c5c8a614ea5508dd62f60a69417b1f7fbb80b2e3/LICENSE.txt",
+      "sha256": "a1690bef5d8880c1036a72204838b18cf9dc19f51ed6a5147e281505601ac6cf"
+    }
+  ],
+  "org.brotli:dec:0.1.2": [
+    {
+      "file": "docs/licenses/upstream/brotli.txt",
+      "source": "https://raw.githubusercontent.com/google/brotli/v0.6.0/LICENSE",
+      "sha256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+    }
+  ],
+  "com.android.tools:desugar_jdk_libs:2.1.5": [
+    {
+      "file": "docs/licenses/upstream/desugar.txt",
+      "source": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/LICENSE",
+      "sha256": "4b9abebc4338048a7c2dc184e9f800deb349366bdf28eb23c2677a77b4c87726"
+    },
+    {
+      "file": "docs/licenses/upstream/desugar-additional.txt",
+      "source": "https://raw.githubusercontent.com/google/desugar_jdk_libs/73170c345e6a762fc6a1f0301bb15218850023ef/ADDITIONAL_LICENSE_INFO",
+      "sha256": "a69bce275ba7a3570af6579cb0f55682cd75fedfcd49e0e8e9022270c447c916"
+    }
+  ],
+  "native-extra:boost": [
+    {
+      "file": "docs/licenses/upstream/boost.txt",
+      "source": "https://raw.githubusercontent.com/boostorg/boost/boost-1.83.0/LICENSE_1_0.txt",
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    }
+  ],
+  "native-extra:double-conversion": [
+    {
+      "file": "docs/licenses/upstream/double-conversion.txt",
+      "source": "https://raw.githubusercontent.com/google/double-conversion/v1.1.6/LICENSE",
+      "sha256": "4af93c12062c58058378de2397dc1c92bbff9ddfb1d583a01c84127557ce97ca"
+    }
+  ],
+  "native-extra:fast-float": [
+    {
+      "file": "docs/licenses/upstream/fast-float.txt",
+      "source": "https://raw.githubusercontent.com/fastfloat/fast_float/v8.0.0/LICENSE-MIT",
+      "sha256": "e562f3f974ced7e69dd1db77b820b36bcf8f30377f1aa105723fba449c53c4e6"
+    }
+  ],
+  "native-extra:fmt": [
+    {
+      "file": "docs/licenses/upstream/fmt.txt",
+      "source": "https://raw.githubusercontent.com/fmtlib/fmt/12.1.0/LICENSE",
+      "sha256": "07580f2a3b35709ce703d523f447b242f6dfec7582a8c0df102c7fa2849375f8"
+    }
+  ],
+  "native-extra:folly": [
+    {
+      "file": "docs/licenses/upstream/folly.txt",
+      "source": "https://raw.githubusercontent.com/facebook/folly/v2024.11.18.00/LICENSE",
+      "sha256": "2206c00af7013581ae0d7c8c8a0089f02fab621913daac019b32336bd4d1e1db"
+    }
+  ],
+  "native-extra:glog": [
+    {
+      "file": "docs/licenses/upstream/glog.txt",
+      "source": "https://raw.githubusercontent.com/google/glog/v0.3.5/COPYING",
+      "sha256": "0fc497129c5c69ff6f22da6933c7e4aaef082fde8437fd57680c2780100772a4"
+    }
+  ],
+  "native-extra:gflags": [
+    {
+      "file": "docs/licenses/upstream/gflags.txt",
+      "source": "https://raw.githubusercontent.com/gflags/gflags/v2.2.0/COPYING.txt",
+      "sha256": "90d1f3701813c3cd65eee2dc736746fe46b465918f3f7d6d31463a2018b33fa5"
+    }
+  ],
+  "native-extra:nlohmann-json": [
+    {
+      "file": "docs/licenses/upstream/nlohmann-json.txt",
+      "source": "https://raw.githubusercontent.com/nlohmann/json/v3.11.2/LICENSE.MIT",
+      "sha256": "86b998c792894ccb911a1cb7994f7a9652894e7a094c0b5e45be2f553f45cf14"
+    }
+  ],
+  "com.android.installreferrer:installreferrer:2.2": [
+    {
+      "file": "docs/licenses/upstream/android-sdk-terms.txt",
+      "source": "https://developer.android.com/studio/terms",
+      "sha256": "692c825f0b5f589194e6cea2778513ed62a3a07a23f09de824427361043b8017",
+      "label": "Android SDK terms (text extracted from official page)"
+    }
+  ],
+  "native-extra:NDK 27.1.12297006 toolchain (includes runtime and build tools)": [
+    {
+      "file": "docs/licenses/upstream/ndk-27.1.12297006-toolchain-NOTICE.txt",
+      "source": "https://dl.google.com/android/repository/android-ndk-r27b-windows.zip!toolchains/llvm/prebuilt/windows-x86_64/NOTICE",
+      "sha256": "f96f763beb66a7ba7a667647fc64c0226ace875e590c831fdd9579ec1c1d91e1"
+    }
+  ]
+}

@@ -1,127 +1,127 @@
-# Albion Market - Bellum Aeternum
+# Albion Tool — Bellum Aeternum
 
-Application mobile Android pour calculer les taxes, frais et profits dans Albion Online, avec un **conseiller IA embarqué** qui tourne entièrement sur le telephone.
+An Android companion for Albion Online: compare market prices, calculate net flip profits, explore price history and plan routes with an interactive map and an optional AI assistant.
 
-## Fonctionnalites
+**Beta · Android first · English / Français / Español**
 
-### Marketplace Calculator
-- Calcul des Setup Fees (2.5%) et Sales Tax (4% Premium / 8% Non-Premium)
-- Mode Buy/Sell Orders vs achat/vente direct
-- Fetch des prix live via l'API Albion Online Data Project
-- Timestamps de fraicheur des donnees
-- Profit net, % de marge, breakdown des frais
+[Français](README.fr.md) · [Releases](https://github.com/william43243/albion-tool-bellum-aeternum/releases) · [Licenses and credits](THIRD_PARTY_LICENSES.md) · [Validation report](docs/publication-validation.md)
 
-### Crafting Fee Calculator
-- Calcul de la nutrition et des frais de station
-- Base de donnees de 10 000+ items avec Item Values
+## What you can do
 
-### Profit Flipping
-- Simulation complete : Achat materiaux > Craft > Vente
-- Tous les frais inclus (marketplace + crafting)
-- Calcul du ROI
+| Feature | Available behavior |
+| --- | --- |
+| Market | Look up observed buy/sell prices by item, quality, city and server; check timestamps and fees. |
+| Crafting | Calculate station fees and nutrition costs using item values. |
+| Flipping | Calculate net profit and ROI for instant trades or hypothetical order fills. The assistant can compare same-city and inter-city candidates using app-side arithmetic. |
+| History and charts | Compare cities and items. Chat charts include line plots, reported item quantities, date inspection, fullscreen viewing and historical replay. Missing observations remain gaps. |
+| World map | Search and select 414 mapped zones, zoom, open fullscreen and calculate routes from static zone connections. Route policies minimize transitions or lethal-zone exposure. |
+| AI chat | Ask for prices, history, comparisons and routes. Supported tool results produce tables, charts and interactive map previews in the conversation. |
+| Favorites and alerts | Save tracked items and create city-specific price alerts with at-or-below, at-or-above or exact-price conditions. Background checks target 20 minutes, subject to Android scheduling. |
+| Settings | Choose Americas, Europe or Asia, manage preferences and view bundled third-party notices offline. |
 
-### Price History & Compare
-- Graphiques historiques des prix par ville
-- Comparaison multi-items / multi-villes
-- Tableau stats : Min / Moy / Max / Actuel
-- Indicateur de tendance (% vs moyenne)
-- Periodes : 7j / 30j / 90j / 1 an
+The assistant obtains observations through tools and uses the app's comparison calculations. A route preview shows zone transitions and static red/black-zone exposure; it is not a travel-time or safety prediction.
 
-### AI Market Advisor (LiteRT-LM)
-- **IA on-device** via Google LiteRT-LM avec acceleration GPU
-- Aucune donnee envoyee a un serveur externe
-- **Tool calling** : l'IA peut chercher des prix, historiques, et routes elle-meme
-- **5 outils integres** : search_item, get_prices, get_history, get_route, get_time
-- **Vision** : envoi de screenshots pour analyse (modeles multimodaux)
-- **Routes reelles** : matrice de routes extraite du world.json (zones bleues/jaunes/rouges)
-- Gestion du contexte avec auto-reset et compteur de tokens
-- Telechargement de modeles in-app via Android DownloadManager
-- Support multi-modeles (Qwen, Gemma, DeepSeek)
+## Optional AI providers
 
-### Autres
-- Trilingue FR / EN / ES
-- Theme dark inspire d'Albion Online
-- 10 187 items dans la base de donnees
-- Panneau d'infos Premium Bonuses
+**Local inference:** Android uses LiteRT-LM with separately downloaded models. GPU support, memory needs, vision and tool calling depend on the selected model and device. Some model configurations remain experimental. See the [model registry](lib/models.ts) and [model validation notes](docs/model-download-audit.md).
 
-## Modeles IA disponibles
+**OpenAI sign-in:** an optional, experimental OAuth connection is available alongside local inference. Access and available models depend on the account and provider authorization. This is an independent integration, not an OpenAI endorsement or a promise of access under every plan. See [connection behavior, privacy and limitations](docs/siwc-integration.md).
 
-| Modele | Taille | Licence | Note |
-|---|---|---|---|
-| Qwen3.5 0.8B | 1.07 GB | Apache 2.0 | Leger, multimodal |
-| Qwen2.5 1.5B | 1.5 GB | Apache 2.0 | Bon equilibre |
-| DeepSeek R1 1.5B | 1.75 GB | MIT | Raisonnement |
-| Gemma 4 E2B | 2.58 GB | Gemma | Recommande, tool calling |
-| Gemma 4 E4B | 3.65 GB | Gemma | Le plus performant |
+Local inference runs on the device, but market lookups still contact external data services. Using the OpenAI provider sends the relevant conversation context and tool results to that provider. Model weights and user credentials are not included in the repository or APK.
 
-Les modeles sont telecharges depuis HuggingFace directement dans l'app. Aucun modele n'est inclus dans l'APK.
+Example requests, subject to the selected provider's capabilities and available observations:
 
-## Stack technique
+- “Compare the last 30 days of prices for travertine blocks across all cities.”
+- “Find a flip for this item starting from Martlock; include fees and show the route.”
+- “Notify me when the lowest sell price for this item in Fort Sterling is at or below 500 silver.”
 
-- React Native 0.83 + Expo 55 (TypeScript)
-- Module natif Kotlin pour LiteRT-LM
-- react-native-chart-kit + react-native-svg
-- expo-image-picker (vision IA)
-- Android DownloadManager (telechargement modeles)
-- API : Albion Online Data Project
+These examples describe intended workflows, not guaranteed profitable outcomes or completed live-service tests.
 
-## Build APK
+## Understand the data
 
-```bash
-npm install
-npx expo prebuild --platform android
-cd android && ./gradlew assembleRelease
+Prices and history come from the **community-run [Albion Online Data Project](https://www.albion-online-data.com/)**. Coverage depends on observations uploaded by participating players and can be incomplete or stale. It is not an official, complete market feed.
+
+- History `item_count` is the quantity of items represented in reported observations, not a count of trades/orders, silver turnover or order-book depth.
+- Historical replay reveals available observations in time order. It does not reconstruct missing transactions or invent OHLC candles.
+- The world map is a pinned snapshot with simplified original artwork. It has no verified live kill-activity feed, exact terrain or within-zone walking paths.
+- Alerts require an observation from today in the device timezone. Android may delay background work, notification permission is required, and a threshold can be missed between checks.
+- Order fills, available liquidity, transport losses and profit are not guaranteed.
+
+Source attribution is recorded in [the data-rights review](docs/data-rights.md). Redistribution permission for the game dumps remains unconfirmed; widespread use and attribution are not treated as a license grant.
+
+## Build from source
+
+Requirements: **Node.js 22, Python 3.9+, JDK 17 or 21**, and Android SDK platform **37**, build-tools **37.0.0**, NDK **27.1.12297006**, CMake **3.22.1**. Configure `JAVA_HOME` and `ANDROID_HOME` for your machine.
+
+The Android project contains maintained custom native modules. Build the checked-in project directly; `expo prebuild` is not required.
+
+```sh
+npm ci --legacy-peer-deps
+npm ci --prefix analytics
+npm run prepare:data
+npm run check:data
+python3 scripts/generate-notices.py --check
+npm test
+npm run typecheck
+chmod +x android/gradlew
+android/gradlew -p android :app:assembleDebug -PALBION_QA=true --max-workers=1
 ```
 
-> **Note** : Apres `expo prebuild`, verifier que les fichiers dans `android/app/src/main/java/com/albion/market/litert/` sont presents et que `MainApplication.kt` contient `add(LiteRTPackage())`.
+On Windows, use `python` instead of `python3`, omit `chmod`, and run `android\gradlew.bat`. The standalone debug APK is written to `android/app/build/outputs/apk/debug/`. The `.qa` package suffix keeps it separate from the production application; no production signing credentials are required.
 
-L'APK sera dans `android/app/build/outputs/apk/release/`.
+`prepare:data` retrieves a fixed upstream `world.json`, verifies its SHA-256 and generates the same 414-zone dataset for JavaScript and Android. Generated map JSON files remain excluded from Git. CI and Docker run this preparation too. For an offline source file with the exact expected checksum:
 
-## Architecture IA
-
-```
-React Native (TypeScript)
-  |
-  |-- lib/litert.ts          Bridge vers module natif
-  |-- lib/advisor.ts          System prompts + prompt builder
-  |-- lib/models.ts           Registre des modeles disponibles
-  |-- lib/routes.ts           Routes entre villes (BFS world.json)
-  |-- screens/AdvisorScreen   UI chat + selecteur modeles
-  |
-  v
-Kotlin Native Module (LiteRTModule.kt)
-  |
-  |-- LiteRT-LM Engine        Inference GPU on-device
-  |-- AlbionTools.kt          5 tools OpenAPI pour function calling
-  |-- DownloadManager          Telechargement modeles en arriere-plan
-  |
-  v
-LiteRT-LM (Google AI Edge)
-  |-- GPU Backend (OpenCL)
-  |-- Vision Backend (multimodal)
-  |-- Tool Calling (automatic)
+```sh
+npm run prepare:data -- --source /path/to/world.json
 ```
 
-## Donation
+The initial build needs network access for dependencies and data. This preparation solves a build prerequisite; it does not establish redistribution rights.
 
-Si cette app t'aide, tu peux soutenir le developpement :
+To build the **unsigned ARM64 release candidate** used for clean-source verification:
+
+```sh
+android/gradlew -p android :app:assembleRelease -PALBION_ALLOW_UNSIGNED_RELEASE=true -PreactNativeArchitectures=arm64-v8a --max-workers=1
+```
+
+An unsigned candidate is not an installable production release. Production signing is isolated in the protected GitHub workflow; signing credentials must never be passed to Gradle. The default Android configuration also targets x86_64, which was not part of the latest clean ARM64 build verification.
+
+For a browser development session, run `npm run web` after preparing the data. Browser models and native capabilities differ; Android background alerts and Android OAuth behavior should not be assumed to work in the browser.
+
+## Verification and releases
+
+The [2026-11-08 validation report](docs/publication-validation.md) records 469 passing tests, TypeScript validation, web regression checks and a successful clean-source ARM64 release build. It distinguishes build evidence from device and live-provider testing. This is a tested beta, not a guarantee that every device, account or market scenario works.
+
+CI checks data integrity and notices, tests the source, builds an unsigned candidate and runs Android checks. Production signing and publication require the separate protected manual workflow. Releases prepared by that workflow include `third-party-sources-notices.zip` alongside the APK.
+
+Keep that companion archive with redistributed binaries. It contains readable notices and the upstream source archive for the Java compatibility library. See [notice maintenance and source obligations](docs/licenses/README.md).
+
+## Project layout
+
+| Path | Purpose |
+| --- | --- |
+| `screens/`, `components/`, `hooks/` | React Native UI, charts, map previews and state handling |
+| `lib/` | Calculations, API access, history, routing and assistant bridges |
+| `android/app/src/main/java/` | Kotlin/Java inference, authentication, tool execution and alerts |
+| `scripts/` | Pinned map preparation and license/source packaging |
+| `analytics/` | Optional web analytics backend; separate dependency lockfile |
+| `tests/`, `docs/` | Automated checks, technical evidence and integration limitations |
+
+The app uses React Native 0.88.1, Expo 58, TypeScript, Kotlin/Java and LiteRT-LM. Dependency versions are recorded in the lockfiles and Gradle configuration.
+
+## Report a problem
+
+Use [GitHub Issues](https://github.com/william43243/albion-tool-bellum-aeternum/issues) and include the app version, Android/device version, selected server, provider/model, reproduction steps and observation timestamps when relevant. Remove private chat content from screenshots. Never attach access tokens, API keys, passwords or signing keys.
+
+## License and credits
+
+Original project code is under the [MIT license](LICENSE). Third-party data, models, software and trademarks retain their own terms. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md), the [runtime notices](docs/licenses/README.md) and the [data-rights review](docs/data-rights.md).
+
+Sources include [AODP](https://www.albion-online-data.com/), [ao-data/ao-bin-dumps](https://github.com/ao-data/ao-bin-dumps), [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM), [LiteRT Community](https://huggingface.co/litert-community), the [Albion Online Wiki](https://wiki.albiononline.com/) and the credited [map visual reference](https://allthingsalbion.com/en/zones/map).
+
+Albion Online is a trademark of Sandbox Interactive GmbH. This project is not affiliated with, sponsored by or endorsed by Sandbox Interactive or OpenAI.
+
+## Support
+
+If the tool helps you, you can support development:
 
 **BTC** : `bc1qcptkrekh335wvffcxnrzqkj5nqf72r538vey4x`
-
-## Licence
-
-Ce projet est sous [licence MIT](LICENSE).
-
-Les modeles IA utilises ont leurs propres licences. Voir [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
-
-## Disclaimer
-
-This project is not affiliated with, endorsed, sponsored, or specifically approved by Sandbox Interactive GmbH. Albion Online is a registered trademark of Sandbox Interactive GmbH.
-
-## Sources & Credits
-
-- [Albion Online Data Project](https://www.albion-online-data.com/) - API de prix
-- [ao-data/ao-bin-dumps](https://github.com/ao-data/ao-bin-dumps) - Base de donnees items + world.json
-- [Google AI Edge / LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) - Framework inference on-device
-- [LiteRT Community (HuggingFace)](https://huggingface.co/litert-community) - Modeles .litertlm
-- [Albion Online Wiki](https://wiki.albiononline.com/) - Formules et mecaniques du jeu

@@ -1,0 +1,22 @@
+import test from 'node:test';
+import { routeFitsRegion, routeEdgeVisible } from '../lib/worldMap';
+import assert from 'node:assert/strict';
+import {zones,zoneById,fitZones,zoomAt,hitZone,searchZones} from '../lib/worldMap';
+test('switching continents fits that continent and hides route segments outside it',()=>{
+ const a=zones.find(z=>z.name==='Caerleon')!, b=zones.find(z=>z.name==='Martlock')!, black=zones.find(z=>z.region==='outlands')!;
+ assert.equal(routeFitsRegion([a,b],'royal'),true);
+ assert.equal(routeFitsRegion([a,b],'outlands'),false);
+ assert.equal(routeFitsRegion([a,b],'all'),true);
+ assert.equal(routeFitsRegion([a,black],'royal'),false);
+ assert.equal(routeEdgeVisible(a,b,'outlands'),false);
+ assert.equal(routeEdgeVisible(a,black,'royal'),false);
+ assert.equal(routeEdgeVisible(a,black,'all'),true);
+});
+test('source IDs, coordinates and direct connections are valid',()=>{assert.equal(zones.length,414);assert.equal(new Set(zones.map(z=>z.id)).size,414);for(const z of zones){assert.ok(Number.isFinite(z.x)&&Number.isFinite(z.y));for(const id of z.exits)assert.ok(zoneById.has(id));}});
+test('cities are not falsely classified as lethal',()=>{for(const name of ['Caerleon',"Arthur's Rest",'Thetford Portal'])assert.equal(zones.find(z=>z.name===name)?.risk,'city');});
+test('reference coordinates and classifications',()=>{const t=zones.find(z=>z.name==='Thetford')!;assert.equal(t.x,-19.82);assert.equal(t.y,187.29);assert.ok(zones.some(z=>z.risk==='black'));assert.equal(zones.find(z=>z.name==='Tharcal Fissure')?.risk,'yellow');});
+test('fit portrait and landscape',()=>{for(const [w,h]of [[390,500],[1440,800]]){const c=fitZones(zones,w,h);for(const z of zones){assert.ok(z.x*c.scale+c.x>=0&&z.x*c.scale+c.x<=w);assert.ok(z.y*c.scale+c.y>=0&&z.y*c.scale+c.y<=h);}}});
+test('zoom preserves anchor and clamps',()=>{const c={x:20,y:40,scale:2},n=zoomAt(c,2,100,150);assert.equal((100-c.x)/c.scale,(100-n.x)/n.scale);assert.equal((150-c.y)/c.scale,(150-n.y)/n.scale);assert.equal(zoomAt(c,1000,0,0).scale,28);assert.equal(zoomAt(c,0.00001,0,0).scale,0.35);});
+test('search and hit testing with camera transform',()=>{const t=searchZones(' thetford ').find(z=>z.name==='Thetford')!;const c={x:40,y:20,scale:5};assert.equal(hitZone(zones,c,t.x*5+40,t.y*5+20)?.id,t.id);assert.equal(hitZone(zones,c,-99999,-99999),undefined);assert.equal(searchZones('does not exist').length,0);});
+import {validateArtwork,pointInPolygon} from '../lib/worldMapGeometry';
+test('licensed artwork requires provenance and valid geometry',()=>{const a={uri:'file:///map.png',x:-560,y:-520,width:1088,height:1104,attribution:'Owner',source:'Authorized file',rights:'Permission verified',polygons:{test:[[0,0],[10,0],[10,10],[0,10]] as [number,number][]}};assert.doesNotThrow(()=>validateArtwork(a));assert.throws(()=>validateArtwork({...a,width:0}));assert.throws(()=>validateArtwork({...a,rights:''}));assert.equal(pointInPolygon(5,5,a.polygons.test),true);assert.equal(pointInPolygon(20,5,a.polygons.test),false);});

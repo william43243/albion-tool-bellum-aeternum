@@ -2,13 +2,33 @@
 // Communicates with the Kotlin LiteRTModule via React Native bridge
 
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import * as Crypto from 'expo-crypto';
 
 const { LiteRTModule } = NativeModules;
 
+type LiteRTEvents = {
+  onDownloadProgress: [ActiveDownload];
+  onLiteRTToken: [{ requestId: string; token: string }];
+  onLiteRTDone: [{ requestId: string }];
+  onLiteRTError: [{ requestId: string; error: string }];
+};
 const emitter = Platform.OS === 'android' && LiteRTModule
-  ? new NativeEventEmitter(LiteRTModule)
+  ? new NativeEventEmitter<LiteRTEvents>(LiteRTModule)
   : null;
 let downloadAttemptSequence = 0;
+
+// Native debug flag also works for a production JS bundle inside a debug APK.
+// Hash asynchronously without delaying, retrying or modifying inference. No
+// question text, image path, model output or tool payload is logged here.
+function traceInferenceInput(message: string, requestId: string, image: boolean): void {
+  if (LiteRTModule?.debugInference !== true) return;
+  try {
+    void Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, message)
+      .then((sha256) => {
+        console.debug(`[LiteRTTrace] input stage=js request=${requestId} chars=${message.length} analysis=${message.startsWith('AI_DECISION_INPUT')} image=${image} sha256=${sha256}`);
+      }).catch(() => {}); // Diagnostics must never alter send/error behavior.
+  } catch { /* A diagnostic failure must not prevent inference. */ }
+}
 
 export function createDownloadAttemptId(): string {
   downloadAttemptSequence += 1;
@@ -141,6 +161,7 @@ export async function deleteModel(filename: string): Promise<boolean> {
 export interface InitResult {
   success: boolean;
   hasVision: boolean;
+  maxOutputTokens?: number;
   backendUsed: 'gpu' | 'cpu' | 'unknown';
   isMediaTek: boolean;
   chipset: string;
@@ -151,12 +172,13 @@ export async function initialize(
   systemPrompt: string,
   serverBaseUrl: string,
   supportsVision = false,
-  supportsTools = false
+  supportsTools = false,
+  preferCpuText = false
 ): Promise<InitResult> {
   if (Platform.OS !== 'android' || !LiteRTModule) {
     throw new Error('LiteRT-LM is only available on Android');
   }
-  return LiteRTModule.initialize(modelFilename, systemPrompt, serverBaseUrl, supportsVision, supportsTools);
+  return LiteRTModule.initialize(modelFilename, systemPrompt, serverBaseUrl, supportsVision, supportsTools, preferCpuText);
 }
 
 export function sendMessage(
@@ -196,6 +218,7 @@ export function sendMessage(
     LiteRTModule.cancelMessage(requestId).catch(() => {});
   };
 
+  traceInferenceInput(message, requestId, false);
   LiteRTModule.sendMessage(message, requestId).catch((err: Error) => {
     cleanup();
     callbacks.onError(err.message);
@@ -245,6 +268,7 @@ export function sendMessageWithImage(
     LiteRTModule.cancelMessage(requestId).catch(() => {});
   };
 
+  traceInferenceInput(message, requestId, true);
   LiteRTModule.sendMessageWithImage(message, imagePath, requestId).catch((err: Error) => {
     cleanup();
     callbacks.onError(err.message);

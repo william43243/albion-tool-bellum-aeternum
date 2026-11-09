@@ -21,13 +21,13 @@
  *     cacheDirectory (which Android may purge at any time).
  */
 
-import * as FileSystem from 'expo-file-system';
+// SDK 55 exposes these functions only through /legacy. The root package's
+// compatibility exports deliberately throw instead of calling native code.
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Application from 'expo-application';
 import nacl from 'tweetnacl';
-
-const FileSystemCompat = FileSystem as any;
 
 // ─────────────────────────────────────────────────────────────
 // Compile-time constants
@@ -53,7 +53,13 @@ const MANIFEST_URL = 'https://albion-tool-bellum-aeternum.com/api/version';
  * can reclaim cacheDirectory under memory pressure, which would break the
  * install flow if it happens between download and install.
  */
-const UPDATES_DIR = FileSystemCompat.documentDirectory + 'updates/';
+function getUpdatesDirectory(): string {
+  const documents = FileSystem.documentDirectory;
+  if (!documents) {
+    throw new Error('Update storage is unavailable on this runtime');
+  }
+  return documents + 'updates/';
+}
 
 /**
  * The set of fields that make up the signed manifest. This list must match
@@ -282,20 +288,18 @@ export async function downloadUpdate(
   manifest: VersionManifest,
   onProgress?: (fraction: number) => void
 ): Promise<string> {
-  // Ensure the updates directory exists.
-  try {
-    await FileSystem.makeDirectoryAsync(UPDATES_DIR, { intermediates: true });
-  } catch {
-    // Already exists — ignore.
-  }
+  const updatesDirectory = getUpdatesDirectory();
+  // With intermediates=true, the Android implementation accepts an existing
+  // directory. Other failures (permissions/storage) must stop the download.
+  await FileSystem.makeDirectoryAsync(updatesDirectory, { intermediates: true });
 
   // Clean up any stale APKs from previous update attempts so we don't
   // accumulate multiple copies on disk.
   try {
-    const entries = await FileSystem.readDirectoryAsync(UPDATES_DIR);
+    const entries = await FileSystem.readDirectoryAsync(updatesDirectory);
     for (const name of entries) {
       if (name.endsWith('.apk')) {
-        await FileSystem.deleteAsync(UPDATES_DIR + name, { idempotent: true });
+        await FileSystem.deleteAsync(updatesDirectory + name, { idempotent: true });
       }
     }
   } catch {
@@ -303,7 +307,7 @@ export async function downloadUpdate(
   }
 
   const filename = 'AlbionMarket-v' + manifest.version + '.apk';
-  const localPath = UPDATES_DIR + filename;
+  const localPath = updatesDirectory + filename;
 
   const task = FileSystem.createDownloadResumable(
     manifest.apk_url,
@@ -342,7 +346,7 @@ export async function downloadUpdate(
   // phone) and hash it. expo-crypto.digest() takes a BufferSource and runs
   // natively, so the only cost in JS is the base64 decode.
   const base64 = await FileSystem.readAsStringAsync(result.uri, {
-    encoding: FileSystemCompat.EncodingType.Base64,
+    encoding: FileSystem.EncodingType.Base64,
   });
   const fileBytes = base64ToBytes(base64);
   const hashInput = fileBytes.buffer.slice(
@@ -374,8 +378,8 @@ export async function downloadUpdate(
  * flushed BEFORE calling this.
  */
 export async function installUpdate(localUri: string): Promise<void> {
-  // Convert file:// to content:// via the app's FileProvider (configured
-  // in AndroidManifest.xml — see android/app/src/main/res/xml/file_paths.xml).
+  // Convert file:// to content:// through Expo's non-exported FileProvider,
+  // supplied by expo-file-system's merged Android manifest and XML paths.
   const contentUri = await FileSystem.getContentUriAsync(localUri);
 
   // Intent flags:

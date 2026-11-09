@@ -16,6 +16,7 @@ import {
   CATEGORY_LABELS,
   ItemCategory,
   getItemCount,
+  getItemsByIds,
 } from '../lib/items';
 import { Language } from '../lib/i18n';
 
@@ -71,11 +72,8 @@ export default function ItemPicker({
 
   const handleConfirm = () => {
     if (onMultiSelect) {
-      const items = filteredItems.filter((i) => selected.has(i.id));
-      // Also include previously selected items not in current filter
-      const allItems = searchItems('', undefined, undefined, 10000);
-      const selectedItems = allItems.filter((i) => selected.has(i.id));
-      onMultiSelect(selectedItems);
+      // Search limits and active filters must never truncate the selection.
+      onMultiSelect(getItemsByIds(selected));
     }
     onClose();
   };

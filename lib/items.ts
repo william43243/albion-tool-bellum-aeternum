@@ -83,6 +83,12 @@ export function getItemById(id: string): AlbionItem | undefined {
   return ALL_ITEMS.find((item) => item.id === id);
 }
 
+/** Resolve an exact selection across the complete catalog, without search limits. */
+export function getItemsByIds(ids: Iterable<string>): AlbionItem[] {
+  const selected = new Set(ids);
+  return ALL_ITEMS.filter((item) => selected.has(item.id));
+}
+
 /**
  * Get total number of items in database
  */

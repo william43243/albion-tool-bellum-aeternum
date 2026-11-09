@@ -11,6 +11,7 @@ import android.os.StatFs
 import android.system.Os
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.albion.market.BuildConfig
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.google.ai.edge.litertlm.Backend
@@ -28,6 +29,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutionException
@@ -51,7 +53,17 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         private const val DOWNLOADS_KEY = "active_downloads"
         private const val LAST_DOWNLOAD_RESULT_KEY = "last_download_result"
         private const val CONVERSATION_TIMEOUT_MS = 120_000L
+        // A short advisor reply must not consume the entire model context while
+        // repeating. Supported by ConversationConfig in the installed 0.17 API.
+        private const val MAX_OUTPUT_TOKENS = 256
         private const val LIFECYCLE_WAIT_TIMEOUT_MS = 10_000L
+        // Cold GPU startup compiles multiple prefill/decode graphs. On the S22,
+        // Qwen3.5 initialization continued for ~84s, well beyond the 10s budget
+        // used for cancellation/close. Keep startup bounded without confusing
+        // normal compilation with a stuck short lifecycle operation.
+        private const val ENGINE_INITIALIZATION_TIMEOUT_MS = 300_000L
+        // Process-wide: a React module recreation must not bypass an old JNI job.
+        private val nativeInitializationGate = NativeInitializationGate()
         private const val MAX_NATIVE_CALL_THREADS = 4
         private val MODEL_FILENAME_PATTERN = Regex("^[A-Za-z0-9][A-Za-z0-9._-]*\\.litertlm$")
         private val MODEL_PARTIAL_PATTERN = Regex("^[A-Za-z0-9._-]+\\.litertlm\\.[0-9a-fA-F-]+\\.tmp$")
@@ -153,6 +165,28 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
     }
 
     override fun getName(): String = NAME
+
+    override fun getConstants(): MutableMap<String, Any> =
+        mutableMapOf("debugInference" to BuildConfig.DEBUG)
+
+    // Diagnostics are local debug-build metadata only. Never log prompt/output
+    // text, image paths or tool payloads, and never let logging affect inference.
+    private fun traceInferenceInput(message: String, requestId: String, image: Boolean) {
+        if (!BuildConfig.DEBUG) return
+        runCatching {
+            val sha256 = MessageDigest.getInstance("SHA-256")
+                .digest(message.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+            Log.d(TAG, "InferenceTrace input stage=native request=$requestId chars=${message.length} " +
+                "analysis=${message.startsWith("AI_DECISION_INPUT")} image=$image sha256=$sha256")
+        }
+    }
+
+    private fun traceInferenceOutput(requestId: String, outcome: String, fragments: Int, chars: Int) {
+        if (!BuildConfig.DEBUG) return
+        runCatching {
+            Log.d(TAG, "InferenceTrace output request=$requestId outcome=$outcome fragments=$fragments chars=$chars")
+        }
+    }
 
     @ReactMethod fun addListener(eventName: String) {}
     @ReactMethod fun removeListeners(count: Int) {}
@@ -899,13 +933,20 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
     // ─── Engine Lifecycle ────────────────────────────────────────
 
     @ReactMethod
-    fun initialize(modelFilename: String, systemPrompt: String, serverBaseUrl: String, supportsVision: Boolean, supportsTools: Boolean, promise: Promise) {
+    fun initialize(modelFilename: String, systemPrompt: String, serverBaseUrl: String, supportsVision: Boolean, supportsTools: Boolean, preferCpuText: Boolean, promise: Promise) {
         if (runtimeTeardownRequested.get()) {
             safeRejectPromise(promise, "INIT_ERROR", "Runtime teardown is in progress")
             return
         }
+        val initialization = nativeInitializationGate.tryAcquire()
+        if (initialization == null) {
+            safeRejectPromise(promise, "INIT_IN_PROGRESS",
+                "The previous AI initialization or cleanup has not safely completed. Wait before trying again. " +
+                "If it remains stuck, restart the app.")
+            return
+        }
         val initializationGeneration = runtimeTeardownGeneration.get()
-        scope.launch {
+        val initializationJob = scope.launch {
             lifecycleMutex.withLock {
                 var newEngine: Engine? = null
                 var newConversation: Conversation? = null
@@ -924,8 +965,10 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                     val isMediaTek = isMediaTekChipset()
                 if (isMediaTek) Log.i(TAG, "MediaTek chipset detected: ${getChipsetInfo()}")
 
-                // Determine whether a GPU backend can be instantiated at all
-                val gpuBackend: Backend? = try {
+                // Explicit CPU/text mode skips BOTH GPU tiers and the vision encoder.
+                // Keep the same artifact, tools, lifecycle ownership and bounded calls.
+                if (preferCpuText) Log.i(TAG, "CPU text-only mode requested; GPU and vision disabled")
+                val gpuBackend: Backend? = if (preferCpuText) null else try {
                     Backend.GPU()
                 } catch (e: Exception) {
                     Log.w(TAG, "GPU backend constructor failed (chipset=${getChipsetInfo()}), will use CPU: ${e.message}")
@@ -946,8 +989,8 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                             visionBackend = if (supportsVision) gpuBackend else null,
                             cacheDir = reactContext.cacheDir.path
                         )
-                        newEngine = boundedNativeCall("engine initialization", cleanupLateResult = { late -> runCatching { late.close() } }) {
-                            createInitializedEngine(config)
+                        newEngine = boundedNativeCall("engine initialization", timeoutMs = ENGINE_INITIALIZATION_TIMEOUT_MS, initialization = initialization, cleanupLateResult = { late -> late.close() }) {
+                            createInitializedEngine(config, initialization)
                         }
                         newHasVision = true
                         Log.i(TAG, "Engine initialized WITH vision (GPU)")
@@ -967,8 +1010,8 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                             backend = gpuBackend,
                             cacheDir = reactContext.cacheDir.path
                         )
-                        newEngine = boundedNativeCall("engine initialization", cleanupLateResult = { late -> runCatching { late.close() } }) {
-                            createInitializedEngine(config)
+                        newEngine = boundedNativeCall("engine initialization", timeoutMs = ENGINE_INITIALIZATION_TIMEOUT_MS, initialization = initialization, cleanupLateResult = { late -> late.close() }) {
+                            createInitializedEngine(config, initialization)
                         }
                         newHasVision = false
                         Log.i(TAG, "Engine initialized text-only (GPU)")
@@ -981,7 +1024,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                     }
                 }
 
-                // Tier 3 — CPU text-only (last resort, works on all devices)
+                // Tier 3 - CPU text-only, either explicitly requested or a fallback.
                 if (newEngine == null) {
                     newBackendUsed = "cpu"
                     try {
@@ -990,11 +1033,11 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                             backend = Backend.CPU(),
                             cacheDir = reactContext.cacheDir.path
                         )
-                        newEngine = boundedNativeCall("engine initialization", cleanupLateResult = { late -> runCatching { late.close() } }) {
-                            createInitializedEngine(config)
+                        newEngine = boundedNativeCall("engine initialization", timeoutMs = ENGINE_INITIALIZATION_TIMEOUT_MS, initialization = initialization, cleanupLateResult = { late -> late.close() }) {
+                            createInitializedEngine(config, initialization)
                         }
                         newHasVision = false
-                        Log.i(TAG, "Engine initialized text-only (CPU fallback)")
+                        Log.i(TAG, "Engine initialized text-only (CPU, requested=$preferCpuText)")
                     } catch (timeout: NativeCallTimeoutException) {
                         throw timeout
                     } catch (e: Exception) {
@@ -1007,10 +1050,8 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                     }
                 }
 
-                // LiteRT-LM 0.16.1 attempts to resolve a vision encoder when
-                // tool providers are attached to text-only model conversations.
-                // Market context is already fetched and injected by JS, so keep
-                // tools for the explicitly multimodal path only.
+                // Tool support comes from the model registry, independently of
+                // the selected backend/vision mode. Keep the same tools on reset.
                 val toolList = if (supportsTools) {
                     AlbionTools(serverBaseUrl, reactContext).allTools().map { tool(it) }
                 } else {
@@ -1019,13 +1060,16 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 val convConfig = ConversationConfig(
                     systemInstruction = Contents.of(systemPrompt),
                     samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.3),
+                    maxOutputToken = MAX_OUTPUT_TOKENS,
                     tools = toolList,
                 )
                 try {
                     val candidateEngine = checkNotNull(newEngine)
                     val candidateRuntime = boundedNativeCall(
                         "conversation creation",
+                        initialization = initialization,
                         cleanupLateResult = { late -> closeRuntimeDirect(late.conversation, late.engine) },
+                        cleanupLateFailure = { closeRuntimeDirect(null, candidateEngine) },
                     ) {
                         CandidateRuntime(candidateEngine, candidateEngine.createConversation(convConfig))
                     }
@@ -1039,21 +1083,26 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                     // explicitly disable image capability instead of failing here.
                     Log.w(TAG, "Vision conversation unavailable; retrying text-only: ${visionError.message}")
                     val visionEngine = checkNotNull(newEngine)
-                    boundedNativeCall("engine close") { visionEngine.close() }
+                    closeRuntimeBounded(null, visionEngine, "engine close", initialization)
+                    // The candidate no longer owns this closed engine. A failed
+                    // fallback must not close it again and falsely quarantine.
+                    newEngine = null
                     val fallbackBackend = gpuBackend ?: Backend.CPU()
                     val fallbackConfig = EngineConfig(
                         modelPath = modelFile.absolutePath,
                         backend = fallbackBackend,
                         cacheDir = reactContext.cacheDir.path
                     )
-                    val fallbackEngine = boundedNativeCall("engine initialization", cleanupLateResult = { late -> runCatching { late.close() } }) {
-                        createInitializedEngine(fallbackConfig)
+                    val fallbackEngine = boundedNativeCall("engine initialization", timeoutMs = ENGINE_INITIALIZATION_TIMEOUT_MS, initialization = initialization, cleanupLateResult = { late -> late.close() }) {
+                        createInitializedEngine(fallbackConfig, initialization)
                     }
                     newEngine = fallbackEngine
                     newHasVision = false
                     val fallbackRuntime = boundedNativeCall(
                         "conversation creation",
+                        initialization = initialization,
                         cleanupLateResult = { late -> closeRuntimeDirect(late.conversation, late.engine) },
+                        cleanupLateFailure = { closeRuntimeDirect(null, fallbackEngine) },
                     ) {
                         CandidateRuntime(fallbackEngine, fallbackEngine.createConversation(convConfig))
                     }
@@ -1081,7 +1130,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                         }
                         committed = true
 
-                        runCatching { closeRuntimeBounded(oldConversation, oldEngine, "replaced runtime close") }
+                        runCatching { closeRuntimeBounded(oldConversation, oldEngine, "replaced runtime close", initialization) }
                             .onFailure { Log.w(TAG, "Failed to close replaced runtime", it) }
                     }
                 }
@@ -1089,14 +1138,15 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 promise.resolve(Arguments.createMap().apply {
                     putBoolean("success", true)
                     putBoolean("hasVision", hasVision)
+                    putInt("maxOutputTokens", MAX_OUTPUT_TOKENS)
                     putString("backendUsed", backendUsed)
                     putBoolean("isMediaTek", isMediaTek)
                     putString("chipset", getChipsetInfo())
                 })
-                Log.i(TAG, "Engine ready: ${modelFile.name}, vision=$hasVision, tools=${toolList.size}")
+                Log.i(TAG, "Engine ready: ${modelFile.name}, backend=$backendUsed, vision=$hasVision, tools=${toolList.size}")
             } catch (timeout: TimeoutCancellationException) {
                 if (!committed) {
-                    runCatching { closeRuntimeBounded(newConversation, newEngine, "lifecycle-timeout runtime close") }
+                    runCatching { closeRuntimeBounded(newConversation, newEngine, "lifecycle-timeout runtime close", initialization) }
                         .onFailure { Log.w(TAG, "Failed to close lifecycle-timeout runtime", it) }
                 }
                 promise.reject("INIT_ERROR", timeout.message, timeout)
@@ -1104,7 +1154,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                 if (e is CancellationException) throw e
                 if (e is NativeCallTimeoutException) abandonCandidateRuntime = true
                 if (!committed && !abandonCandidateRuntime) {
-                    runCatching { closeRuntimeBounded(newConversation, newEngine, "rejected runtime close") }
+                    runCatching { closeRuntimeBounded(newConversation, newEngine, "rejected runtime close", initialization) }
                         .onFailure { Log.w(TAG, "Failed to close rejected runtime", it) }
                 }
                 Log.e(TAG, "Failed to initialize engine", e)
@@ -1112,11 +1162,15 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
             }
           }
         }
+        // Also runs if the coroutine is cancelled before it starts. The lease
+        // still waits for any actual JNI workers and late cleanup to finish.
+        initializationJob.invokeOnCompletion { initialization.close() }
     }
 
     @ReactMethod
     fun sendMessage(userMessage: String, requestId: String, promise: Promise) {
         launchInference(requestId, promise) { conv, callback ->
+            traceInferenceInput(userMessage, requestId, false)
             conv.sendMessageAsync(userMessage, callback)
         }
     }
@@ -1127,6 +1181,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
             val imageFile = File(imagePath)
             require(imageFile.isFile) { "Image not found: $imagePath" }
             val content = Contents.of(Content.ImageFile(imagePath), Content.Text(userMessage))
+            traceInferenceInput(userMessage, requestId, true)
             conv.sendMessageAsync(content, callback)
         }
     }
@@ -1192,6 +1247,7 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
                             val convConfig = ConversationConfig(
                                 systemInstruction = Contents.of(systemPrompt),
                                 samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.3),
+                                maxOutputToken = MAX_OUTPUT_TOKENS,
                                 tools = resetTools,
                             )
                             val oldConversation = conversation
@@ -1272,13 +1328,22 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
 
     // ─── Helpers ─────────────────────────────────────────────────
 
-    private fun createInitializedEngine(config: EngineConfig): Engine {
+    private fun createInitializedEngine(config: EngineConfig, initialization: NativeInitializationGate.Lease): Engine {
+        initialization.requireSafeInitialization()
         val candidate = Engine(config)
         try {
             candidate.initialize()
             return candidate
         } catch (error: Throwable) {
-            runCatching { candidate.close() }
+            // LiteRT 0.17 assigns its handle only after nativeCreateEngine returns.
+            // close() rejects an uninitialized engine without doing native cleanup.
+            // The native worker has returned here; no caller-side timeout bypass.
+            if (candidate.isInitialized()) {
+                runCatching { candidate.close() }.onFailure {
+                    initialization.quarantine()
+                    error.addSuppressed(it)
+                }
+            }
             throw error
         }
     }
@@ -1302,14 +1367,19 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         targetConversation: Conversation?,
         targetEngine: Engine?,
         label: String,
+        initialization: NativeInitializationGate.Lease? = null,
     ) {
         if (targetConversation == null && targetEngine == null) return
-        boundedNativeCall(label) { closeRuntimeDirect(targetConversation, targetEngine) }
+        boundedNativeCall(label, initialization = initialization) {
+            try { closeRuntimeDirect(targetConversation, targetEngine) }
+            catch (error: Throwable) { initialization?.quarantine(); throw error }
+        }
     }
 
     private suspend fun <T> boundedNativeCall(
         label: String,
         timeoutMs: Long = LIFECYCLE_WAIT_TIMEOUT_MS,
+        initialization: NativeInitializationGate.Lease? = null,
         cleanupLateResult: (T) -> Unit = {},
         cleanupLateFailure: (Throwable) -> Unit = {},
         operation: () -> T,
@@ -1317,32 +1387,46 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         // 0 = waiting, 1 = result published, 2 = caller timed out.
         val ownership = AtomicInteger(0)
         val outcome = AtomicReference<NativeOutcome<T>?>(null)
-        val task = nativeExecutor.submit<T> {
-            try {
-                val result = operation()
-                outcome.set(NativeOutcome(value = result))
-                if (!ownership.compareAndSet(0, 1)) {
-                    runCatching { cleanupLateResult(result) }
-                        .onFailure { Log.w(TAG, "Late native cleanup failed for $label", it) }
-                    throw java.util.concurrent.CancellationException("Late native result for $label")
+        val worker = initialization?.trackWorker()
+        val task = try {
+            nativeExecutor.submit<T> {
+                if (worker != null && !worker.start()) {
+                    throw java.util.concurrent.CancellationException("Cancelled before native start: $label")
                 }
-                result
-            } catch (error: Throwable) {
-                if (outcome.get() == null) {
-                    outcome.set(NativeOutcome(error = error))
+                try {
+                    val result = operation()
+                    outcome.set(NativeOutcome(value = result))
                     if (!ownership.compareAndSet(0, 1)) {
-                        runCatching { cleanupLateFailure(error) }
-                            .onFailure { Log.w(TAG, "Late native failure cleanup failed for $label", it) }
+                        runCatching { cleanupLateResult(result) }
+                            .onFailure { initialization?.quarantine(); Log.w(TAG, "Late native cleanup failed for $label", it) }
+                        throw java.util.concurrent.CancellationException("Late native result for $label")
                     }
+                    result
+                } catch (error: Throwable) {
+                    if (outcome.get() == null) {
+                        outcome.set(NativeOutcome(error = error))
+                        if (!ownership.compareAndSet(0, 1)) {
+                            runCatching { cleanupLateFailure(error) }
+                                .onFailure { initialization?.quarantine(); Log.w(TAG, "Late native failure cleanup failed for $label", it) }
+                        }
+                    }
+                    throw error
+                } finally {
+                    // Future.cancel(true) may return while JNI keeps executing.
+                    // Release only here, after operation AND late cleanup settle.
+                    worker?.finish()
                 }
-                throw error
             }
+        } catch (error: Throwable) {
+            worker?.cancelBeforeStart()
+            throw error
         }
         return try {
             task.get(timeoutMs, TimeUnit.MILLISECONDS)
         } catch (timeout: TimeoutException) {
             if (ownership.compareAndSet(0, 2)) {
                 task.cancel(true)
+                worker?.cancelBeforeStart()
                 throw NativeCallTimeoutException("$label timed out after ${timeoutMs}ms", timeout)
             }
             val delivered = checkNotNull(outcome.get()) { "$label completed without publishing an outcome" }
@@ -1352,10 +1436,17 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         } catch (execution: ExecutionException) {
             throw (execution.cause ?: execution)
         } catch (interrupted: InterruptedException) {
-            ownership.compareAndSet(0, 2)
+            if (!ownership.compareAndSet(0, 2)) {
+                // The result was published while its waiter was interrupted;
+                // do not admit a retry with uncertain candidate ownership.
+                initialization?.quarantine()
+            }
             task.cancel(true)
+            worker?.cancelBeforeStart()
             Thread.currentThread().interrupt()
-            throw interrupted
+            // An abandoned waiter must use the same fail-closed path as a timeout,
+            // not the ordinary backend-error path that attempts another engine.
+            throw NativeCallTimeoutException("$label interrupted; native work may still be running", interrupted)
         }
     }
 
@@ -1609,6 +1700,8 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
 
     private fun createStreamCallback(binding: ActiveInference, onFinished: () -> Unit = {}) = object : MessageCallback {
         private val finished = AtomicBoolean(false)
+        private val fragmentCount = AtomicInteger(0)
+        private val characterCount = AtomicInteger(0)
         private fun finishOnce(): Boolean {
             if (finished.compareAndSet(false, true)) {
                 val wasActive = activeInference.compareAndSet(binding, null)
@@ -1622,17 +1715,24 @@ class LiteRTModule(private val reactContext: ReactApplicationContext) :
         }
         override fun onMessage(message: Message) {
             if (activeInference.get() !== binding) return
+            val text = message.toString()
+            if (BuildConfig.DEBUG) {
+                fragmentCount.incrementAndGet()
+                characterCount.addAndGet(text.length)
+            }
             safeSendEvent("onLiteRTToken", Arguments.createMap().apply {
-                putString("requestId", binding.requestId); putString("token", message.toString())
+                putString("requestId", binding.requestId); putString("token", text)
             })
         }
         override fun onDone() {
             if (finishOnce()) {
+                traceInferenceOutput(binding.requestId, "done", fragmentCount.get(), characterCount.get())
                 safeSendEvent("onLiteRTDone", Arguments.createMap().apply { putString("requestId", binding.requestId) })
             }
         }
         override fun onError(throwable: Throwable) {
             if (finishOnce()) {
+                traceInferenceOutput(binding.requestId, "error", fragmentCount.get(), characterCount.get())
                 safeSendEvent("onLiteRTError", Arguments.createMap().apply {
                     putString("requestId", binding.requestId); putString("error", throwable.message ?: "Unknown error")
                 })

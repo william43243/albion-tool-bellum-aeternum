@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Alert, View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
+import { Alert, Keyboard, View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
+import { useAndroidKeyboardViewport } from './hooks/useAndroidKeyboardViewport';
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLanguage } from './hooks/useLanguage';
 import { useServer } from './hooks/useServer';
@@ -21,10 +22,11 @@ import MarketplaceScreen from './screens/MarketplaceScreen';
 import CraftingScreen from './screens/CraftingScreen';
 import FlippingScreen from './screens/FlippingScreen';
 import HistoryScreen from './screens/HistoryScreen';
-import AdvisorScreen from './screens/AdvisorScreen';
+import AdvisorHubScreen from './screens/AdvisorHubScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import WorldMapScreen from './screens/WorldMapScreen';
 
-type TabKey = 'marketplace' | 'crafting' | 'flipping' | 'history' | 'advisor' | 'settings';
+type TabKey = 'marketplace' | 'crafting' | 'flipping' | 'history' | 'advisor' | 'map' | 'settings';
 
 const TAB_ICONS: Record<TabKey, string> = {
   marketplace: '\u{1F4B0}',
@@ -32,17 +34,21 @@ const TAB_ICONS: Record<TabKey, string> = {
   flipping: '\u{1F504}',
   history: '\u{1F4C8}',
   advisor: '\u{1F9E0}',
+  map: '\u{1F5FA}',
   settings: '\u{2699}\uFE0F',
 };
 
-const TABS: TabKey[] = ['marketplace', 'crafting', 'flipping', 'history', 'advisor', 'settings'];
+const TABS: TabKey[] = ['marketplace', 'crafting', 'flipping', 'history', 'advisor', 'map', 'settings'];
 
 function AppContent() {
   const { lang, switchLanguage, t, loaded } = useLanguage();
   const { server, switchServer, serverLoaded } = useServer();
   const { city, selectCity, cityLoaded } = usePlayerCity();
   const [showCitySelector, setShowCitySelector] = useState(false);
+  const [mapFullscreen,setMapFullscreen]=useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('marketplace');
+  const [advisorProvider, setAdvisorProvider] = useState<'local' | 'openai'>('local');
+  const keyboardViewport = useAndroidKeyboardViewport(activeTab === 'advisor' && advisorProvider === 'openai');
   const [isPremium, setIsPremium] = useState(true);
   const [analyticsConsent, setAnalyticsConsentState] = useState<AnalyticsConsent>('undecided');
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
@@ -77,6 +83,8 @@ function AppContent() {
   };
 
   const handleTabChange = (tab: TabKey) => {
+    Keyboard.dismiss();
+    setMapFullscreen(false);
     setActiveTab(tab);
     trackPageView('/' + tab);
     trackToolUse(tab);
@@ -91,14 +99,15 @@ function AppContent() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" translucent backgroundColor="transparent" />
+    <View style={styles.container} ref={keyboardViewport.rootRef} onLayout={keyboardViewport.measureRoot} collapsable={false}>
+      <View style={[styles.container, { maxHeight: keyboardViewport.maxHeight }]}>
+      <StatusBar style="light" />
 
       {/* Top safe area spacer */}
       <View style={{ height: insets.top, backgroundColor: COLORS.background }} />
 
       {/* Current player city: mandatory once, one-tap to change afterwards. */}
-      <TouchableOpacity style={styles.locationBar} onPress={() => setShowCitySelector(true)} activeOpacity={0.8}>
+      <TouchableOpacity style={[styles.locationBar, keyboardViewport.keyboardVisible && { display: 'none' }, (activeTab === 'map' && mapFullscreen) && { display: 'none' }]} onPress={() => setShowCitySelector(true)} activeOpacity={0.8}>
         <Text style={styles.locationText}>📍 {city || 'Choisir ma ville'}</Text>
         <Text style={styles.locationAction}>{city ? 'Modifier' : 'Requis'}</Text>
       </TouchableOpacity>
@@ -117,8 +126,9 @@ function AppContent() {
         <HistoryScreen t={t} lang={lang} server={server} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'advisor' && { display: 'none' }]}>
-        <AdvisorScreen t={t} lang={lang} server={server} playerCity={city} onCityDetected={selectCity} isPremium={isPremium} />
+        <AdvisorHubScreen active={activeTab === 'advisor'} compact={keyboardViewport.keyboardVisible} onProviderChange={setAdvisorProvider} t={t} lang={lang} server={server} playerCity={city} onCityDetected={selectCity} isPremium={isPremium} />
       </View>
+      {activeTab === 'map' && <View style={[styles.screenContainer,mapFullscreen&&{paddingBottom:insets.bottom}]}><WorldMapScreen fullScreen={mapFullscreen} onFullScreenChange={setMapFullscreen}/></View>}
       <View style={[styles.screenContainer, activeTab !== 'settings' && { display: 'none' }]}>
         <SettingsScreen
           t={t}
@@ -153,6 +163,7 @@ function AppContent() {
         style={[
           styles.tabBar,
           { paddingBottom: Math.max(insets.bottom, 12) },
+          keyboardViewport.keyboardVisible && { display: 'none' }, (activeTab === 'map' && mapFullscreen) && { display: 'none' },
         ]}
       >
         {TABS.map((tab) => {
@@ -171,11 +182,12 @@ function AppContent() {
                 </Text>
               </View>
               <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
-                {t(tab)}
+                {tab === 'map' ? (lang === 'fr' ? 'Carte' : lang === 'es' ? 'Mapa' : 'Map') : t(tab)}
               </Text>
             </TouchableOpacity>
           );
         })}
+      </View>
       </View>
     </View>
   );

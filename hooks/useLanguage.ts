@@ -5,11 +5,17 @@ import { Language, translations, TranslationKey } from '../lib/i18n';
 
 const LANG_KEY = 'albion_calc_language';
 
-function getStoredValue(key: string): Promise<string | null> {
-  if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
-    return Promise.resolve(localStorage.getItem(key));
+async function getStoredValue(key: string): Promise<string | null> {
+  try {
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      return localStorage.getItem(key);
+    }
+    return await AsyncStorage.getItem(key);
+  } catch {
+    // Storage may be blocked by the browser or unavailable on the device.
+    // Keep the default language, but allow the application to finish loading.
+    return null;
   }
-  return AsyncStorage.getItem(key);
 }
 
 function setStoredValue(key: string, value: string): Promise<void> {
@@ -35,7 +41,11 @@ export function useLanguage() {
 
   const switchLanguage = useCallback(async (newLang: Language) => {
     setLang(newLang);
-    await setStoredValue(LANG_KEY, newLang);
+    try {
+      await setStoredValue(LANG_KEY, newLang);
+    } catch {
+      // The selection remains usable for this session; it was not persisted.
+    }
   }, []);
 
   const t = useCallback(

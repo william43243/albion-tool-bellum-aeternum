@@ -1,0 +1,31 @@
+{
+  "source_url": "https://west.albion-online-data.com/api/v2/stats/history/T4_ROCK.json?locations=Caerleon&date=09-06-2026&end_date=11-05-2026&time-scale=24&qualities=1",
+  "observed_at_utc": "2026-11-05T23:13:14.196372+00:00",
+  "capture_scope": "Exact first two and last two points printed by public API inspection; complete 45-point response was not retained. Do not calculate full-period average from this excerpt.",
+  "total_points_reported": 45,
+  "location": "Caerleon",
+  "item_id": "T4_ROCK",
+  "quality": 1,
+  "data_excerpt": [
+    {
+      "item_count": 14674,
+      "avg_price": 14,
+      "timestamp": "2026-09-05T00:00:00"
+    },
+    {
+      "item_count": 4393,
+      "avg_price": 10,
+      "timestamp": "2026-09-06T00:00:00"
+    },
+    {
+      "item_count": 390,
+      "avg_price": 6,
+      "timestamp": "2026-11-03T00:00:00"
+    },
+    {
+      "item_count": 2288,
+      "avg_price": 7,
+      "timestamp": "2026-11-04T00:00:00"
+    }
+  ]
+}

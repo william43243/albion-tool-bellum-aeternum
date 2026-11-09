@@ -1,0 +1,34 @@
+// Export the selected release runtime artifacts, not every dependency in the cache.
+// Paths are local build inputs only; the public notice generator strips them.
+tasks.register('exportThirdPartyArtifacts') {
+    def destination = layout.buildDirectory.file('reports/licenses/artifacts.local.json')
+    outputs.file(destination)
+    outputs.upToDateWhen { false }
+    doLast {
+        def rows = []
+        ['releaseRuntimeClasspath', 'coreLibraryDesugaring'].each { name ->
+            def configuration = configurations.getByName(name)
+            def external = configuration.incoming.artifactView {
+                componentFilter { id -> id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+            }
+            external.artifacts.artifacts.each { artifact ->
+                def id = artifact.id.componentIdentifier
+                rows.add([group: id.group, name: id.module, version: id.version,
+                    configuration: name, file: artifact.file.absolutePath])
+            }
+            configuration.incoming.resolutionResult.allComponents.each { component ->
+                def id = component.id
+                if (id instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier && id.projectPath != ':app') {
+                    rows.add([group: 'project', name: id.projectPath, version: 'local',
+                        configuration: name, file: project(id.projectPath).projectDir.absolutePath])
+                }
+            }
+        }
+        def target = destination.get().asFile
+        target.parentFile.mkdirs()
+        target.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(rows.sort { a, b ->
+            "${a.group}:${a.name}:${a.version}:${a.file}" <=> "${b.group}:${b.name}:${b.version}:${b.file}"
+        }))
+        logger.lifecycle("Exported ${rows.size()} selected artifacts to build/reports/licenses/artifacts.local.json")
+    }
+}

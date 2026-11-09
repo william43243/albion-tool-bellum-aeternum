@@ -21,5 +21,17 @@ allprojects {
   }
 }
 
+// React Native Screens also builds C++ in release. Keep its generated paths
+// short on Windows without editing the installed third-party package.
+subprojects { subproject ->
+  if (subproject.name == 'react-native-screens') {
+    subproject.afterEvaluate {
+      def cacheId = Integer.toHexString(rootProject.projectDir.absolutePath.hashCode())
+      subproject.android.externalNativeBuild.cmake.buildStagingDirectory = new File(System.getProperty('java.io.tmpdir'), "albion-screens-${cacheId}")
+      subproject.android.defaultConfig.externalNativeBuild.cmake.arguments '-DCMAKE_OBJECT_PATH_MAX=240'
+    }
+  }
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"

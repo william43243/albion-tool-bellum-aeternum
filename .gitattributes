@@ -1,0 +1,3 @@
+# Preserve the exact upstream bytes whose hashes are recorded in supplements.json.
+/docs/licenses/upstream/** -text
+/docs/licenses/source/** -text

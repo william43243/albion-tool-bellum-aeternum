@@ -9,6 +9,7 @@ import {
   trackFlipCalculation,
 } from '../lib/analytics';
 import { parseUserNumber } from '../lib/numberParsing';
+import { useLocalizedNumberInput } from '../hooks/useLocalizedNumberInput';
 import NumberInput from '../components/NumberInput';
 import PremiumToggle from '../components/PremiumToggle';
 import ResultCard from '../components/ResultCard';
@@ -21,9 +22,9 @@ interface Props {
 }
 
 export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: Props) {
-  const [buyPrice, setBuyPrice] = useState('');
-  const [sellPrice, setSellPrice] = useState('');
-  const [quantity, setQuantity] = useState('1');
+  const [buyPrice, setBuyPrice] = useLocalizedNumberInput<string>('', lang);
+  const [sellPrice, setSellPrice] = useLocalizedNumberInput<string>('', lang);
+  const [quantity, setQuantity] = useLocalizedNumberInput<string>('1', lang);
   const [useBuyOrder, setUseBuyOrder] = useState(true);
   const [useSellOrder, setUseSellOrder] = useState(true);
 
