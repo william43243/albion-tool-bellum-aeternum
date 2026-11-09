@@ -13,12 +13,6 @@ interface ModelInfoBase {
   quality: 'basic' | 'good' | 'excellent';
   ramRequired: string;
   license: string;
-  /** License of a different browser artifact, when it differs from Android. */
-  webLicense?: string;
-  /** WebLLM model ID for browser — if set, this model works on web too */
-  webModelId?: string;
-  /** Web-specific size label (MLC format differs from LiteRT) */
-  webSizeLabel?: string;
   /** Whether this model supports vision/multimodal */
   multimodal?: boolean;
   /** Whether LiteRT-LM tool calling is enabled for this model */
@@ -32,15 +26,9 @@ interface ModelInfoBase {
 export interface AndroidModelInfo extends ModelInfoBase {
   /** Exact SHA-256 of the Android LiteRT artifact. */
   sha256: string;
-  webOnly?: false;
 }
 
-export interface WebOnlyModelInfo extends ModelInfoBase {
-  sha256?: never;
-  webOnly: true;
-}
-
-export type ModelInfo = AndroidModelInfo | WebOnlyModelInfo;
+export type ModelInfo = AndroidModelInfo;
 
 const HF = 'https://huggingface.co/litert-community';
 // Pin every Android artifact to the revision verified with its size/SHA-256.
@@ -88,8 +76,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quality: 'good',
     ramRequired: '~3 GB',
     license: 'Apache 2.0',
-    webModelId: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
-    webSizeLabel: '~900 MB',
   },
   {
     id: 'deepseek-r1-15b',
@@ -107,7 +93,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quality: 'good',
     ramRequired: '~3 GB',
     license: 'MIT',
-    // DeepSeek R1 1.5B not available in WebLLM (only 7B+)
   },
   {
     id: 'gemma4-e2b',
@@ -125,10 +110,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     quality: 'excellent',
     ramRequired: '~4 GB',
     license: 'Apache 2.0',
-    webLicense: 'Gemma',
+
     toolCalling: true,
-    webModelId: 'gemma-2-2b-it-q4f16_1-MLC',
-    webSizeLabel: '~1.4 GB',
   },
   {
     id: 'gemma4-e4b',
@@ -148,64 +131,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     license: 'Apache 2.0',
     toolCalling: true,
   },
-  // ─── Web-only models (too large for mobile, great on PC) ────
-  {
-    id: 'qwen25-7b-web',
-    name: 'Qwen2.5 7B',
-    description: {
-      fr: 'Puissant. Excellent raisonnement et tool calling. Web uniquement.',
-      en: 'Powerful. Excellent reasoning and tool calling. Web only.',
-      es: 'Potente. Excelente razonamiento y tool calling. Solo web.',
-    },
-    filename: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
-    downloadUrl: '',
-    sizeBytes: 4.5 * 1024 * 1024 * 1024,
-    sizeLabel: '~4.5 GB',
-    quality: 'excellent',
-    ramRequired: '~6 GB VRAM',
-    license: 'Apache 2.0',
-    webModelId: 'Qwen2.5-7B-Instruct-q4f16_1-MLC',
-    webSizeLabel: '~4.5 GB',
-    webOnly: true,
-  },
-  {
-    id: 'phi35-mini-web',
-    name: 'Phi-3.5 Mini 3.8B',
-    description: {
-      fr: 'Microsoft. Compact et performant. Ideal pour le web.',
-      en: 'Microsoft. Compact and capable. Ideal for web.',
-      es: 'Microsoft. Compacto y capaz. Ideal para web.',
-    },
-    filename: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
-    downloadUrl: '',
-    sizeBytes: 2.2 * 1024 * 1024 * 1024,
-    sizeLabel: '~2.2 GB',
-    quality: 'excellent',
-    ramRequired: '~4 GB VRAM',
-    license: 'MIT',
-    webModelId: 'Phi-3.5-mini-instruct-q4f16_1-MLC',
-    webSizeLabel: '~2.2 GB',
-    webOnly: true,
-  },
-  {
-    id: 'llama32-3b-web',
-    name: 'Llama 3.2 3B',
-    description: {
-      fr: 'Meta. Tres bon equilibre performance/vitesse. Web uniquement.',
-      en: 'Meta. Great balance of performance/speed. Web only.',
-      es: 'Meta. Gran equilibrio rendimiento/velocidad. Solo web.',
-    },
-    filename: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
-    downloadUrl: '',
-    sizeBytes: 1.8 * 1024 * 1024 * 1024,
-    sizeLabel: '~1.8 GB',
-    quality: 'good',
-    ramRequired: '~3 GB VRAM',
-    license: 'Llama 3.2',
-    webModelId: 'Llama-3.2-3B-Instruct-q4f16_1-MLC',
-    webSizeLabel: '~1.8 GB',
-    webOnly: true,
-  },
 ];
 
 export function getModelById(id: string): ModelInfo | undefined {
@@ -214,23 +139,17 @@ export function getModelById(id: string): ModelInfo | undefined {
 
 /**
  * Get models available for the current platform.
- * Android: models with a .litertlm filename (excludes webOnly)
- * Web: models with a webModelId set
+ * Only Android artifacts are supported by this repository.
  */
 export function getModelsForPlatform(platform: string): ModelInfo[] {
-  if (platform === 'web') {
-    return AVAILABLE_MODELS.filter((m) => !!m.webModelId);
-  }
-  // Android/iOS — exclude web-only models
-  return AVAILABLE_MODELS.filter((m) => !m.webOnly);
+  return platform === 'android' ? AVAILABLE_MODELS : [];
 }
 
 /**
  * Get the filename/ID to use for this model on the current platform.
- * Web uses webModelId, Android uses filename.
+ * The pinned Android artifact filename is used.
  */
 export function getModelFilename(model: ModelInfo, platform: string): string {
-  if (platform === 'web' && model.webModelId) return model.webModelId;
   return model.filename;
 }
 
@@ -238,7 +157,6 @@ export function getModelFilename(model: ModelInfo, platform: string): string {
  * Get the display size for this model on the current platform.
  */
 export function getModelSizeLabel(model: ModelInfo, platform: string): string {
-  if (platform === 'web' && model.webSizeLabel) return model.webSizeLabel;
   return model.sizeLabel;
 }
 

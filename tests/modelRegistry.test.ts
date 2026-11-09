@@ -3,7 +3,7 @@ import test from 'node:test';
 import { AVAILABLE_MODELS } from '../lib/models';
 
 test('every Android model has an exact size and mandatory SHA-256', () => {
-  const androidModels = AVAILABLE_MODELS.filter((model) => !model.webOnly);
+  const androidModels = AVAILABLE_MODELS;
   assert.ok(androidModels.length > 0);
   for (const model of androidModels) {
     assert.ok(Number.isSafeInteger(model.sizeBytes) && model.sizeBytes > 0, `${model.id}: sizeBytes must be exact`);
@@ -36,7 +36,7 @@ test('calculator-only item analysis is restricted to the Qwen model tested on S2
 });
 
 test('every Android download is pinned to an immutable revision, never a mutable branch', () => {
-  for (const model of AVAILABLE_MODELS.filter((model) => !model.webOnly)) {
+  for (const model of AVAILABLE_MODELS) {
     const url = new URL(model.downloadUrl);
     assert.equal(url.protocol, 'https:', model.id);
     assert.equal(url.hostname, 'huggingface.co', model.id);

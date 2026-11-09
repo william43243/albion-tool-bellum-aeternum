@@ -11,9 +11,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#0d1117"
     },
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "package": "com.albion.market",
       "versionCode": 17,
@@ -36,17 +33,8 @@
       "predictiveBackGestureEnabled": false
     },
     "platforms": [
-      "ios",
-      "android",
-      "web"
+      "android"
     ],
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
-    "experiments": {
-      "baseUrl": "/app"
-    },
     "plugins": [
       "expo-font"
     ]

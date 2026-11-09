@@ -67,11 +67,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const [blockedTerminalModelId, setBlockedTerminalModelId] = useState<string | null>(null);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [freeDisk, setFreeDisk] = useState<number>(-1);
-  const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(
-    Platform.OS === 'web' ? false : null
-  );
   const [backendInfo, setBackendInfo] = useState<{ backendUsed: string; isMediaTek: boolean; hasVision: boolean; maxOutputTokens?: number } | null>(null);
-  const isWeb = Platform.OS === 'web';
   const calculatorOnlyAnalysis = getModelById(activeModelId || '')?.itemAnalysisMode === 'calculator-only';
   const unverifiedAIWarning = lang === 'fr'
     ? 'Chat IA expérimental : réponse non validée, pouvant contredire les calculs. Ne pas utiliser comme recommandation de trade.'
@@ -315,11 +311,6 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     LLM.getFreeDiskSpace().then(setFreeDisk);
     const stopObservingDownload = LLM.observeDownloadProgress(applyActiveDownload);
     syncActiveDownload();
-
-    // Check WebGPU on web
-    if (Platform.OS === 'web') {
-      LLM.isWebGPUAvailable().then(setWebGPUSupported);
-    }
 
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
@@ -757,8 +748,6 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     [advisorSession, renderSession, server, lang, t, isPremium, playerCity, sendToLLM]
   );
 
-
-
   const handleSend = useCallback(async () => {
     const session = renderSession;
     const request = renderRequest;
@@ -963,7 +952,6 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     };
 
     const platformModels = getModelsForPlatform(Platform.OS);
-    const webGPUBlocked = isWeb && webGPUSupported === false;
 
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.modelsContent}>
@@ -976,40 +964,12 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
             : 'Choose an AI model to analyze the market'}
         </Text>
 
-        {/* WebGPU compatibility banner */}
-        {isWeb && webGPUSupported === false && (
-          <View style={styles.webGPUBanner}>
-            <Text style={styles.webGPUBannerTitle}>
-              {lang === 'fr' ? 'WebGPU non disponible' : lang === 'es' ? 'WebGPU no disponible' : 'WebGPU not available'}
-            </Text>
-            <Text style={styles.webGPUBannerText}>
-              {lang === 'fr'
-                ? "Ton navigateur ne supporte pas WebGPU. Utilise Chrome 113+ ou Edge 113+ pour l'IA dans le navigateur. Sur mobile, telecharge l'APK Android."
-                : lang === 'es'
-                ? 'Tu navegador no soporta WebGPU. Usa Chrome 113+ o Edge 113+ para IA en el navegador. En movil, descarga el APK Android.'
-                : "Your browser doesn't support WebGPU. Use Chrome 113+ or Edge 113+ for in-browser AI. On mobile, download the Android APK."}
-            </Text>
-          </View>
-        )}
-
-        {isWeb && webGPUSupported === true && (
-          <View style={styles.webGPUBannerOk}>
-            <Text style={styles.webGPUBannerOkText}>
-              {lang === 'fr'
-                ? 'WebGPU detecte — IA dans le navigateur disponible'
-                : lang === 'es'
-                ? 'WebGPU detectado — IA en el navegador disponible'
-                : 'WebGPU detected — in-browser AI available'}
-            </Text>
-          </View>
-        )}
-
         {backendInfo?.isMediaTek && backendInfo.backendUsed === 'cpu' && (
-          <View style={[styles.webGPUBanner, { backgroundColor: '#4a3500' }]}>
-            <Text style={styles.webGPUBannerTitle}>
+          <View style={[styles.backendBanner, { backgroundColor: '#4a3500' }]}>
+            <Text style={styles.backendBannerTitle}>
               {lang === 'fr' ? 'Chipset MediaTek détecté' : lang === 'es' ? 'Chipset MediaTek detectado' : 'MediaTek chipset detected'}
             </Text>
-            <Text style={styles.webGPUBannerText}>
+            <Text style={styles.backendBannerText}>
               {lang === 'fr'
                 ? "L'accélération GPU n'est pas encore supportée sur MediaTek. L'IA tourne en mode CPU — les petits modèles (Qwen 0.8B) sont recommandés."
                 : lang === 'es'
@@ -1070,7 +1030,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                 </View>
                 <View style={styles.specItem}>
                   <Text style={styles.specLabel}>{lang === 'fr' ? 'Licence' : 'License'}</Text>
-                  <Text style={styles.specValue}>{Platform.OS === 'web' ? (model.webLicense ?? model.license) : model.license}</Text>
+                  <Text style={styles.specValue}>{model.license}</Text>
                 </View>
                 <View style={styles.specItem}>
                   <Text style={styles.specLabel}>Status</Text>
@@ -1111,9 +1071,9 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                 <View style={styles.modelActions}>
                   {!isDownloaded ? (
                     <TouchableOpacity
-                      style={[styles.actionBtn, styles.downloadBtn, webGPUBlocked && { opacity: 0.3 }]}
+                      style={[styles.actionBtn, styles.downloadBtn]}
                       onPress={() => handleDownload(model)}
-                      disabled={!!downloading || !!currentDownloadAttemptRef.current || webGPUBlocked}
+                      disabled={!!downloading || !!currentDownloadAttemptRef.current}
                     >
                       <Text style={styles.downloadBtnText}>
                         {lang === 'fr' ? 'Télécharger' : lang === 'es' ? 'Descargar' : 'Download'}
@@ -1122,9 +1082,9 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                   ) : (
                     <>
                       <TouchableOpacity
-                        style={[styles.actionBtn, styles.startBtn, webGPUBlocked && { opacity: 0.3 }]}
+                        style={[styles.actionBtn, styles.startBtn]}
                         onPress={() => handleStartModel(model)}
-                        disabled={engineState === 'loading' || webGPUBlocked}
+                        disabled={engineState === 'loading'}
                       >
                         <Text style={styles.startBtnText}>
                           {lang === 'fr' ? 'Démarrer' : lang === 'es' ? 'Iniciar' : 'Start'}
@@ -1141,7 +1101,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                   )}
                 </View>
               )}
-              {!isWeb && model.cpuTextOption && isDownloaded && !isDownloading && (
+              {model.cpuTextOption && isDownloaded && !isDownloading && (
                 <View style={{ marginTop: 10 }}>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.startBtn, { flex: 0 }]}
@@ -1171,13 +1131,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
             {lang === 'fr' ? 'Comment ça marche ?' : 'How does it work?'}
           </Text>
           <Text style={styles.infoText}>
-            {isWeb
-              ? (lang === 'fr'
-                ? "L'IA tourne dans ton navigateur grace a WebLLM + WebGPU. Aucune donnee n'est envoyee a un serveur externe. Le modele est telecharge et cache localement. Chrome 113+ ou Edge 113+ requis."
-                : lang === 'es'
-                ? 'La IA corre en tu navegador con WebLLM + WebGPU. No se envian datos a servidores externos. El modelo se descarga y almacena localmente. Chrome 113+ o Edge 113+ requerido.'
-                : 'The AI runs in your browser using WebLLM + WebGPU. No data is sent to external servers. The model is downloaded and cached locally. Chrome 113+ or Edge 113+ required.')
-              : (lang === 'fr'
+            {(lang === 'fr'
                 ? "L'IA tourne entièrement sur ton téléphone grâce à LiteRT-LM sur CPU ou GPU. Aucune donnée n'est envoyée à un serveur externe. Le modèle analyse les prix du marché Albion en temps réel."
                 : 'The AI runs entirely on your phone using LiteRT-LM on CPU or GPU. No data is sent to external servers. The model analyzes Albion market prices in real-time.')}
           </Text>
@@ -1228,7 +1182,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         </View>
       </View>
 
-      {!isWeb && backendInfo && (
+      {backendInfo && (
         <Text style={styles.diskInfo}>
           {backendInfo.backendUsed.toUpperCase()} · {backendInfo.hasVision
             ? (lang === 'fr' ? 'Texte + images' : lang === 'es' ? 'Texto + imágenes' : 'Text + images')
@@ -1303,7 +1257,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
       {/* Input bar */}
       <View style={styles.inputBar}>
-        {!isWeb && backendInfo?.hasVision === true && (
+        {backendInfo?.hasVision === true && (
           <>
             <TouchableOpacity
               style={styles.imageBtn}
@@ -1395,7 +1349,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
     marginBottom: SPACING.md,
   },
-  webGPUBanner: {
+  backendBanner: {
     backgroundColor: COLORS.loss + '15',
     borderWidth: 1,
     borderColor: COLORS.loss + '40',
@@ -1403,29 +1357,16 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     marginBottom: SPACING.md,
   },
-  webGPUBannerTitle: {
+  backendBannerTitle: {
     color: COLORS.loss,
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
     marginBottom: SPACING.xs,
   },
-  webGPUBannerText: {
+  backendBannerText: {
     color: COLORS.textSecondary,
     fontSize: FONT_SIZE.sm,
     lineHeight: 20,
-  },
-  webGPUBannerOk: {
-    backgroundColor: COLORS.profit + '15',
-    borderWidth: 1,
-    borderColor: COLORS.profit + '40',
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  webGPUBannerOkText: {
-    color: COLORS.profit,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: '600',
   },
   loadingCard: {
     backgroundColor: COLORS.card,

@@ -57,7 +57,6 @@ The Android project contains maintained custom native modules. Build the checked
 
 ```sh
 npm ci --legacy-peer-deps
-npm ci --prefix analytics
 npm run prepare:data
 npm run check:data
 python3 scripts/generate-notices.py --check
@@ -69,7 +68,7 @@ android/gradlew -p android :app:assembleDebug -PALBION_QA=true --max-workers=1
 
 On Windows, use `python` instead of `python3`, omit `chmod`, and run `android\gradlew.bat`. The standalone debug APK is written to `android/app/build/outputs/apk/debug/`. The `.qa` package suffix keeps it separate from the production application; no production signing credentials are required.
 
-`prepare:data` retrieves a fixed upstream `world.json`, verifies its SHA-256 and generates the same 414-zone dataset for JavaScript and Android. Generated map JSON files remain excluded from Git. CI and Docker run this preparation too. For an offline source file with the exact expected checksum:
+`prepare:data` retrieves a fixed upstream `world.json`, verifies its SHA-256 and generates the same 414-zone dataset for JavaScript and Android. Generated map JSON files remain excluded from Git. CI run this preparation too. For an offline source file with the exact expected checksum:
 
 ```sh
 npm run prepare:data -- --source /path/to/world.json
@@ -85,11 +84,12 @@ android/gradlew -p android :app:assembleRelease -PALBION_ALLOW_UNSIGNED_RELEASE=
 
 An unsigned candidate is not an installable production release. Production signing is isolated in the protected GitHub workflow; signing credentials must never be passed to Gradle. The default Android configuration also targets x86_64, which was not part of the latest clean ARM64 build verification.
 
-For a browser development session, run `npm run web` after preparing the data. Browser models and native capabilities differ; Android background alerts and Android OAuth behavior should not be assumed to work in the browser.
+
+This repository contains the Android app, its build tools, tests and required notices. The standalone website, backend, deployment configuration and browser AI are maintained outside this repository. The app still calls external market and update services; removing their server source here does not disable those deployed services.
 
 ## Verification and releases
 
-The [2026-11-08 validation report](docs/publication-validation.md) records 469 passing tests, TypeScript validation, web regression checks and a successful clean-source ARM64 release build. It distinguishes build evidence from device and live-provider testing. This is a tested beta, not a guarantee that every device, account or market scenario works.
+The [2026-11-08 validation report](docs/publication-validation.md) records 458 passing tests, TypeScript and map integrity checks, and a successful Android JavaScript/Hermes bundle after the Android-only cleanup. The earlier clean-source ARM64 APK build is documented separately. This remains a tested beta; the cleanup was not installed on a phone.
 
 CI checks data integrity and notices, tests the source, builds an unsigned candidate and runs Android checks. Production signing and publication require the separate protected manual workflow. Releases prepared by that workflow include `third-party-sources-notices.zip` alongside the APK.
 
@@ -103,7 +103,6 @@ Keep that companion archive with redistributed binaries. It contains readable no
 | `lib/` | Calculations, API access, history, routing and assistant bridges |
 | `android/app/src/main/java/` | Kotlin/Java inference, authentication, tool execution and alerts |
 | `scripts/` | Pinned map preparation and license/source packaging |
-| `analytics/` | Optional web analytics backend; separate dependency lockfile |
 | `tests/`, `docs/` | Automated checks, technical evidence and integration limitations |
 
 The app uses React Native 0.88.1, Expo 58, TypeScript, Kotlin/Java and LiteRT-LM. Dependency versions are recorded in the lockfiles and Gradle configuration.

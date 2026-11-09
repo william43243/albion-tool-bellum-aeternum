@@ -27,20 +27,11 @@ Weights are downloaded at runtime, not committed as part of the intended source 
 
 Gemma 4 uses [Apache 2.0](https://ai.google.dev/gemma/apache_2), unlike earlier Gemma families. The previous description applying older Gemma restrictions to Gemma 4 was incorrect. Apache 2.0 and MIT still impose applicable notice/license conditions; neither should be summarized as “no restrictions.” Model-card metadata is evidence, not a substitute for preserving the actual license and any additional artifact notices.
 
-## Browser model choices
-
-The browser can load different models than Android. In particular the Gemma 4 E2B entry maps to **Gemma 2 2B** on the web, which remains subject to the [Gemma terms](https://ai.google.dev/gemma/terms) and its [model card](https://huggingface.co/google/gemma-2-2b-it). Do not apply Gemma 4's Apache license to that fallback.
-
-- [Qwen2.5 7B](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct): Apache 2.0.
-- [Phi-3.5 Mini](https://huggingface.co/microsoft/Phi-3.5-mini-instruct): MIT.
-- [Llama 3.2 3B](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct/blob/main/LICENSE.txt): Llama 3.2 Community License, with its own conditions. Not MIT or Apache 2.0. Distribution/use-policy and attribution requirements need to be checked for the final web deployment.
-
 ## Software dependencies
 
 - [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM/blob/main/LICENSE): Apache 2.0; native Android dependency currently `0.17.0`.
 - [Nimbus JOSE+JWT 10.10](https://repo.maven.apache.org/maven2/com/nimbusds/nimbus-jose-jwt/10.10/): Apache 2.0; used for token signature/claim validation.
 - React, React Native, Expo, react-native-svg, react-native-chart-kit and react-native-paper: MIT declarations in the installed package metadata.
-- WebLLM: Apache 2.0 declaration in package metadata. Its software license does not replace the licenses of downloaded models.
 - `node-forge` declares `(BSD-3-Clause OR GPL-2.0)`: the BSD-3-Clause alternative is the intended distribution basis; retain its BSD notice. This is not a GPL-only dependency.
 
 [The npm inventory](docs/licenses/npm-inventory.json) records exact lockfile versions and license declarations, including development dependencies. The separate [Android runtime corpus](docs/licenses/README.md) preserves full upstream texts for the selected JavaScript and native dependencies, including embedded LiteRT notices and native supplements. The app exposes it offline in Settings. CI checks its coverage against the release runtime; it is not a blanket legal certification. In particular desugar_jdk_libs uses GPL-2.0 with the Classpath Exception (its upstream source archive is provided), while Install Referrer declares Android SDK terms. These are not MIT dependencies.

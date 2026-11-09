@@ -36,7 +36,7 @@ import nacl from 'tweetnacl';
 /**
  * Ed25519 public key, hex-encoded (64 chars = 32 bytes).
  *
- * Generated once via `analytics/scripts/generate-signing-key.js`. MUST be
+ * Generated once via the separately maintained update server. MUST be
  * replaced with the real public key before shipping a build that ships the
  * updater UI — the all-zeros placeholder will reject every real manifest.
  *
@@ -63,7 +63,7 @@ function getUpdatesDirectory(): string {
 
 /**
  * The set of fields that make up the signed manifest. This list must match
- * what analytics/scripts/publish.js signs, and what analytics/server.js
+ * what the external update publisher signs, and what the external update server
  * returns (minus the signature column). Any drift here will cause client
  * verification to fail.
  */
@@ -101,7 +101,7 @@ export interface VersionManifest {
 
 /**
  * Deterministic JSON serialization. MUST produce byte-identical output to
- * the canonicalize() in analytics/scripts/publish.js — see the comment
+ * the canonicalize() in the external update publisher — see the comment
  * there for the rules.
  */
 function canonicalize(value: unknown): string {

@@ -48,8 +48,8 @@ yarn-error.*
 # TypeScript
 *.tsbuildinfo
 
-# APK builds (too large for git)
-site/downloads/*.apk
+# Standalone website maintained separately
+/site/
 
 # AI models (downloaded at runtime, too large for git)
 *.litertlm
@@ -87,3 +87,9 @@ android/app/src/main/assets/index.android.bundle
 /*.log
 /qa-keyboard-reference/
 /android-js-audit/
+
+# Server, website and standalone deployment live outside the Android repository
+/analytics/
+/deploy/
+/icon/
+/image/

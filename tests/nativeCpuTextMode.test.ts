@@ -26,7 +26,7 @@ test('Android bridge preserves the CPU/text choice and defaults to automatic mod
   const liteRT = loadInitialize('lib/litert.ts', {
     Platform: { OS: 'android' }, LiteRTModule: { initialize: async (...args: any[]) => { calls.push(args); return result; } },
   });
-  const llm = loadInitialize('lib/llm.ts', { isWeb: false, LiteRT: { initialize: liteRT } });
+  const llm = loadInitialize('lib/llm.ts', { LiteRT: { initialize: liteRT } });
   assert.equal(await llm('model', 'prompt', 'server', true, true, true), result);
   await llm('model', 'prompt', 'server', true, true);
   await llm('model', 'prompt', 'server', true, false, true);
@@ -47,7 +47,7 @@ test('CPU/text option preserves the exact multimodal artifact and normal Start',
   assert.match(screen, /onPress=\{\(\) => handleStartModel\(model\)\}/);
   assert.match(screen, /model\.cpuTextOption && isDownloaded && !isDownloading/);
   assert.match(screen, /onPress=\{\(\) => handleStartModel\(model, true\)\}/);
-  assert.match(screen, /!isWeb && backendInfo\?\.hasVision === true/);
+  assert.match(screen, /backendInfo\?\.hasVision === true/);
 });
 
 test('native explicit CPU mode skips both GPU tiers and leaves vision unset', () => {

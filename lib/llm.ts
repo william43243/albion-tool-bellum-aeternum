@@ -1,55 +1,35 @@
-// Unified LLM Bridge — routes to LiteRT (Android) or WebLLM (Web)
-
-import { Platform } from 'react-native';
+// Android LLM bridge: delegates inference to the native LiteRT module.
 import * as LiteRT from './litert';
 
 // Re-export types
 export type { StreamCallbacks, DownloadCallbacks, DownloadedModel, InitResult } from './litert';
 
-const isWeb = Platform.OS === 'web';
-
-type CancelToken = { cancelled: boolean; cleanup?: () => void };
-
-// Lazy-load WebLLM only on web — metro.config.js excludes @mlc-ai/web-llm on Android
-let _webllm: typeof import('./webllm') | null = null;
-async function getWebLLMModule() {
-  if (!_webllm) _webllm = await import('./webllm');
-  return _webllm;
-}
-
-// Wrap each function to route web→WebLLM, android→LiteRT
+// Preserve the typed bridge API consumed by the advisor.
 export async function getDownloadedModels() {
-  if (isWeb) return (await getWebLLMModule()).getDownloadedModels();
   return LiteRT.getDownloadedModels();
 }
 
 export async function isModelDownloaded(filename: string, expectedSizeBytes: number, expectedSha256: string) {
-  if (isWeb) return (await getWebLLMModule()).isModelDownloaded(filename);
   return LiteRT.isModelDownloaded(filename, expectedSizeBytes, expectedSha256);
 }
 
 export async function getFreeDiskSpace() {
-  if (isWeb) return (await getWebLLMModule()).getFreeDiskSpace();
   return LiteRT.getFreeDiskSpace();
 }
 
 export async function getActiveDownload(): Promise<LiteRT.ActiveDownload | null> {
-  if (isWeb) return null;
   return LiteRT.getActiveDownload();
 }
 
 export function observeDownloadProgress(callback: (event: LiteRT.ActiveDownload) => void): () => void {
-  if (isWeb) return () => {};
   return LiteRT.observeDownloadProgress(callback);
 }
 
 export async function cancelDownload(modelId: string, attemptId: string): Promise<boolean> {
-  if (isWeb) return false;
   return LiteRT.cancelDownload(modelId, attemptId);
 }
 
 export async function acknowledgeDownloadResult(modelId: string, attemptId: string, downloadId: number): Promise<boolean> {
-  if (isWeb) return false;
   return LiteRT.acknowledgeDownloadResult(modelId, attemptId, downloadId);
 }
 
@@ -61,31 +41,10 @@ export function downloadModel(
   expectedSha256: string,
   callbacks: LiteRT.DownloadCallbacks
 ) {
-  if (isWeb) {
-    const attemptId = LiteRT.createDownloadAttemptId();
-    const token: CancelToken = { cancelled: false };
-    const promise = getWebLLMModule().then((wllm) => {
-      if (token.cancelled) throw new Error('cancelled');
-      const result = wllm.downloadModel(modelId, url, filename, callbacks);
-      token.cleanup = result.cancel;
-      if (token.cancelled) result.cancel();
-      return result.promise;
-    });
-    return {
-      attemptId,
-      promise,
-      cancel: () => {
-        token.cancelled = true;
-        token.cleanup?.();
-        return Promise.resolve(true);
-      },
-    };
-  }
   return LiteRT.downloadModel(modelId, url, filename, expectedSizeBytes, expectedSha256, callbacks);
 }
 
 export async function deleteModel(filename: string) {
-  if (isWeb) return (await getWebLLMModule()).deleteModel(filename);
   return LiteRT.deleteModel(filename);
 }
 
@@ -97,62 +56,21 @@ export async function initialize(
   supportsTools = false,
   preferCpuText = false
 ) {
-  if (isWeb) return (await getWebLLMModule()).initialize(modelFilename, systemPrompt, serverBaseUrl);
   return LiteRT.initialize(modelFilename, systemPrompt, serverBaseUrl, supportsVision, supportsTools, preferCpuText);
 }
 
 export function sendMessage(message: string, callbacks: LiteRT.StreamCallbacks) {
-  if (isWeb) {
-    const token: CancelToken = { cancelled: false };
-    getWebLLMModule()
-      .then((wllm) => {
-        if (token.cancelled) return;
-        token.cleanup = wllm.sendMessage(message, callbacks);
-        if (token.cancelled) token.cleanup?.();
-      })
-      .catch((err) => {
-        if (!token.cancelled) callbacks.onError(err?.message || String(err));
-      });
-    return () => {
-      token.cancelled = true;
-      token.cleanup?.();
-    };
-  }
   return LiteRT.sendMessage(message, callbacks);
 }
 
 export function sendMessageWithImage(message: string, imagePath: string, callbacks: LiteRT.StreamCallbacks) {
-  if (isWeb) {
-    const token: CancelToken = { cancelled: false };
-    getWebLLMModule()
-      .then((wllm) => {
-        if (token.cancelled) return;
-        token.cleanup = wllm.sendMessageWithImage(message, imagePath, callbacks);
-        if (token.cancelled) token.cleanup?.();
-      })
-      .catch((err) => {
-        if (!token.cancelled) callbacks.onError(err?.message || String(err));
-      });
-    return () => {
-      token.cancelled = true;
-      token.cleanup?.();
-    };
-  }
   return LiteRT.sendMessageWithImage(message, imagePath, callbacks);
 }
 
 export async function resetConversation(systemPrompt: string, serverBaseUrl: string) {
-  if (isWeb) return (await getWebLLMModule()).resetConversation(systemPrompt);
   return LiteRT.resetConversation(systemPrompt, serverBaseUrl);
 }
 
 export async function destroy() {
-  if (isWeb) return (await getWebLLMModule()).destroy();
   return LiteRT.destroy();
-}
-
-// Web-only: WebGPU check
-export async function isWebGPUAvailable(): Promise<boolean> {
-  if (!isWeb) return false;
-  return (await getWebLLMModule()).isWebGPUAvailable();
 }

@@ -57,7 +57,6 @@ Le projet Android contient des modules natifs personnalisés maintenus dans le d
 
 ```sh
 npm ci --legacy-peer-deps
-npm ci --prefix analytics
 npm run prepare:data
 npm run check:data
 python3 scripts/generate-notices.py --check
@@ -69,7 +68,7 @@ android/gradlew -p android :app:assembleDebug -PALBION_QA=true --max-workers=1
 
 Sur Windows, utiliser `python` à la place de `python3`, ignorer `chmod` et lancer `android\gradlew.bat`. L'APK de test autonome est créé dans `android/app/build/outputs/apk/debug/`. Le suffixe `.qa` permet de le distinguer de la version de production; aucune clé de production n'est nécessaire.
 
-`prepare:data` récupère un `world.json` à une révision fixe, vérifie son SHA-256 et génère les mêmes 414 zones pour JavaScript et Android. Les JSON générés restent exclus de Git. CI et Docker utilisent aussi cette préparation. Pour un fichier source local dont l'empreinte correspond :
+`prepare:data` récupère un `world.json` à une révision fixe, vérifie son SHA-256 et génère les mêmes 414 zones pour JavaScript et Android. Les JSON générés restent exclus de Git. CI utilisent aussi cette préparation. Pour un fichier source local dont l'empreinte correspond :
 
 ```sh
 npm run prepare:data -- --source /chemin/world.json
@@ -85,11 +84,10 @@ android/gradlew -p android :app:assembleRelease -PALBION_ALLOW_UNSIGNED_RELEASE=
 
 Ce candidat ne constitue pas une release de production installable. La signature reste séparée dans le workflow GitHub protégé; ne jamais transmettre de secrets de signature à Gradle. La configuration par défaut vise aussi x86_64, qui n'a pas été recompilé lors de cette dernière vérification propre.
 
-Pour le développement navigateur, lancer `npm run web` après la préparation des données. Les modèles et fonctions natives diffèrent : les alertes Android en arrière-plan et son parcours OAuth ne sont pas annoncés comme équivalents sur le web.
 
 ## Vérification et publication
 
-Le [bilan du 8 novembre 2026](docs/publication-validation.md) documente 469 tests réussis, la validation TypeScript, les contrôles web et la compilation ARM64 depuis une copie propre. Il distingue les preuves de compilation des essais sur téléphone et auprès des fournisseurs réels. L'application reste une bêta.
+Le [bilan du 8 novembre 2026](docs/publication-validation.md) documente 458 tests réussis, la validation TypeScript et des données de carte, ainsi que la génération du bundle JavaScript/Hermes Android après ce nettoyage. La compilation complète ARM64 précédente y est distinguée. Ce nettoyage n’a pas été installé sur téléphone; l’application reste une bêta.
 
 CI contrôle les données, les notices, les tests, la compilation et les vérifications Android. La signature et la publication de production passent par un workflow manuel protégé. Celui-ci prévoit une archive `third-party-sources-notices.zip` à côté de l'APK.
 
@@ -108,3 +106,7 @@ Sources principales : [AODP](https://www.albion-online-data.com/), [ao-data/ao-b
 Albion Online est une marque de Sandbox Interactive GmbH. Ce projet n'est ni affilié, ni sponsorisé, ni approuvé par Sandbox Interactive ou OpenAI.
 
 Le [README anglais](README.md#support) conserve les informations de soutien au projet et présente son organisation technique.
+
+## Périmètre Android
+
+Ce dépôt contient l’application Android, ses outils de compilation, tests et licences nécessaires. Le site, le serveur, le déploiement et l’IA navigateur sont retirés. L’APK garde ses appels aux services externes de marché et de mise à jour. Aucun service déjà en ligne n’est modifié par ce nettoyage.

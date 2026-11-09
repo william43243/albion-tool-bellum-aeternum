@@ -29,9 +29,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: |
-            package-lock.json
-            analytics/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install declared Android SDK components
         run: sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
@@ -40,7 +38,6 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --legacy-peer-deps
-          npm ci --prefix analytics
 
       - name: Run release source gates
         run: |
@@ -51,7 +48,6 @@ jobs:
           chmod +x android/gradlew
           npm test
           npm run typecheck
-          python3 tests/test_web_security_regressions.py
 
       - name: Run native unit tests
         run: android/gradlew -p android :app:testDebugUnitTest --no-daemon --max-workers=1

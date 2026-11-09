@@ -15,13 +15,13 @@ This draft describes the prepared source tree. It is not a published release or 
 
 - Regenerate the ignored map inputs from a pinned source with source and dataset integrity checks.
 - Build the maintained Android project directly, with a separate QA package and isolated production signing.
-- Access notices for 220 runtime components in Settings; include the third-party source/notice archive alongside released APKs.
+- Access notices for 219 runtime components in Settings; include the third-party source/notice archive alongside released APKs.
 - Check runtime dependency coverage and native artifact hashes during CI.
-- Update two analytics backend dependencies flagged by npm advisories.
+- Keep this repository Android-only: remove standalone website/backend deployment, browser AI and unrelated screenshots.
 
 ## Validation
 
-The [validation report](../docs/publication-validation.md) records 469 passing tests, TypeScript checks, web regression checks and a clean Windows ARM64 unsigned release build. The new notices screen was bundled but not visually tested on a phone in that pass. The GitHub workflow has not been run remotely for this prepared source tree.
+The [validation report](../docs/publication-validation.md) records 458 passing tests, TypeScript and map integrity checks, and a successful Android JavaScript/Hermes bundle after the Android-only cleanup. The earlier clean ARM64 APK build is documented separately; this cleanup was not installed on a phone.
 
 Market observations remain community-sourced and may be missing or stale. The map is static, without verified live kill activity or guaranteed safe transport. Provider/model support varies. Game-data redistribution rights remain an explicitly documented open question; original-code MIT licensing does not relicense third-party material.
 

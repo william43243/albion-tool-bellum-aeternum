@@ -1,5 +1,7 @@
 # Publication preparation — 2026-11-08
 
+> Historical validation of commit `8c2e6a9`, before the Android-only repository cleanup. Website/backend checks and their dependency installation described below apply to that earlier snapshot, not the current source layout.
+
 ## Clean source reconstruction
 
 A separate copy of the prospective Git files was created without `node_modules`, either local map JSON, a local Android SDK configuration, a debug keystore or prior build output. Dependencies were installed from the lockfiles and `npm run prepare:data` regenerated both map inputs from the pinned, SHA-256-verified source. All 414 zones matched the reviewed snapshot.
@@ -29,3 +31,13 @@ This candidate is unsigned and was not installed on the phone. The new notices s
 ## Remaining distinction
 
 The build prerequisite and runtime-notice gaps are addressed. The separate [game-data redistribution question](data-rights.md) remains documented; widespread use is not treated as a license grant. See [runtime notice maintenance](licenses/README.md) for regeneration and companion-source distribution.
+
+## Android-only cleanup validation
+
+The later Android-only cleanup removes the standalone website, backend/deployment files, browser AI and unrelated screenshots from the current tree. A fresh `npm ci --legacy-peer-deps` succeeded with no reported vulnerabilities; 21 lockfile packages were removed without upgrading retained packages.
+
+- 458/458 retained Android/client tests passed (two test workers), with TypeScript and both 414-zone map inputs verified. Website/server-specific tests were removed with their sources.
+- `:app:createBundleReleaseJsAndAssets` and `:app:exportThirdPartyArtifacts` succeeded: 871 Metro modules and 179 selected native artifacts. Runtime notices were regenerated and checked against those actual build outputs.
+- The candidate source scan detected only the previously reviewed public updater verification key, not a private credential.
+
+This pass rebuilt the Android JavaScript/Hermes bundle, not a complete APK, and did not install anything on a phone or deploy any server. The website remains in earlier Git history; the cleanup does not rewrite that history.

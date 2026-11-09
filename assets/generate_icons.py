@@ -70,11 +70,6 @@ cairosvg.svg2png(bytestring=mono_svg.encode(), write_to=os.path.join(SVG_DIR, "a
                  output_width=432, output_height=432)
 print("✓ android-icon-monochrome.png (432x432)")
 
-# ── 5. Favicon (48x48) ──
-cairosvg.svg2png(bytestring=svg_data.encode(), write_to=os.path.join(SVG_DIR, "favicon.png"),
-                 output_width=48, output_height=48)
-print("✓ favicon.png (48x48)")
-
 # ── 6. Splash icon (512x512 centered on dark bg, for Expo splash) ──
 splash_svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" fill="#0d1117"/>
@@ -86,10 +81,5 @@ splash_svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 cairosvg.svg2png(bytestring=svg_data.encode(), write_to=os.path.join(SVG_DIR, "splash-icon.png"),
                  output_width=512, output_height=512)
 print("✓ splash-icon.png (512x512)")
-
-# ── 7. Site favicon (larger, 192x192 for web manifest) ──
-cairosvg.svg2png(bytestring=svg_data.encode(), write_to=os.path.join(SVG_DIR, "icon-192.png"),
-                 output_width=192, output_height=192)
-print("✓ icon-192.png (192x192)")
 
 print("\nDone! All icons generated.")
