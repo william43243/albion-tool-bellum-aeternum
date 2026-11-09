@@ -31,8 +31,13 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: 'platform-tools'
+
       - name: Install declared Android SDK components
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
+        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
 
       - name: Install dependencies
         run: |
@@ -159,6 +164,11 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: 'platform-tools'
 
       - name: Install release signing tools
         run: sdkmanager "build-tools;37.0.0"
@@ -349,36 +359,54 @@ jobs:
           python3 ../scripts/package-release-notices.py --output .
           sha256sum -c THIRD_PARTY_SHA256SUMS
 
-          if release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" 2>/dev/null)"; then
-            verify_tag_target
+          lookup_release() {
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" | jq -s --arg tag "$tag" '[.[][] | select(.tag_name == $tag)] | if length > 1 then error("Duplicate release tags") else .[0] // null end'
+          }
+          release_json="$(lookup_release)"
+          if test "$release_json" != null; then
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+              verify_tag_target
+            fi
             printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
-              '.draft == false and .prerelease == true and .target_commitish == $sha' >/dev/null
+              '.prerelease == true and .target_commitish == $sha' >/dev/null
           else
             if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
               verify_tag_target
             fi
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --draft \
               --title "Albion Market $version" --notes "Verified production-signed Android prerelease $version."
-            verify_tag_target
           fi
 
-          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
+          release_json="$(lookup_release)"
           printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
-            '.draft == false and .prerelease == true and .target_commitish == $sha' >/dev/null
+            '.prerelease == true and .target_commitish == $sha' >/dev/null
 
           verify_asset() {
-            local asset="$1" authenticated_dir anonymous_file
+            local asset="$1" mode="${2:-draft}" authenticated_dir anonymous_file
             authenticated_dir="$RUNNER_TEMP/release-readback-$asset"
             anonymous_file="$RUNNER_TEMP/anonymous-$asset"
             rm -rf "$authenticated_dir" "$anonymous_file"
             mkdir -p "$authenticated_dir"
             gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$authenticated_dir"
             cmp -s "$asset" "$authenticated_dir/$asset"
-            curl --retry 5 --retry-all-errors --retry-delay 2 --fail --location --silent --show-error \
-              --output "$anonymous_file" \
-              "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$asset"
-            cmp -s "$asset" "$anonymous_file"
+            if test "$mode" = public; then
+              curl --retry 5 --retry-all-errors --retry-delay 2 --fail --location --silent --show-error \
+                --output "$anonymous_file" \
+                "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$asset"
+              cmp -s "$asset" "$anonymous_file"
+            fi
           }
+
+          expected_names="$(printf '%s\n' "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS | jq -R . | jq -s 'sort')"
+          printf '%s' "$release_json" | jq -e --argjson expected "$expected_names" '[.assets[].name] as $names | ($names | length) == ($names | unique | length) and (($names - $expected) | length) == 0' >/dev/null
+          if test "$(printf '%s' "$release_json" | jq -r '.draft')" = false; then
+            printf '%s' "$release_json" | jq -e --argjson expected "$expected_names" '([.assets[].name] | sort) == $expected' >/dev/null
+            verify_tag_target
+            for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
+              verify_asset "$asset" public
+            done
+            exit 0
+          fi
 
           # Verify every pre-existing byte before any new external write.
           for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
@@ -396,8 +424,19 @@ jobs:
             fi
           done
 
-          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
+          release_json="$(lookup_release)"
           for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
             test "$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset")" -eq 1
             verify_asset "$asset"
+          done
+
+          printf '%s' "$release_json" | jq -e --argjson expected "$expected_names" '([.assets[].name] | sort) == $expected' >/dev/null
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false
+          release_json="$(lookup_release)"
+          printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
+            '.draft == false and .prerelease == true and .target_commitish == $sha' >/dev/null
+          verify_tag_target
+          for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
+            test "$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset")" -eq 1
+            verify_asset "$asset" public
           done

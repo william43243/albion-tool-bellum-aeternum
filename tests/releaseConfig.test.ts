@@ -10,6 +10,16 @@ const gradleProperties = readFileSync('android/gradle.properties', 'utf8');
 // Normalize checkout line endings without changing the shell content asserted below.
 const releaseWorkflow = readFileSync('.github/workflows/build-apk.yml', 'utf8').replace(/\r\n/g, '\n');
 
+test('Android SDK is explicitly provisioned in both build and isolated signing jobs', () => {
+  const [buildJob, signingJobs] = releaseWorkflow.split(/^  sign:/m);
+  const setup = /android-actions\/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407/g;
+  assert.equal([...buildJob.matchAll(setup)].length, 1);
+  assert.equal([...(signingJobs ?? '').matchAll(setup)].length, 1);
+  assert.equal([...releaseWorkflow.matchAll(/packages: 'platform-tools'/g)].length, 2);
+  assert.match(buildJob, /platforms;android-37\.0/);
+  assert.doesNotMatch(buildJob, /platforms;android-37"/);
+});
+
 function requiredMatch(input: string, expression: RegExp, label: string): string {
   const match = input.match(expression);
   assert.ok(match, `${label} must be declared`);
@@ -27,8 +37,8 @@ test('release version names and codes stay synchronized', () => {
   assert.equal(appJson.expo.version, packageJson.version);
   assert.equal(nativeVersionName, packageJson.version);
   assert.equal(appJson.expo.android.versionCode, nativeVersionCode);
-  assert.equal(packageJson.version, '2.0.8-beta.5.11');
-  assert.equal(nativeVersionCode, 17);
+  assert.equal(packageJson.version, '2.0.9-beta.9.0');
+  assert.equal(nativeVersionCode, 18);
 });
 
 test('release workflow verifies the packaged minimum SDK field emitted by aapt2', () => {
@@ -61,11 +71,14 @@ test('verified signed artifact is published to the versioned GitHub prerelease',
   assert.match(releaseWorkflow, /gh release create "\$tag"/);
   assert.match(releaseWorkflow, /gh release upload "\$tag"/);
   assert.match(releaseWorkflow, /--prerelease/);
+  assert.match(releaseWorkflow, /--prerelease\s+--draft/);
+  assert.match(releaseWorkflow, /gh release edit "\$tag"[^\n]+--draft=false/);
   assert.match(releaseWorkflow, /expected_asset="albion-market-v\$\{version\}-release\.apk"/);
   assert.match(releaseWorkflow, /assets\[\]\?\.name/);
   assert.match(releaseWorkflow, /concurrency:/);
   assert.match(releaseWorkflow, /current_main=.*git\/ref\/heads\/main/);
-  assert.match(releaseWorkflow, /release_json=.*releases\/tags\/\$tag/);
+  assert.match(releaseWorkflow, /release_json=.*lookup_release/);
+  assert.match(releaseWorkflow, /gh api --paginate/);
   assert.match(releaseWorkflow, /\.draft == false/);
   assert.match(releaseWorkflow, /\.prerelease == true/);
   assert.match(releaseWorkflow, /\.target_commitish == \$sha/);
