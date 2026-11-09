@@ -37,8 +37,8 @@ test('release version names and codes stay synchronized', () => {
   assert.equal(appJson.expo.version, packageJson.version);
   assert.equal(nativeVersionName, packageJson.version);
   assert.equal(appJson.expo.android.versionCode, nativeVersionCode);
-  assert.equal(packageJson.version, '2.0.9-beta.9.0');
-  assert.equal(nativeVersionCode, 18);
+  assert.equal(packageJson.version, '2.1.0');
+  assert.equal(nativeVersionCode, 19);
 });
 
 test('release workflow verifies the packaged minimum SDK field emitted by aapt2', () => {
@@ -64,14 +64,17 @@ test('signed workflow uploads only one exact verified APK from a fresh directory
   assert.doesNotMatch(releaseWorkflow, /release-candidate\/albion-market-v\*-release\.apk/);
 });
 
-test('verified signed artifact is published to the versioned GitHub prerelease', () => {
+test('verified signed artifact uses the versioned stable or prerelease channel', () => {
   assert.match(releaseWorkflow, /publish-release:/);
   assert.match(releaseWorkflow, /needs: verify-signed-artifact/);
   assert.match(releaseWorkflow, /contents: write/);
   assert.match(releaseWorkflow, /gh release create "\$tag"/);
   assert.match(releaseWorkflow, /gh release upload "\$tag"/);
-  assert.match(releaseWorkflow, /--prerelease/);
-  assert.match(releaseWorkflow, /--prerelease\s+--draft/);
+  assert.match(releaseWorkflow, /prerelease=false/);
+  assert.match(releaseWorkflow, /latest_args=\(--latest\)/);
+  assert.match(releaseWorkflow, /prerelease=true; latest_args=\(--latest=false\)/);
+  assert.match(releaseWorkflow, /--notes-file "\$notes_file"/);
+  assert.match(releaseWorkflow, /--prerelease="\$prerelease"\s+--draft/);
   assert.match(releaseWorkflow, /gh release edit "\$tag"[^\n]+--draft=false/);
   assert.match(releaseWorkflow, /expected_asset="albion-market-v\$\{version\}-release\.apk"/);
   assert.match(releaseWorkflow, /assets\[\]\?\.name/);
@@ -80,7 +83,7 @@ test('verified signed artifact is published to the versioned GitHub prerelease',
   assert.match(releaseWorkflow, /release_json=.*lookup_release/);
   assert.match(releaseWorkflow, /gh api --paginate/);
   assert.match(releaseWorkflow, /\.draft == false/);
-  assert.match(releaseWorkflow, /\.prerelease == true/);
+  assert.match(releaseWorkflow, /\.prerelease == \$prerelease/);
   assert.match(releaseWorkflow, /\.target_commitish == \$sha/);
   assert.match(releaseWorkflow, /git\/ref\/tags\/\$tag/);
   assert.match(releaseWorkflow, /git\/tags\/\$tag_sha/);

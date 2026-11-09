@@ -2,7 +2,7 @@
 
 Un compagnon Android pour Albion Online : comparer les prix, calculer les profits nets d'un flip, explorer l'historique et préparer un trajet sur une carte interactive, avec un assistant IA facultatif.
 
-**Bêta · Android en priorité · Français / English / Español**
+**Version stable 2.1.0 · Android en priorité · Français / English / Español**
 
 [English](README.md) · [Versions publiées](https://github.com/william43243/albion-tool-bellum-aeternum/releases) · [Licences et crédits](THIRD_PARTY_LICENSES.md) · [Bilan des vérifications](docs/publication-validation.md)
 

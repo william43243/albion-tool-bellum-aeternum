@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import { Platform } from 'react-native';
 import { AnalyticsConsentState } from './analyticsConsentState';
+import { AnalyticsTransport } from './analyticsTransport';
 import type { AnalyticsConsent, ExplicitAnalyticsConsent } from './analyticsConsentState';
 
 export type { AnalyticsConsent } from './analyticsConsentState';
@@ -11,12 +12,16 @@ export const ANALYTICS_CONSENT_KEY = 'albion_analytics_consent';
 const ANALYTICS_BASE_URL = 'https://albion-tool-bellum-aeternum.com';
 const ALLOWED_METADATA = new Set(['model', 'item', 'city', 'version', 'platform', 'from', 'to', 'target', 'available']);
 const consentState = new AnalyticsConsentState(AsyncStorage, ANALYTICS_CONSENT_KEY);
+const transport = new AnalyticsTransport((url, init) => fetch(url, init), token => consentState.isAuthorizationCurrent(token));
 let webConsentSyncInstalled = false;
 
 function installWebConsentSync(): void {
   if (webConsentSyncInstalled || Platform.OS !== 'web' || typeof window === 'undefined') return;
   window.addEventListener('storage', (event) => {
-    if (event.key === ANALYTICS_CONSENT_KEY) void consentState.synchronizeFromStorage();
+    if (event.key === ANALYTICS_CONSENT_KEY) {
+      transport.clear();
+      void consentState.synchronizeFromStorage();
+    }
   });
   webConsentSyncInstalled = true;
 }
@@ -39,6 +44,7 @@ export function isAnalyticsAuthorizationCurrent(generation: number | null): bool
 }
 
 export async function setAnalyticsConsent(choice: ExplicitAnalyticsConsent): Promise<void> {
+  transport.clear();
   return consentState.set(choice);
 }
 
@@ -66,11 +72,8 @@ function send(path: '/api/track/pageview' | '/api/track/event', body: Record<str
     ? consentState.get() === 'accepted'
     : consentState.isAuthorizationCurrent(authorization);
   if (!authorized) return;
-  void fetch(`${ANALYTICS_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).catch(() => undefined);
+  const generation = authorization === undefined ? consentState.captureAuthorization() : authorization;
+  transport.send(`${ANALYTICS_BASE_URL}${path}`, JSON.stringify(body), generation);
 }
 
 export function trackPageView(page: string): void {
@@ -82,12 +85,12 @@ export function trackEvent(name: string, category = 'app', metadata: Record<stri
 }
 
 export function trackToolUse(toolName: string): void { trackEvent(toolName, 'tool_use'); }
-export function trackAIPrompt(modelId: string): void { trackEvent('ai_prompt', 'ai', { model: modelId }); }
+export function trackAIPrompt(modelId: string, authorization?: number | null): void { trackEvent('ai_prompt', 'ai', { model: modelId }, authorization); }
 export function trackAIModelDownload(modelId: string, authorization?: number | null): void { trackEvent('ai_model_download', 'ai', { model: modelId }, authorization); }
 export function trackAIModelStart(modelId: string, authorization?: number | null): void { trackEvent('ai_model_start', 'ai', { model: modelId }, authorization); }
-export function trackAIImageSent(modelId: string): void { trackEvent('ai_image_sent', 'ai', { model: modelId }); }
+export function trackAIImageSent(modelId: string, authorization?: number | null): void { trackEvent('ai_image_sent', 'ai', { model: modelId }, authorization); }
 export function trackFlipCalculation(): void { trackEvent('flip_calc', 'calculation'); }
 export function trackMarketCalculation(authorization?: number | null): void { trackEvent('market_calc', 'calculation', {}, authorization); }
-export function trackCraftCalculation(): void { trackEvent('craft_calc', 'calculation'); }
+export function trackCraftCalculation(authorization?: number | null): void { trackEvent('craft_calc', 'calculation', {}, authorization); }
 export function trackPriceFetch(itemId: string, city: string, authorization?: number | null): void { trackEvent('price_fetch', 'market', { item: itemId, city }, authorization); }
 export function trackHistoryFetch(itemId: string): void { trackEvent('history_fetch', 'market', { item: itemId }); }

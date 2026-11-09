@@ -633,7 +633,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   }, [advisorSession, renderStream, lang, interruptStream]);
 
   const sendToLLM = useCallback(
-    (prompt: string, userDisplay?: string, session = renderSession, request = renderRequest) => {
+    (prompt: string, userDisplay?: string, session = renderSession, request = renderRequest, analyticsAuthorization = captureAnalyticsAuthorization()) => {
       if (!advisorSession.matchesServer(server) || !advisorSession.isRequestCurrent(request) || resetInFlightRef.current) return;
       const streamTicket = advisorSession.beginStream(session);
       if (!streamTicket) return;
@@ -651,7 +651,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
       streamTextRef.current = '';
       let fullResponse = '';
 
-      trackAIPrompt(activeModelId || 'unknown');
+      trackAIPrompt(activeModelId || 'unknown', analyticsAuthorization);
 
       const cleanup = LLM.sendMessage(prompt, {
         onToken: (token) => {
@@ -711,7 +711,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     [advisorSession, renderSession, renderRequest, tokenCount, lang, server, activeModelId, resetNativeConversation, interruptStream]
   );
   const handleItemSelect = useCallback(
-    async (item: AlbionItem, analysisCity: City | null = playerCity) => {
+    async (item: AlbionItem, analysisCity: City | null = playerCity, analyticsAuthorization = captureAnalyticsAuthorization()) => {
       if (!advisorSession.matchesServer(server) || !advisorSession.isReady(renderSession) || advisorSession.isStreaming()) return;
       const request = advisorSession.beginRequest();
       setSelectedItem(item);
@@ -737,7 +737,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
             return;
           }
           const prompt = buildAnalysisPrompt(ctx, lang, premiumRef.current, analysisCity);
-          sendToLLM(prompt, `${t('advisorAnalyzing')} ${item.n}...`, request.session, request);
+          sendToLLM(prompt, `${t('advisorAnalyzing')} ${item.n}...`, request.session, request, analyticsAuthorization);
         }
       } catch (e: any) {
         if (advisorSession.isRequestCurrent(request)) Alert.alert(t('error'), e.message);
@@ -749,6 +749,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   );
 
   const handleSend = useCallback(async () => {
+    const analyticsAuthorization = captureAnalyticsAuthorization();
     const session = renderSession;
     const request = renderRequest;
     const text = input.trim();
@@ -773,18 +774,18 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || advisorSession.isStreaming()) return;
     setInput((current) => current.trim() === text ? '' : current);
     if (parsed.item) {
-      await handleItemSelect(parsed.item, parsed.city || playerCity);
+      await handleItemSelect(parsed.item, parsed.city || playerCity, analyticsAuthorization);
       return;
     }
 
     const prompt = buildQuestionPrompt(text, marketCtx, lang, parsed.city || playerCity, premiumRef.current);
-    sendToLLM(prompt, text, session);
+    sendToLLM(prompt, text, session, request, analyticsAuthorization);
   }, [advisorSession, renderSession, renderRequest, server, input, fetchingData, marketCtx, lang, isPremium, playerCity, onCityDetected, handleItemSelect, sendToLLM]);
 
   // ─── Image / Vision ──────────────────────────────────────────
 
   const sendImageToLLM = useCallback(
-    (imageUri: string, session = renderSession, request = renderRequest) => {
+    (imageUri: string, session = renderSession, request = renderRequest, analyticsAuthorization = captureAnalyticsAuthorization()) => {
       if (backendInfo?.hasVision !== true) return;
       if (!advisorSession.matchesServer(server) || !advisorSession.isRequestCurrent(request) || resetInFlightRef.current) return;
       const streamTicket = advisorSession.beginStream(session);
@@ -808,7 +809,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
       const imagePath = imageUri.replace('file://', '');
       const promptTokens = estimateTokens(prompt) + 500; // ~500 tokens for image
 
-      trackAIImageSent(activeModelId || 'unknown');
+      trackAIImageSent(activeModelId || 'unknown', analyticsAuthorization);
 
       const cleanup = LLM.sendMessageWithImage(prompt, imagePath, {
         onToken: (token) => {
@@ -857,6 +858,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   );
 
   const handlePickImage = useCallback(async () => {
+    const analyticsAuthorization = captureAnalyticsAuthorization();
     if (backendInfo?.hasVision !== true) return;
     const session = renderSession;
     const request = renderRequest;
@@ -869,10 +871,11 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     });
 
     if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || result.canceled || !result.assets?.[0]) return;
-    sendImageToLLM(result.assets[0].uri, session, request);
+    sendImageToLLM(result.assets[0].uri, session, request, analyticsAuthorization);
   }, [advisorSession, renderSession, renderRequest, backendInfo, sendImageToLLM]);
 
   const handleTakePhoto = useCallback(async () => {
+    const analyticsAuthorization = captureAnalyticsAuthorization();
     if (backendInfo?.hasVision !== true) return;
     const session = renderSession;
     const request = renderRequest;
@@ -891,7 +894,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     });
 
     if (!advisorSession.isReady(session) || !advisorSession.isRequestCurrent(request) || result.canceled || !result.assets?.[0]) return;
-    sendImageToLLM(result.assets[0].uri, session, request);
+    sendImageToLLM(result.assets[0].uri, session, request, analyticsAuthorization);
   }, [advisorSession, renderSession, renderRequest, backendInfo, sendImageToLLM, lang, t]);
 
   const handleReset = useCallback(async () => {

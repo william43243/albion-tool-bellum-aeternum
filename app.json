@@ -2,7 +2,7 @@
   "expo": {
     "name": "Albion Market",
     "slug": "albion-market",
-    "version": "2.0.9-beta.9.0",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.albion.market",
-      "versionCode": 18,
+      "versionCode": 19,
       "softwareKeyboardLayoutMode": "pan",
       "backgroundColor": "#0d1117",
       "adaptiveIcon": {

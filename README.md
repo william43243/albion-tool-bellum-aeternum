@@ -2,7 +2,7 @@
 
 An Android companion for Albion Online: compare market prices, calculate net flip profits, explore price history and plan routes with an interactive map and an optional AI assistant.
 
-**Beta · Android first · English / Français / Español**
+**Stable 2.1.0 · Android first · English / Français / Español**
 
 [Français](README.fr.md) · [Releases](https://github.com/william43243/albion-tool-bellum-aeternum/releases) · [Licenses and credits](THIRD_PARTY_LICENSES.md) · [Validation report](docs/publication-validation.md)
 

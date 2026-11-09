@@ -324,7 +324,7 @@ jobs:
           name: albion-market-release-signed
           path: verified-artifact
 
-      - name: Publish and verify exact prerelease asset
+      - name: Publish and verify exact release asset
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -332,6 +332,11 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           case "$version" in *[!A-Za-z0-9._-]*|'') echo 'Invalid release version' >&2; exit 1;; esac
           tag="v$version"
+          prerelease=false
+          latest_args=(--latest)
+          case "$version" in *-*) prerelease=true; latest_args=(--latest=false);; esac
+          notes_file="$GITHUB_WORKSPACE/docs/releases/$version.md"
+          test -f "$notes_file" || { echo 'Missing versioned release notes' >&2; exit 1; }
           expected_asset="albion-market-v${version}-release.apk"
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
           test "$current_main" = "$GITHUB_SHA" || { echo 'Refusing to publish a stale main revision' >&2; exit 1; }
@@ -367,19 +372,19 @@ jobs:
             if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
               verify_tag_target
             fi
-            printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
-              '.prerelease == true and .target_commitish == $sha' >/dev/null
+            printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" --argjson prerelease "$prerelease" \
+              '.prerelease == $prerelease and .target_commitish == $sha' >/dev/null
           else
             if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
               verify_tag_target
             fi
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --draft \
-              --title "Albion Market $version" --notes "Verified production-signed Android prerelease $version."
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease="$prerelease" --draft \
+              --title "Albion Market $version" --notes-file "$notes_file"
           fi
 
           release_json="$(lookup_release)"
-          printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
-            '.prerelease == true and .target_commitish == $sha' >/dev/null
+          printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" --argjson prerelease "$prerelease" \
+            '.prerelease == $prerelease and .target_commitish == $sha' >/dev/null
 
           verify_asset() {
             local asset="$1" mode="${2:-draft}" authenticated_dir anonymous_file
@@ -431,10 +436,10 @@ jobs:
           done
 
           printf '%s' "$release_json" | jq -e --argjson expected "$expected_names" '([.assets[].name] | sort) == $expected' >/dev/null
-          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false
+          gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease="$prerelease" "${latest_args[@]}"
           release_json="$(lookup_release)"
-          printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" \
-            '.draft == false and .prerelease == true and .target_commitish == $sha' >/dev/null
+          printf '%s' "$release_json" | jq -e --arg sha "$GITHUB_SHA" --argjson prerelease "$prerelease" \
+            '.draft == false and .prerelease == $prerelease and .target_commitish == $sha' >/dev/null
           verify_tag_target
           for asset in "$expected_asset" SHA256SUMS third-party-sources-notices.zip THIRD_PARTY_SHA256SUMS; do
             test "$(printf '%s' "$release_json" | jq -r '.assets[]?.name' | grep -Fxc "$asset")" -eq 1

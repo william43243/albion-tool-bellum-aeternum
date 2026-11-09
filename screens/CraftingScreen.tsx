@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { calculateCraftingFee } from '../lib/calculations';
+import { captureAnalyticsAuthorization, isAnalyticsAuthorizationCurrent, trackCraftCalculation } from '../lib/analytics';
+import { CraftingAnalytics } from '../lib/craftingAnalytics';
 import { Language } from '../lib/i18n';
 import { parseUserNumber } from '../lib/numberParsing';
 import { selectCraftingItemValue, needsManualCraftingItemValue } from '../lib/craftingItemValue';
@@ -14,14 +16,34 @@ import ItemPicker from '../components/ItemPicker';
 interface Props {
   t: (key: any) => any;
   lang: Language;
+  active: boolean;
 }
 
-export default function CraftingScreen({ t, lang }: Props) {
+export default function CraftingScreen({ t, lang, active }: Props) {
   const [itemValue, setItemValue] = useLocalizedNumberInput<string>('', lang);
   const [catalogValueMissing, setCatalogValueMissing] = useState(false);
   const [stationTax, setStationTax] = useLocalizedNumberInput<string>('', lang);
   const [quantity, setQuantity] = useLocalizedNumberInput<string>('1', lang);
   const [showItemPicker, setShowItemPicker] = useState(false);
+  const tracker = useRef<CraftingAnalytics | null>(null);
+  if (!tracker.current) tracker.current = new CraftingAnalytics(isAnalyticsAuthorizationCurrent, trackCraftCalculation);
+  useEffect(() => {
+    if (!active) tracker.current?.cancel();
+    return () => tracker.current?.cancel();
+  }, [active, lang]);
+  function recordInput(nextValue: string, nextTax: string, nextQuantity: string) {
+    if (!active) return;
+    const value = parseUserNumber(nextValue, false, lang);
+    const tax = nextTax.trim() ? parseUserNumber(nextTax, false, lang) : { value: 0, valid: true };
+    const qty = parseUserNumber(nextQuantity, true, lang);
+    const signature = value.valid && tax.valid && qty.valid && value.value > 0 && qty.value > 0
+      ? `${value.value}:${tax.value}:${qty.value}` : null;
+    tracker.current?.update(signature, captureAnalyticsAuthorization());
+  }
+  function changeItemValue(value: string) { setItemValue(value); recordInput(value, stationTax, quantity); }
+  function changeStationTax(value: string) { setStationTax(value); recordInput(itemValue, value, quantity); }
+  function changeQuantity(value: string) { setQuantity(value); recordInput(itemValue, stationTax, value); }
+
 
   const iv = useMemo(() => parseUserNumber(itemValue, false, lang), [itemValue, lang]);
   const manualItemValueNeeded = needsManualCraftingItemValue(catalogValueMissing, iv);
@@ -50,7 +72,7 @@ export default function CraftingScreen({ t, lang }: Props) {
         locale={lang}
         label={t('itemValue')}
         value={itemValue}
-        onChangeText={setItemValue}
+        onChangeText={changeItemValue}
         placeholder="ex: 1024"
       />
 
@@ -64,7 +86,7 @@ export default function CraftingScreen({ t, lang }: Props) {
         locale={lang}
         label={t('stationTax')}
         value={stationTax}
-        onChangeText={setStationTax}
+        onChangeText={changeStationTax}
         placeholder="ex: 800"
         info={lang === 'fr'
           ? 'Le nombre affiché en jeu (fee par 100 nutrition)'
@@ -75,7 +97,7 @@ export default function CraftingScreen({ t, lang }: Props) {
         locale={lang}
         label={t('quantity')}
         value={quantity}
-        onChangeText={setQuantity}
+        onChangeText={changeQuantity}
         integer
       />
 
@@ -133,7 +155,7 @@ export default function CraftingScreen({ t, lang }: Props) {
         onClose={() => setShowItemPicker(false)}
         onSelect={(item) => {
           const selection = selectCraftingItemValue(item.iv, lang);
-          setItemValue(selection.itemValue);
+          changeItemValue(selection.itemValue);
           setCatalogValueMissing(selection.catalogValueMissing);
           setShowItemPicker(false);
         }}

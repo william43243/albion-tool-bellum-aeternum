@@ -55,10 +55,12 @@ function harness() {
   const requests: ReturnType<typeof deferred<any>>[] = [];
   const streams: { prompt: string; callbacks: any }[] = [];
   const alerts: any[] = [];
+  const analytics = { generation: 1 as number | null, events: [] as string[] };
+  const track = (name: string, token: number | null) => { if (token !== null && token === analytics.generation) analytics.events.push(name); };
   const resets: string[] = [];
   const refs = {
     advisorSession, previousServerRef: { current: 'americas' }, activeModelRef: { current: 'qwen' as string | null },
-    cleanupRef: { current: null as (() => void) | null }, resetInFlightRef: { current: null }, resetSessionRef: { current: null },
+    cleanupRef: { current: null as (() => void) | null }, resetInFlightRef: { current: null as Promise<void> | null }, resetSessionRef: { current: null },
     modelAttemptRef: { current: 0 }, initializedModelRef: { current: 'qwen' as string | null },
     premiumRef: { current: false },
     streamTextRef: { current: '' },
@@ -92,7 +94,9 @@ function harness() {
       buildQuestionPrompt: (question: string, ctx: any) => JSON.stringify({ question, ctx }),
       fetchMarketContext: () => { const d = deferred<any>(); requests.push(d); return d.promise; },
       parseMarketQuery: () => ({}), onCityDetected: undefined,
-      captureAnalyticsAuthorization() {}, trackAIModelStart() {}, trackAIPrompt() {}, trackAIImageSent() {},
+      captureAnalyticsAuthorization: () => analytics.generation, trackAIModelStart() {},
+      trackAIPrompt: (_model: string, token: number | null) => track('prompt', token),
+      trackAIImageSent: (_model: string, token: number | null) => track('image', token),
       getModelFilename: (model: any) => model.filename,
       Alert: { alert: (...args: any[]) => alerts.push(args) },
       ImagePicker: {},
@@ -101,7 +105,7 @@ function harness() {
     env.serverEffect = compile(serverEffect, env);
     return env;
   }
-  return { advisorSession, state, refs, llm, requests, streams, alerts, resets, render };
+  return { advisorSession, state, refs, llm, requests, streams, alerts, resets, render, analytics };
 }
 
 test('server switch clears market context, preserves draft/transcript, and resets native scope', async () => {
@@ -725,4 +729,47 @@ test('Hello remains an inference request, not a fabricated local success', async
   assert.equal(h.state.streaming, true);
   assert.equal(h.state.messages.at(-1).role, 'user');
   assert.equal(h.state.messages.at(-1).content, 'Hello');
+});
+
+for (const initial of [null, 1]) {
+  test(`item analysis preserves consent authorization across market lookup (initial ${initial})`, async () => {
+    const h = harness(); h.analytics.generation = initial;
+    const env = h.render();
+    const pending = env.handleItemSelect({ id: 'A', n: 'A' });
+    h.analytics.generation = 2;
+    h.requests[0].resolve({ server: 'americas', price: 100 });
+    await pending;
+    assert.equal(h.streams.length, 1);
+    assert.deepEqual(h.analytics.events, []);
+  });
+  test(`image picker preserves consent authorization across selection (initial ${initial})`, async () => {
+    const h = harness(); h.analytics.generation = initial;
+    const env = h.render(), pick = deferred<any>();
+    env.ImagePicker.launchImageLibraryAsync = () => pick.promise;
+    const pending = env.handlePickImage();
+    h.analytics.generation = 2;
+    pick.resolve({ canceled: false, assets: [{ uri: 'file://image.jpg' }] });
+    await pending;
+    assert.equal(h.streams.length, 1);
+    assert.deepEqual(h.analytics.events, []);
+  });
+  test(`text send preserves consent authorization across a pending reset (initial ${initial})`, async () => {
+    const h = harness(); h.analytics.generation = initial;
+    const env = h.render(), reset = deferred<void>();
+    h.refs.resetInFlightRef.current = reset.promise;
+    const pending = env.handleSend();
+    h.analytics.generation = 2;
+    h.refs.resetInFlightRef.current = null;
+    reset.resolve();
+    await pending;
+    assert.equal(h.streams.length, 1);
+    assert.deepEqual(h.analytics.events, []);
+  });
+}
+
+test('authorized direct prompts and images are still counted', () => {
+  const text = harness(); text.render().sendToLLM('question');
+  assert.deepEqual(text.analytics.events, ['prompt']);
+  const image = harness(); image.render().sendImageToLLM('file://image.jpg');
+  assert.deepEqual(image.analytics.events, ['image']);
 });

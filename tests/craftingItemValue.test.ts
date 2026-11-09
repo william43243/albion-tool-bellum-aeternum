@@ -72,7 +72,7 @@ test('missing-value guidance is localized and wired to the crafting screen', () 
   assert.equal(new Set(['fr', 'en', 'es'].map((locale) => translations[locale as keyof typeof translations].itemValueUnavailable)).size, 3);
   const source = readFileSync('screens/CraftingScreen.tsx', 'utf8');
   assert.match(source, /const selection = selectCraftingItemValue\(item\.iv, lang\)/);
-  assert.match(source, /setItemValue\(selection\.itemValue\)/);
+  assert.match(source, /changeItemValue\(selection\.itemValue\)/);
   assert.match(source, /setCatalogValueMissing\(selection\.catalogValueMissing\)/);
   assert.match(source, /needsManualCraftingItemValue\(catalogValueMissing, iv\)/);
   assert.match(source, /manualItemValueNeeded &&/);

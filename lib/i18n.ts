@@ -96,7 +96,7 @@ export const translations = {
     analyticsRefuse: 'Refuser',
     analyticsEnabled: 'Activées',
     analyticsDisabled: 'Désactivées',
-    analyticsSettingsDescription: 'Événements individuels minimisés, consultés sous forme agrégée. Désactiver retire immédiatement votre consentement.',
+    analyticsSettingsDescription: 'Événements individuels minimisés, consultés sous forme agrégée. Les envois peuvent être réessayés brièvement en mémoire. Désactiver annule les envois en attente et retire immédiatement votre consentement.',
 
     // Premium bonuses
     premiumBonusList: [
@@ -264,7 +264,7 @@ export const translations = {
     analyticsRefuse: 'Refuse',
     analyticsEnabled: 'Enabled',
     analyticsDisabled: 'Disabled',
-    analyticsSettingsDescription: 'Minimized individual events, viewed only in aggregate. Disabling immediately withdraws your consent.',
+    analyticsSettingsDescription: 'Minimized individual events, viewed only in aggregate. Delivery may be retried briefly in memory. Disabling cancels pending sends and immediately withdraws your consent.',
 
     // Premium bonuses
     premiumBonusList: [
@@ -432,7 +432,7 @@ export const translations = {
     analyticsRefuse: 'Rechazar',
     analyticsEnabled: 'Activadas',
     analyticsDisabled: 'Desactivadas',
-    analyticsSettingsDescription: 'Eventos individuales minimizados, consultados solo de forma agregada. Desactivar retira inmediatamente tu consentimiento.',
+    analyticsSettingsDescription: 'Eventos individuales minimizados, consultados solo de forma agregada. Los envíos pueden reintentarse brevemente en memoria. Desactivar cancela los envíos pendientes y retira inmediatamente tu consentimiento.',
 
     // Premium bonuses
     premiumBonusList: [

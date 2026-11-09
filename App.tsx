@@ -117,7 +117,7 @@ function AppContent() {
         <MarketplaceScreen t={t} lang={lang} server={server} isPremium={isPremium} onPremiumChange={setIsPremium} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'crafting' && { display: 'none' }]}>
-        <CraftingScreen t={t} lang={lang} />
+        <CraftingScreen t={t} lang={lang} active={activeTab === 'crafting'} />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'flipping' && { display: 'none' }]}>
         <FlippingScreen t={t} lang={lang} isPremium={isPremium} onPremiumChange={setIsPremium} />
