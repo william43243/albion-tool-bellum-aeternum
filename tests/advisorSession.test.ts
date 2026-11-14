@@ -7,6 +7,8 @@ import { getMarketplaceFeeAnswer } from '../lib/advisorFees';
 import { buildAnalysisPrompt as realAnalysisPrompt, buildQuestionPrompt as realQuestionPrompt } from '../lib/advisor';
 import { AVAILABLE_MODELS, getModelById } from '../lib/models';
 import { evaluateAdvisorDecision, formatAdvisorDecision } from '../lib/advisorDecision';
+import { DEFAULT_LOCAL_MODEL_SETTINGS, sanitizeLocalModelSettings } from '../lib/localModelSettings';
+import { buildLocalContextHistory, shouldCompactLocalContext } from '../lib/localContext';
 
 // Execute the screen's real callbacks with deferred IO and state setters, not
 // React Native or inference. AST extraction keeps the tests tied to production.
@@ -47,6 +49,7 @@ function harness() {
   const state: Record<string, any> = {
     messages: [{ role: 'assistant', content: 'old conversation' }], input: 'draft',
     engineState: 'ready', activeModelId: 'qwen', screen: 'chat', tokenCount: 250,
+    contextUsage: { tokens: 250, configuredMaxTokens: 4000 }, localSettings: {}, settingsLoaded: true,
     marketCtx: { server: 'americas', price: 12345 }, selectedItem: { id: 'A', n: 'Item A' },
     streaming: false, streamBuffer: '', fetchingData: false, showItemPicker: false,
     backendInfo: { backendUsed: 'gpu', isMediaTek: false, hasVision: true },
@@ -64,10 +67,16 @@ function harness() {
     modelAttemptRef: { current: 0 }, initializedModelRef: { current: 'qwen' as string | null },
     premiumRef: { current: false },
     streamTextRef: { current: '' },
+    messagesRef: { current: state.messages },
+    activeSettingsRef: { current: { ...DEFAULT_LOCAL_MODEL_SETTINGS } },
+    activeRequestedContextRef: { current: 4000 as number | null },
   };
   const llm: Record<string, any> = {
     async resetConversation(_prompt: string, server: string) { resets.push(server); return true; },
     async initialize() { return { backendUsed: 'cpu', isMediaTek: false, hasVision: false }; },
+    async setRuntimeOptions() {},
+    async getContextUsage() { return { tokens: 250, configuredMaxTokens: 4000 }; },
+    async compactConversation() { return { mode: 'summary' }; },
     async destroy() { return true; },
     sendMessage(prompt: string, cb: any) { streams.push({ prompt, callbacks: cb }); return () => {}; },
     sendMessageWithImage(prompt: string, _path: string, cb: any) { streams.push({ prompt, callbacks: cb }); return () => {}; },
@@ -79,11 +88,13 @@ function harness() {
   function render(server = 'americas') {
     advisorSession.configure(server);
     refs.premiumRef.current = state.isPremium;
+    refs.messagesRef.current = state.messages;
     const env: Record<string, any> = {
       ...state, ...refs, ...setters, server, renderSession: advisorSession.capture(), lang: 'fr', playerCity: null,
       renderRequest: advisorSession.captureRequest(),
       renderStream: advisorSession.captureStream(),
       getMarketplaceFeeAnswer,
+      sanitizeLocalModelSettings, shouldCompactLocalContext, buildLocalContextHistory,
       getModelById, evaluateAdvisorDecision, formatAdvisorDecision,
       t: (key: string) => key, LLM: llm, Platform: { OS: 'android' },
       SERVERS: { americas: 'url:americas', europe: 'url:europe', asia: 'url:asia' },
@@ -212,6 +223,7 @@ test('late stream callbacks cannot resurrect messages after reset or affect a ne
   assert.equal(h.state.streamBuffer, '');
   h.streams[1].callbacks.onToken('current');
   h.streams[1].callbacks.onDone();
+  await tick(); // Native usage and optional compaction complete before readiness.
   assert.equal(h.state.messages.at(-1).content, 'current');
   assert.equal(h.state.streaming, false);
 });
@@ -220,6 +232,125 @@ test('double send from the same render admits only one native inference', () => 
   const h = harness();
   const env = h.render();
   env.sendToLLM('one'); env.sendToLLM('two');
+  assert.equal(h.streams.length, 1);
+});
+
+test('near-full context compacts once after a response and blocks sends until finished', async () => {
+  const h = harness();
+  const compact = deferred<{ mode: 'summary' | 'truncated' }>();
+  const requests: string[] = [];
+  let counts = 0;
+  h.llm.getContextUsage = async () => ({ tokens: ++counts === 1 ? 3000 : 1000, configuredMaxTokens: 4000 });
+  h.llm.compactConversation = async (_system: string, _server: string, history: string) => {
+    requests.push(history);
+    return compact.promise;
+  };
+  h.render().sendToLLM('My question');
+  h.streams[0].callbacks.onToken('The answer');
+  h.streams[0].callbacks.onDone();
+  await tick();
+  assert.equal(requests.length, 1);
+  assert.equal(h.state.streaming, true, 'context preparation remains busy');
+  assert.equal(h.advisorSession.isStreaming(), false, 'no active generation exists to stop');
+  assert.match(requests[0], /user: My question/);
+  assert.match(requests[0], /assistant: The answer/);
+  h.render().sendToLLM('must wait');
+  assert.equal(h.streams.length, 1, 'compaction must not replay the user request or tools');
+  compact.resolve({ mode: 'summary' });
+  await tick();
+  assert.equal(h.state.streaming, false);
+  assert.equal(h.state.engineState, 'ready');
+  assert.equal(h.state.contextUsage.tokens, 1000);
+  assert.match(h.state.messages.at(-1).content, /résumé/);
+  h.render().sendToLLM('next question');
+  assert.equal(h.streams.length, 2);
+});
+
+test('a recoverable compaction failure keeps the response and does not restart or repeat it', async () => {
+  const h = harness();
+  h.llm.getContextUsage = async () => ({ tokens: 3000, configuredMaxTokens: 4000 });
+  h.llm.compactConversation = async () => { throw Object.assign(new Error('failed'), { code: 'COMPACT_ERROR' }); };
+  h.render().sendToLLM('question');
+  h.streams[0].callbacks.onToken('answer');
+  h.streams[0].callbacks.onDone();
+  await tick();
+  assert.equal(h.state.engineState, 'ready');
+  assert.equal(h.state.streaming, false);
+  assert.ok(h.state.messages.some((message: any) => message.content === 'answer'));
+  assert.match(h.state.messages.at(-1).content, /contexte précédent est conservé/);
+  assert.equal(h.resets.length, 0);
+  assert.equal(h.streams.length, 1);
+  h.render().sendToLLM('next question');
+  assert.equal(h.streams.length, 2);
+});
+
+test('a lost runtime after compaction failure cannot accept another inference', async () => {
+  const h = harness();
+  h.llm.getContextUsage = async () => ({ tokens: 3000, configuredMaxTokens: 4000 });
+  h.llm.compactConversation = async () => { throw Object.assign(new Error('lost'), { code: 'COMPACT_RUNTIME_LOST' }); };
+  h.render().sendToLLM('question');
+  h.streams[0].callbacks.onToken('answer');
+  h.streams[0].callbacks.onDone();
+  await tick();
+  assert.equal(h.state.engineState, 'error');
+  assert.equal(h.state.streaming, false);
+  assert.ok(h.state.messages.some((message: any) => message.content === 'answer'));
+  h.render().sendToLLM('must not run');
+  assert.equal(h.streams.length, 1);
+});
+
+for (const errorCode of ['TOOL_CALL_FORMAT', 'TOOL_CALL_LIMIT', 'CONTEXT_FULL']) {
+  test(`${errorCode} rebuilds visible context without replaying the failed request`, async () => {
+    const h = harness();
+    const rebuilding = deferred<{ mode: 'summary' | 'truncated' }>();
+    const histories: string[] = [];
+    h.llm.compactConversation = async (_system: string, _server: string, history: string) => {
+      histories.push(history);
+      return rebuilding.promise;
+    };
+    h.render().sendToLLM('question');
+    h.streams[0].callbacks.onToken('partial output');
+    h.streams[0].callbacks.onError('model stopped', errorCode);
+    await tick();
+    assert.equal(histories.length, 1);
+    assert.match(histories[0], /user: question/);
+    assert.doesNotMatch(histories[0], /partial output/);
+    assert.ok(h.state.messages.some((message: any) => message.content === 'partial output'));
+    h.render().sendToLLM('wait');
+    assert.equal(h.streams.length, 1);
+    rebuilding.resolve({ mode: 'truncated' });
+    await tick();
+    assert.equal(h.state.engineState, 'ready');
+    assert.equal(h.state.streaming, false);
+    assert.equal(h.resets.length, 0);
+    assert.equal(h.streams.length, 1, 'recovery must not retry the failed call');
+    h.render().sendToLLM('next question');
+    assert.equal(h.streams.length, 2);
+  });
+}
+
+test('a lost runtime while rebuilding blocks requests and keeps the partial response', async () => {
+  const h = harness();
+  h.llm.compactConversation = async () => { throw Object.assign(new Error('lost'), { code: 'COMPACT_RUNTIME_LOST' }); };
+  h.render().sendToLLM('question');
+  h.streams[0].callbacks.onToken('partial');
+  h.streams[0].callbacks.onError('tool call failed', 'TOOL_CALL_FORMAT');
+  await tick();
+  assert.equal(h.state.engineState, 'error');
+  assert.ok(h.state.messages.some((message: any) => message.content === 'partial'));
+  assert.equal(h.resets.length, 0);
+  h.render().sendToLLM('must not run');
+  assert.equal(h.streams.length, 1);
+});
+
+test('recoverable rebuild failure resets once and never retries the failed inference', async () => {
+  const h = harness();
+  h.llm.compactConversation = async () => { throw Object.assign(new Error('unavailable'), { code: 'COMPACT_ERROR' }); };
+  h.render().sendToLLM('question');
+  h.streams[0].callbacks.onError('tool call failed', 'TOOL_CALL_FORMAT');
+  await tick();
+  assert.equal(h.state.engineState, 'ready');
+  assert.deepEqual(h.resets, ['url:americas']);
   assert.equal(h.streams.length, 1);
 });
 
@@ -236,6 +367,7 @@ test('an unrestricted model still receives the actual analysis data after Hello,
   assert.match(h.streams[0].prompt, /User question: Hello$/);
   h.streams[0].callbacks.onToken('Greetings');
   h.streams[0].callbacks.onDone();
+  await tick();
 
   const item = { id: 'T4_BAG', n: "Adept's Bag", t: '4', c: 'equipment', sc: '', ss: '', iv: 0 };
   const ctx = {
@@ -464,6 +596,7 @@ test('old item-context callbacks cannot borrow a completed newer request from th
   h.requests[0].resolve({ server: 'americas', item: 'B' });
   await analysis;
   h.streams[0].callbacks.onDone();
+  await tick();
   await itemA.handleSend();
   itemA.sendImageToLLM('file://old-photo.jpg');
   assert.equal(h.streams.length, 1, 'stale item A context must not be sent after B completed');
@@ -669,6 +802,7 @@ test('an old Stop callback cannot cancel a newer stream even within the same ses
   h.render().sendToLLM('first');
   const old = h.render();
   h.streams[0].callbacks.onDone();
+  await tick();
   h.render().sendToLLM('second');
   await old.handleStop();
   assert.equal(h.advisorSession.isStreaming(), true);

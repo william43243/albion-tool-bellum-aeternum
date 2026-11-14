@@ -27,6 +27,9 @@ import {
 import { SERVERS } from '../lib/api';
 import * as LLM from '../lib/llm';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LocalModelSettings, DEFAULT_LOCAL_MODEL_SETTINGS, sanitizeLocalModelSettings, validateLocalModelSettings } from '../lib/localModelSettings';
+import { buildLocalContextHistory, shouldCompactLocalContext } from '../lib/localContext';
 import { AVAILABLE_MODELS, ModelInfo, formatBytes, getModelsForPlatform, getModelFilename, getModelSizeLabel, getModelById } from '../lib/models';
 import { captureAnalyticsAuthorization, trackAIPrompt, trackAIModelDownload, trackAIModelStart, trackAIImageSent } from '../lib/analytics';
 import { shouldCancelDownload } from '../lib/downloadLifecycle';
@@ -51,6 +54,7 @@ interface ChatMessage {
 
 type Screen = 'models' | 'chat';
 type EngineState = 'idle' | 'loading' | 'ready' | 'error';
+const LOCAL_SETTINGS_KEY = 'advisor.localModelSettings.v1';
 
 interface DownloadState {
   modelId: string;
@@ -85,7 +89,19 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const [marketCtx, setMarketCtx] = useState<MarketContext | null>(null);
   const [fetchingData, setFetchingData] = useState(false);
   const [showItemPicker, setShowItemPicker] = useState(false);
-  const [tokenCount, setTokenCount] = useState(0);
+  const [contextUsage, setContextUsage] = useState<{ tokens: number | null; configuredMaxTokens: number | null }>({ tokens: null, configuredMaxTokens: null });
+  const [localSettings, setLocalSettings] = useState<Record<string, LocalModelSettings>>({});
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [editingModel, setEditingModel] = useState<string | null>(null);
+  const [draft, setDraft] = useState<LocalModelSettings>({ ...DEFAULT_LOCAL_MODEL_SETTINGS });
+  const [contextInput, setContextInput] = useState('');
+  const [topKInput, setTopKInput] = useState('20');
+  const [topPInput, setTopPInput] = useState('0.9');
+  const [temperatureInput, setTemperatureInput] = useState('0.3');
+  const activeSettingsRef = useRef<LocalModelSettings>({ ...DEFAULT_LOCAL_MODEL_SETTINGS });
+  const activeRequestedContextRef = useRef<number | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
   const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
   const cancelDownloadRef = useRef<(() => Promise<boolean>) | null>(null);
@@ -104,6 +120,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const renderSession = advisorSession.capture();
   const renderRequest = advisorSession.captureRequest();
   const renderStream = advisorSession.captureStream();
+  const preparingContext = streaming && (!renderStream || !advisorSession.isStreamCurrent(renderStream));
   const activeModelRef = useRef(activeModelId);
   activeModelRef.current = activeModelId;
   const modelAttemptRef = useRef(0);
@@ -111,13 +128,20 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   const premiumRef = useRef(isPremium);
   premiumRef.current = isPremium;
 
-  // ~4 chars per token is a rough estimate for English/French
-  const MAX_TOKENS = 4096;
-  const SYSTEM_PROMPT_TOKENS = Math.ceil(buildSystemPrompt(lang, server).length / 4); // estimate, not tokenizer output
-  const WARNING_THRESHOLD = MAX_TOKENS * 0.75; // warn at 75%
-  const RESET_THRESHOLD = MAX_TOKENS * 0.90;   // auto-reset at 90%
-
-  const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
+  useEffect(() => {
+    let mounted = true;
+    void AsyncStorage.getItem(LOCAL_SETTINGS_KEY).then((raw) => {
+      if (!mounted || !raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return;
+      const next: Record<string, LocalModelSettings> = {};
+      for (const model of AVAILABLE_MODELS) {
+        next[model.id] = sanitizeLocalModelSettings((parsed as Record<string, unknown>)[model.id], model.maxContextTokens);
+      }
+      setLocalSettings(next);
+    }).catch(() => {}).finally(() => { if (mounted) setSettingsLoaded(true); });
+    return () => { mounted = false; };
+  }, []);
 
   const clearSessionContext = useCallback(() => {
     const session = advisorSession.invalidate();
@@ -130,9 +154,9 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     setSelectedItem(null);
     setFetchingData(false);
     setShowItemPicker(false);
-    setTokenCount(SYSTEM_PROMPT_TOKENS);
+    setContextUsage({ tokens: null, configuredMaxTokens: null });
     return session;
-  }, [advisorSession, SYSTEM_PROMPT_TOKENS]);
+  }, [advisorSession]);
 
   const resetNativeConversation = useCallback(async (): Promise<boolean> => {
     if (!advisorSession.matchesServer(server)) return false;
@@ -149,6 +173,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     }).then((success) => {
       if (!advisorSession.isCurrent(session)) return false;
       if (!success) throw new Error('Could not reset the AI conversation');
+      setContextUsage({ tokens: null, configuredMaxTokens: activeRequestedContextRef.current });
       advisorSession.markReady(session);
       setEngineState('ready');
       setScreen('chat');
@@ -529,9 +554,52 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
   // ─── Engine Init ─────────────────────────────────────────────
 
+  const openSettings = (model: ModelInfo) => {
+    const current = sanitizeLocalModelSettings(localSettings[model.id], model.maxContextTokens);
+    setDraft(current);
+    setContextInput(current.contextTokens === null ? '' : String(current.contextTokens));
+    setTopKInput(String(current.topK));
+    setTopPInput(String(current.topP));
+    setTemperatureInput(String(current.temperature));
+    setEditingModel(model.id);
+  };
+
+  const saveSettings = async (model: ModelInfo) => {
+    const decimal = (s: string) => Number(s.trim().replace(',', '.'));
+    const updated: LocalModelSettings = {
+      ...draft,
+      contextTokens: contextInput.trim() ? decimal(contextInput) : null,
+      topK: topKInput.trim() ? decimal(topKInput) : NaN,
+      topP: topPInput.trim() ? decimal(topPInput) : NaN,
+      temperature: temperatureInput.trim() ? decimal(temperatureInput) : NaN,
+    };
+    const invalid = validateLocalModelSettings(updated, model.maxContextTokens);
+    if (invalid) {
+      Alert.alert(t('error'), lang === 'fr'
+        ? `Valeur invalide : ${invalid}. Contexte : 2 000–${model.maxContextTokens ?? 32000}, TopK : 1–100, TopP : 0–1, température : 0–2.`
+        : lang === 'es'
+        ? `Valor no válido: ${invalid}. Contexto: 2 000–${model.maxContextTokens ?? 32000}, TopK: 1–100, TopP: 0–1, temperatura: 0–2.`
+        : `Invalid value: ${invalid}. Context: 2,000–${model.maxContextTokens ?? 32000}, TopK: 1–100, TopP: 0–1, temperature: 0–2.`);
+      return;
+    }
+    const next = { ...localSettings, [model.id]: updated };
+    try {
+      await AsyncStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(next));
+      setLocalSettings(next);
+      setEditingModel(null);
+    } catch {
+      Alert.alert(t('error'), lang === 'fr' ? 'Impossible d’enregistrer les réglages.' : lang === 'es' ? 'No se pudo guardar la configuración.' : 'Could not save settings.');
+    }
+  };
+
   const handleStartModel = useCallback(
-    async (model: ModelInfo, preferCpuText = false) => {
-      if (!advisorSession.matchesServer(server)) return;
+    async (model: ModelInfo, preferCpuText?: boolean) => {
+      if (!settingsLoaded || !advisorSession.matchesServer(server)) return;
+      const settings = sanitizeLocalModelSettings(localSettings[model.id], model.maxContextTokens);
+      activeSettingsRef.current = settings;
+      // Auto is an explicit modest request, not a claimed runtime/model capacity.
+      const requestedContext = settings.contextTokens ?? Math.min(4000, model.maxContextTokens ?? 4000);
+      activeRequestedContextRef.current = requestedContext;
       const session = clearSessionContext();
       const modelAttempt = ++modelAttemptRef.current;
       initializedModelRef.current = null;
@@ -546,18 +614,20 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         const serverUrl = SERVERS[server];
         const filename = getModelFilename(model, Platform.OS);
         await advisorSession.enqueue(async () => {
+          await LLM.setRuntimeOptions({ maxNumTokens: requestedContext, topK: settings.topK, topP: settings.topP, temperature: settings.temperature });
           const result = await LLM.initialize(
             filename,
             systemPrompt,
             serverUrl,
             model.multimodal === true,
             model.toolCalling === true,
-            preferCpuText
+            preferCpuText ?? settings.preferCpuText
           );
           // A server switch may supersede the UI session without superseding
           // this model. Its queued reset still needs a successful initialization.
           if (modelAttemptRef.current === modelAttempt) {
             initializedModelRef.current = model.id;
+            try { setContextUsage(await LLM.getContextUsage()); } catch { setContextUsage({ tokens: null, configuredMaxTokens: requestedContext }); }
             // Capabilities belong to the model, not the server session. A queued
             // server reset must retain them when initialization finishes late.
             setBackendInfo(
@@ -584,10 +654,10 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         setEngineState('error');
         activeModelRef.current = null;
         setActiveModelId(null);
-        Alert.alert(t('error'), e.message);
+        Alert.alert(t('error'), `${e.message || ''}\n${lang === 'fr' ? 'Si le contexte demandé est trop grand, essaie une valeur plus basse dans les réglages du modèle.' : lang === 'es' ? 'Si el contexto solicitado es demasiado grande, prueba un valor más bajo en la configuración del modelo.' : 'If the requested context is too large, try a lower value in model settings.'}`);
       }
     },
-    [advisorSession, clearSessionContext, lang, server, t]
+    [advisorSession, clearSessionContext, lang, server, t, localSettings, settingsLoaded]
   );
 
   // ─── Chat Logic ──────────────────────────────────────────────
@@ -604,12 +674,12 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     setStreaming(false);
     setStreamBuffer('');
     streamTextRef.current = '';
-    setTokenCount(SYSTEM_PROMPT_TOKENS);
+    setContextUsage({ tokens: null, configuredMaxTokens: activeRequestedContextRef.current });
     const notice = lang === 'fr'
-      ? 'Réponse interrompue et potentiellement incomplète. Réinitialisation du contexte IA avant de continuer.'
+      ? 'Réponse interrompue et potentiellement incomplète. Le contexte IA est réinitialisé pour continuer en sécurité ; les anciens messages restent visibles mais ne sont plus transmis au modèle.'
       : lang === 'es'
-      ? 'Respuesta interrumpida y posiblemente incompleta. Reiniciando el contexto antes de continuar.'
-      : 'Response interrupted and possibly incomplete. Resetting the AI context before continuing.';
+      ? 'Respuesta interrumpida y posiblemente incompleta. Se reinicia el contexto para continuar con seguridad; los mensajes anteriores siguen visibles, pero ya no se envían al modelo.'
+      : 'Response interrupted and possibly incomplete. The AI context is reset to continue safely; earlier messages remain visible but are no longer sent to the model.';
     setMessages((prev) => [
       ...prev,
         ...(partial.trim() ? [{ role: 'assistant' as const, source: 'model' as const, content: partial }] : []),
@@ -624,7 +694,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     }
     // A delayed/failed native cancellation or reset must never mark us ready.
     await resetNativeConversation();
-  }, [advisorSession, lang, t, SYSTEM_PROMPT_TOKENS, resetNativeConversation]);
+  }, [advisorSession, lang, t, resetNativeConversation]);
 
   const handleStop = useCallback(async () => {
     if (!renderStream || !advisorSession.isStreamCurrent(renderStream)) return;
@@ -632,14 +702,119 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
     await interruptStream(renderStream, reason, streamTextRef.current);
   }, [advisorSession, renderStream, lang, interruptStream]);
 
+  /** Rebuild from visible text after a terminal parser/context error. Never retry
+   * the failed request or any tool; the user decides what to ask next. */
+  const recoverTerminalError = useCallback(async (
+    ticket: { session: number; stream: number }, reason: string, partial: string, history: ChatMessage[],
+  ) => {
+    if (!advisorSession.isStreamCurrent(ticket)) return;
+    const session = advisorSession.invalidate();
+    const cleanup = cleanupRef.current;
+    cleanupRef.current = null;
+    setStreamBuffer('');
+    streamTextRef.current = '';
+    setMessages((prev) => [
+      ...prev,
+      ...(partial.trim() ? [{ role: 'assistant' as const, source: 'model' as const, content: partial }] : []),
+      { role: 'system', content: `${reason}\n${lang === 'fr' ? 'Reconstruction du contexte local ; la demande ne sera pas relancée automatiquement.' : lang === 'es' ? 'Reconstruyendo el contexto local; la solicitud no se repetirá automáticamente.' : 'Rebuilding local context; the request will not be retried automatically.'}` },
+    ]);
+    try {
+      cleanup?.();
+      const result = await advisorSession.enqueue(async () => {
+        if (!advisorSession.isCurrent(session)) return null;
+        return LLM.compactConversation(buildSystemPrompt(lang, server), SERVERS[server], buildLocalContextHistory(history));
+      });
+      if (!advisorSession.isCurrent(session) || !result) return;
+      const usage = await LLM.getContextUsage().catch(() => ({ tokens: null, configuredMaxTokens: activeRequestedContextRef.current }));
+      if (!advisorSession.isCurrent(session)) return;
+      setContextUsage(usage);
+      setMessages((prev) => [...prev, { role: 'system', content: lang === 'fr'
+        ? 'Contexte reconstruit à partir des échanges visibles ; certains détails peuvent être perdus. Reformule ta demande si nécessaire.'
+        : lang === 'es' ? 'Contexto reconstruido a partir de los mensajes visibles; pueden perderse algunos detalles. Reformula tu solicitud si es necesario.'
+        : 'Context rebuilt from visible exchanges; some details may be lost. Rephrase your request if needed.' }]);
+      advisorSession.markReady(session);
+      setEngineState('ready');
+    } catch (error: any) {
+      if (!advisorSession.isCurrent(session)) return;
+      if (error?.code === 'COMPACT_RUNTIME_LOST') {
+        setEngineState('error');
+        setMessages((prev) => [...prev, { role: 'system', content: lang === 'fr'
+          ? 'Le contexte local ne peut pas être repris en sécurité. Recharge le modèle.'
+          : lang === 'es' ? 'No se puede continuar el contexto local de forma segura. Vuelve a cargar el modelo.'
+          : 'The local context cannot safely continue. Reload the model.' }]);
+      } else {
+        setMessages((prev) => [...prev, { role: 'system', content: lang === 'fr'
+          ? 'Impossible de reconstruire le contexte. Les anciens messages restent visibles mais ne seront plus transmis au modèle.'
+          : lang === 'es' ? 'No se pudo reconstruir el contexto. Los mensajes anteriores siguen visibles, pero ya no se enviarán al modelo.'
+          : 'Could not rebuild context. Earlier messages remain visible but will no longer be sent to the model.' }]);
+        await resetNativeConversation();
+      }
+    } finally {
+      if (advisorSession.isCurrent(session)) setStreaming(false);
+    }
+  }, [advisorSession, lang, server, resetNativeConversation]);
+
+  const finishResponse = useCallback(async (
+    ticket: { session: number; stream: number }, fullResponse: string, history: ChatMessage[],
+  ) => {
+    if (!advisorSession.isStreamCurrent(ticket)) return;
+    advisorSession.endStream(ticket);
+    advisorSession.suspend();
+    cleanupRef.current = null;
+    setMessages((prev) => [...prev, { role: 'assistant', source: 'model', content: fullResponse }]);
+    setStreamBuffer('');
+    streamTextRef.current = '';
+    try {
+      await advisorSession.enqueue(async () => {
+        if (!advisorSession.isCurrent(ticket.session)) return;
+        const usage = await LLM.getContextUsage().catch(() => ({ tokens: null, configuredMaxTokens: activeRequestedContextRef.current }));
+        if (!advisorSession.isCurrent(ticket.session)) return;
+        setContextUsage(usage);
+        if (shouldCompactLocalContext(usage, activeSettingsRef.current.autoCompress)) {
+          const result = await LLM.compactConversation(
+            buildSystemPrompt(lang, server), SERVERS[server], buildLocalContextHistory([...history, { role: 'assistant', content: fullResponse }]),
+          );
+          if (!advisorSession.isCurrent(ticket.session)) return;
+          const updated = await LLM.getContextUsage().catch(() => ({ tokens: null, configuredMaxTokens: usage.configuredMaxTokens }));
+          if (!advisorSession.isCurrent(ticket.session)) return;
+          setContextUsage(updated);
+          setMessages((prev) => [...prev, { role: 'system', content: lang === 'fr'
+            ? `Contexte réduit (${result.mode === 'summary' ? 'résumé' : 'échanges récents'}). Certains détails peuvent être perdus.`
+            : lang === 'es' ? `Contexto reducido (${result.mode === 'summary' ? 'resumen' : 'mensajes recientes'}). Pueden perderse algunos detalles.`
+            : `Context reduced (${result.mode === 'summary' ? 'summary' : 'recent messages'}). Some details may be lost.` }]);
+        } else if (usage.tokens !== null && usage.configuredMaxTokens !== null && usage.tokens >= usage.configuredMaxTokens * 0.9) {
+          setMessages((prev) => [...prev, { role: 'system', content: lang === 'fr'
+            ? 'Le contexte approche de la limite configurée. Une nouvelle conversation pourrait être nécessaire.'
+            : lang === 'es' ? 'El contexto se acerca al límite configurado. Podría ser necesaria una nueva conversación.'
+            : 'The context is nearing the configured limit. A new conversation may be needed.' }]);
+        }
+      });
+      if (advisorSession.isCurrent(ticket.session)) {
+        advisorSession.markReady(ticket.session);
+        setEngineState('ready');
+      }
+    } catch (error: any) {
+      if (advisorSession.isCurrent(ticket.session)) {
+        const canContinue = error?.code === 'COMPACT_ERROR';
+        if (canContinue) advisorSession.markReady(ticket.session);
+        setEngineState(canContinue ? 'ready' : 'error');
+        setMessages((prev) => [...prev, { role: 'system', content: lang === 'fr'
+          ? (canContinue ? 'Compression impossible. Le contexte précédent est conservé ; une nouvelle conversation pourrait être nécessaire.' : 'Le contexte local ne peut pas être repris en sécurité. Recharge le modèle ou démarre une nouvelle conversation.')
+          : lang === 'es' ? (canContinue ? 'No se pudo comprimir. Se conserva el contexto anterior; podría ser necesaria una nueva conversación.' : 'No se puede continuar el contexto local de forma segura. Vuelve a cargar el modelo o inicia una nueva conversación.')
+          : (canContinue ? 'Could not compress. The previous context is retained; a new conversation may be needed.' : 'The local context cannot safely continue. Reload the model or start a new conversation.') }]);
+      }
+    } finally {
+      if (advisorSession.isCurrent(ticket.session)) setStreaming(false);
+    }
+  }, [advisorSession, lang, server]);
+
   const sendToLLM = useCallback(
     (prompt: string, userDisplay?: string, session = renderSession, request = renderRequest, analyticsAuthorization = captureAnalyticsAuthorization()) => {
       if (!advisorSession.matchesServer(server) || !advisorSession.isRequestCurrent(request) || resetInFlightRef.current) return;
       const streamTicket = advisorSession.beginStream(session);
       if (!streamTicket) return;
 
-      // Track tokens for the prompt sent
-      const promptTokens = estimateTokens(prompt);
+      const history = [...messagesRef.current, { role: 'user' as const, content: userDisplay || prompt }];
 
       setMessages((prev) => [
         ...prev,
@@ -662,53 +837,19 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         },
         onDone: () => {
           if (!advisorSession.isStreamCurrent(streamTicket)) return;
-          advisorSession.endStream(streamTicket);
-          const responseTokens = estimateTokens(fullResponse);
-          const newTotal = tokenCount + promptTokens + responseTokens;
-          setTokenCount(newTotal);
-
-          const msgsToAdd: ChatMessage[] = [
-            { role: 'assistant', source: 'model', content: fullResponse },
-          ];
-
-          // Auto-reset at 90% context
-          if (newTotal >= RESET_THRESHOLD) {
-            msgsToAdd.push({
-              role: 'system',
-              content: lang === 'fr'
-                ? `Context plein (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Reset auto pour eviter les hallucinations.`
-                : `Context full (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Auto-reset to avoid hallucinations.`,
-            });
-
-            // Reset conversation on native side, keep messages in UI for reference
-            void resetNativeConversation();
-            setTokenCount(SYSTEM_PROMPT_TOKENS);
-          }
-          // Warning at 75%
-          else if (newTotal >= WARNING_THRESHOLD) {
-            msgsToAdd.push({
-              role: 'system',
-              content: lang === 'fr'
-                ? `Context: ${Math.round(newTotal)}/${MAX_TOKENS} tokens (~${Math.round((newTotal / MAX_TOKENS) * 100)}%). Reset bientot.`
-                : `Context: ${Math.round(newTotal)}/${MAX_TOKENS} tokens (~${Math.round((newTotal / MAX_TOKENS) * 100)}%). Reset soon.`,
-            });
-          }
-
-          setMessages((prev) => [...prev, ...msgsToAdd]);
-          setStreamBuffer('');
-          streamTextRef.current = '';
-          setStreaming(false);
-          cleanupRef.current = null;
+          void finishResponse(streamTicket, fullResponse, history);
         },
-        onError: (error) => {
+        onError: (error, errorCode) => {
           if (!advisorSession.isStreamCurrent(streamTicket)) return;
-          void interruptStream(streamTicket, `Error: ${error}`, fullResponse);
+          if (errorCode === 'TOOL_CALL_FORMAT' || errorCode === 'TOOL_CALL_LIMIT' || errorCode === 'CONTEXT_FULL') {
+            void recoverTerminalError(streamTicket, `Error: ${error}`, fullResponse, history);
+          } else void interruptStream(streamTicket, `Error: ${error}`, fullResponse);
         },
       });
       if (advisorSession.isStreamCurrent(streamTicket)) cleanupRef.current = cleanup;
       else cleanup(); // a synchronous terminal callback must not leave stale cleanup
     },
-    [advisorSession, renderSession, renderRequest, tokenCount, lang, server, activeModelId, resetNativeConversation, interruptStream]
+    [advisorSession, renderSession, renderRequest, server, activeModelId, finishResponse, recoverTerminalError, interruptStream]
   );
   const handleItemSelect = useCallback(
     async (item: AlbionItem, analysisCity: City | null = playerCity, analyticsAuthorization = captureAnalyticsAuthorization()) => {
@@ -807,7 +948,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 
       // Convert content:// or file:// URI to path
       const imagePath = imageUri.replace('file://', '');
-      const promptTokens = estimateTokens(prompt) + 500; // ~500 tokens for image
+      const history = [...messagesRef.current, { role: 'user' as const, content: `[Image] ${prompt}` }];
 
       trackAIImageSent(activeModelId || 'unknown', analyticsAuthorization);
 
@@ -820,41 +961,19 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         },
         onDone: () => {
           if (!advisorSession.isStreamCurrent(streamTicket)) return;
-          advisorSession.endStream(streamTicket);
-          const responseTokens = estimateTokens(fullResponse);
-          const newTotal = tokenCount + promptTokens + responseTokens;
-          setTokenCount(newTotal);
-
-          const msgsToAdd: ChatMessage[] = [
-            { role: 'assistant', source: 'model', content: fullResponse },
-          ];
-
-          if (newTotal >= RESET_THRESHOLD) {
-            msgsToAdd.push({
-              role: 'system',
-              content: lang === 'fr'
-                ? `Context plein (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Reset auto.`
-                : `Context full (${Math.round(newTotal)}/${MAX_TOKENS} tokens). Auto-reset.`,
-            });
-            void resetNativeConversation();
-            setTokenCount(SYSTEM_PROMPT_TOKENS);
-          }
-
-          setMessages((prev) => [...prev, ...msgsToAdd]);
-          setStreamBuffer('');
-          streamTextRef.current = '';
-          setStreaming(false);
-          cleanupRef.current = null;
+          void finishResponse(streamTicket, fullResponse, history);
         },
-        onError: (error) => {
+        onError: (error, errorCode) => {
           if (!advisorSession.isStreamCurrent(streamTicket)) return;
-          void interruptStream(streamTicket, `Error: ${error}`, fullResponse);
+          if (errorCode === 'TOOL_CALL_FORMAT' || errorCode === 'TOOL_CALL_LIMIT' || errorCode === 'CONTEXT_FULL') {
+            void recoverTerminalError(streamTicket, `Error: ${error}`, fullResponse, history);
+          } else void interruptStream(streamTicket, `Error: ${error}`, fullResponse);
         },
       });
       if (advisorSession.isStreamCurrent(streamTicket)) cleanupRef.current = cleanup;
       else cleanup();
     },
-    [advisorSession, renderSession, renderRequest, backendInfo, input, tokenCount, lang, server, activeModelId, resetNativeConversation, interruptStream]
+    [advisorSession, renderSession, renderRequest, backendInfo, input, lang, server, activeModelId, finishResponse, recoverTerminalError, interruptStream]
   );
 
   const handlePickImage = useCallback(async () => {
@@ -1087,7 +1206,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.startBtn]}
                         onPress={() => handleStartModel(model)}
-                        disabled={engineState === 'loading'}
+                        disabled={engineState === 'loading' || !settingsLoaded}
                       >
                         <Text style={styles.startBtnText}>
                           {lang === 'fr' ? 'Démarrer' : lang === 'es' ? 'Iniciar' : 'Start'}
@@ -1104,12 +1223,44 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                   )}
                 </View>
               )}
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.localSettingsButton]}
+                onPress={() => editingModel === model.id ? setEditingModel(null) : openSettings(model)}
+                disabled={engineState === 'loading' || !settingsLoaded}
+                accessibilityRole="button"
+              >
+                <Text style={styles.localSettingsButtonText}>{lang === 'fr' ? 'Réglages du modèle local' : lang === 'es' ? 'Configuración del modelo local' : 'Local model settings'}</Text>
+              </TouchableOpacity>
+              {editingModel === model.id && (
+                <View style={styles.localSettingsPanel}>
+                  <Text style={styles.specLabel}>{lang === 'fr' ? 'Contexte en tokens (vide : auto, 4 000 demandés)' : lang === 'es' ? 'Tokens de contexto (vacío: automático, se solicitan 4 000)' : 'Context tokens (empty: auto, 4,000 requested)'}</Text>
+                  <TextInput style={styles.localSettingsInput} value={contextInput} onChangeText={setContextInput} keyboardType="number-pad" placeholder="Auto" placeholderTextColor={COLORS.textMuted} accessibilityLabel={lang === 'fr' ? 'Tokens de contexte' : lang === 'es' ? 'Tokens de contexto' : 'Context tokens'} />
+                  <Text style={styles.specLabel}>{lang === 'fr' ? `2 000–${model.maxContextTokens ?? 32000}. Une valeur élevée demande plus de mémoire ; sa prise en charge dépend du modèle et du téléphone.` : lang === 'es' ? `2 000–${model.maxContextTokens ?? 32000}. Los valores altos usan más memoria; la compatibilidad depende del modelo y del teléfono.` : `2,000–${model.maxContextTokens ?? 32000}. Larger values use more memory; support depends on model and device.`}</Text>
+                  <Text style={styles.specLabel}>TopK (1–100)</Text>
+                  <TextInput style={styles.localSettingsInput} value={topKInput} onChangeText={setTopKInput} keyboardType="number-pad" accessibilityLabel="TopK" />
+                  <Text style={styles.specLabel}>TopP (0–1)</Text>
+                  <TextInput style={styles.localSettingsInput} value={topPInput} onChangeText={setTopPInput} keyboardType="decimal-pad" accessibilityLabel="TopP" />
+                  <Text style={styles.specLabel}>{lang === 'fr' ? 'Température (0–2)' : lang === 'es' ? 'Temperatura (0–2)' : 'Temperature (0–2)'}</Text>
+                  <TextInput style={styles.localSettingsInput} value={temperatureInput} onChangeText={setTemperatureInput} keyboardType="decimal-pad" accessibilityLabel={lang === 'fr' ? 'Température' : lang === 'es' ? 'Temperatura' : 'Temperature'} />
+                  <TouchableOpacity onPress={() => setDraft((prev) => ({ ...prev, autoCompress: !prev.autoCompress }))} accessibilityRole="checkbox" accessibilityState={{ checked: draft.autoCompress }}>
+                    <Text style={styles.localSettingsOption}>{draft.autoCompress ? '☑' : '☐'} {lang === 'fr' ? 'Compression automatique du contexte' : lang === 'es' ? 'Comprimir el contexto automáticamente' : 'Automatically compress context'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setDraft((prev) => ({ ...prev, preferCpuText: !prev.preferCpuText }))} accessibilityRole="checkbox" accessibilityState={{ checked: draft.preferCpuText }}>
+                    <Text style={styles.localSettingsOption}>{draft.preferCpuText ? '☑' : '☐'} {lang === 'fr' ? 'CPU · texte seul (sinon GPU automatique)' : lang === 'es' ? 'CPU · solo texto (si no, GPU automática)' : 'CPU · text only (otherwise automatic GPU)'}</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.specLabel}>{lang === 'fr' ? 'La compression peut perdre des détails ; le mode CPU désactive les images. Les réglages sont appliqués au prochain démarrage.' : lang === 'es' ? 'La compresión puede perder detalles; el modo CPU desactiva las imágenes. La configuración se aplicará al volver a iniciar el modelo.' : 'Compression can lose details; CPU mode disables images. Settings apply the next time the model starts.'}</Text>
+                  <View style={styles.modelActions}>
+                    <TouchableOpacity style={[styles.actionBtn, styles.startBtn]} onPress={() => void saveSettings(model)}><Text style={styles.startBtnText}>{lang === 'fr' ? 'Enregistrer' : lang === 'es' ? 'Guardar' : 'Save'}</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionBtn, styles.deleteBtn]} onPress={() => setEditingModel(null)}><Text style={styles.deleteBtnText}>{lang === 'fr' ? 'Annuler' : lang === 'es' ? 'Cancelar' : 'Cancel'}</Text></TouchableOpacity>
+                  </View>
+                </View>
+              )}
               {model.cpuTextOption && isDownloaded && !isDownloading && (
                 <View style={{ marginTop: 10 }}>
                   <TouchableOpacity
                     style={[styles.actionBtn, styles.startBtn, { flex: 0 }]}
                     onPress={() => handleStartModel(model, true)}
-                    disabled={engineState === 'loading'}
+                    disabled={engineState === 'loading' || !settingsLoaded}
                   >
                     <Text style={styles.startBtnText}>
                       {lang === 'fr' ? 'Démarrer CPU · texte seul' : lang === 'es' ? 'Iniciar CPU · solo texto' : 'Start CPU · text only'}
@@ -1117,10 +1268,10 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                   </TouchableOpacity>
                   <Text style={styles.modelDesc}>
                     {lang === 'fr'
-                      ? "Peut réduire la mémoire : même modèle, sans images. Gain non garanti et vitesse variable selon le téléphone. Le bouton Démarrer conserve le mode GPU/vision automatique."
+                      ? "Peut réduire la mémoire : même modèle, sans images. Gain non garanti et vitesse variable selon le téléphone. Le bouton Démarrer utilise le réglage enregistré."
                       : lang === 'es'
-                      ? 'Puede reducir memoria: mismo modelo, sin imágenes. Ahorro no garantizado y velocidad variable. Iniciar conserva el modo GPU/visión automático.'
-                      : 'May use less memory: same model, no images. Savings are not guaranteed; speed varies by phone. Start keeps automatic GPU/vision mode.'}
+                      ? 'Puede reducir memoria: mismo modelo, sin imágenes. Ahorro no garantizado y velocidad variable. Iniciar utiliza la configuración guardada.'
+                      : 'May use less memory: same model, no images. Savings are not guaranteed; speed varies by phone. Start uses the saved setting.'}
                   </Text>
                 </View>
               )}
@@ -1159,13 +1310,8 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                 {AVAILABLE_MODELS.find((m) => m.id === activeModelId)?.name || ''}
               </Text>
             </View>
-            <Text style={[
-              styles.tokenCounter,
-              tokenCount >= RESET_THRESHOLD ? { color: COLORS.loss } :
-              tokenCount >= WARNING_THRESHOLD ? { color: COLORS.warning } :
-              { color: COLORS.textMuted },
-            ]}>
-              {Math.round(tokenCount)}/{MAX_TOKENS}
+            <Text style={styles.tokenCounter}>
+              {`Cache : ${contextUsage.tokens === null ? '?' : contextUsage.tokens}`}
             </Text>
           </View>
         </View>
@@ -1179,10 +1325,18 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
               {selectedItem ? selectedItem.n : t('selectItem')}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+          <TouchableOpacity style={[styles.resetBtn, preparingContext && { opacity: 0.4 }]} onPress={handleReset} disabled={preparingContext} accessibilityState={{ disabled: preparingContext }}>
             <Text style={styles.resetBtnText}>{'\u{1F5D1}'}</Text>
           </TouchableOpacity>
         </View>
+        <Text style={styles.contextCacheNote}>
+          {contextUsage.configuredMaxTokens === null ? '' : `${lang === 'fr' ? 'Budget demandé' : lang === 'es' ? 'Presupuesto solicitado' : 'Requested budget'}: ${contextUsage.configuredMaxTokens}. `}
+          {lang === 'fr'
+            ? 'Le cache exclut les messages en attente et la prochaine demande ; tokens restants inconnus.'
+            : lang === 'es'
+            ? 'La caché excluye los mensajes pendientes y la próxima solicitud; tokens restantes desconocidos.'
+            : 'Cache excludes pending messages and the next request; remaining tokens are unknown.'}
+        </Text>
       </View>
 
       {backendInfo && (
@@ -1289,7 +1443,12 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           returnKeyType="send"
           multiline
         />
-        {streaming ? (
+        {preparingContext ? (
+          <View style={styles.contextPreparing} accessible accessibilityRole="progressbar" accessibilityLabel={lang === 'fr' ? 'Préparation du contexte' : lang === 'es' ? 'Preparando el contexto' : 'Preparing context'}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.contextPreparingText}>{lang === 'fr' ? 'Préparation du contexte…' : lang === 'es' ? 'Preparando el contexto…' : 'Preparing context…'}</Text>
+          </View>
+        ) : streaming && renderStream && advisorSession.isStreamCurrent(renderStream) ? (
           <TouchableOpacity
             style={[styles.sendBtn, { width: 'auto', paddingHorizontal: SPACING.sm, backgroundColor: COLORS.loss }]}
             onPress={handleStop}
@@ -1320,6 +1479,18 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
 // ─── STYLES ──────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  contextCacheNote: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: SPACING.xs },
+  contextPreparing: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, paddingHorizontal: SPACING.sm },
+  contextPreparingText: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, maxWidth: 100 },
+  localSettingsButton: {
+    marginTop: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  localSettingsButtonText: { color: COLORS.primary, fontWeight: '600', fontSize: FONT_SIZE.sm },
+  localSettingsPanel: { marginTop: SPACING.sm, padding: SPACING.md, backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.md },
+  localSettingsInput: { color: COLORS.text, borderColor: COLORS.textMuted, borderWidth: 1, borderRadius: BORDER_RADIUS.sm, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, marginBottom: SPACING.sm },
+  localSettingsOption: { color: COLORS.text, fontSize: FONT_SIZE.sm, paddingVertical: SPACING.sm },
   analysisSafetyNotice: {
     color: COLORS.warning,
     fontSize: FONT_SIZE.xs,
@@ -1589,6 +1760,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   tokenCounter: {
+    color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
     fontFamily: 'monospace',
   },

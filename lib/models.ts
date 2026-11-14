@@ -19,6 +19,8 @@ interface ModelInfoBase {
   toolCalling?: boolean;
   /** Offer an explicit Android CPU/text-only start; automatic GPU/vision stays available. */
   cpuTextOption?: boolean;
+  /** Artifact-advertised window, when verified; runtime capacity can be lower. */
+  maxContextTokens?: number;
   /** Explicitly suspend unvalidated item-analysis prose for a tested artifact. */
   itemAnalysisMode?: 'calculator-only';
 }
@@ -58,6 +60,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     // Keep direct app-provided analysis; do not advertise native tool support.
     toolCalling: false,
     cpuTextOption: true,
+    // Immutable artifact manifest reports a 4,096-token context.
+    maxContextTokens: 4096,
     itemAnalysisMode: 'calculator-only',
   },
   {

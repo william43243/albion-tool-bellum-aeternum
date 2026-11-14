@@ -10,7 +10,7 @@ type LiteRTEvents = {
   onDownloadProgress: [ActiveDownload];
   onLiteRTToken: [{ requestId: string; token: string }];
   onLiteRTDone: [{ requestId: string }];
-  onLiteRTError: [{ requestId: string; error: string }];
+  onLiteRTError: [{ requestId: string; error: string; errorCode?: string }];
 };
 const emitter = Platform.OS === 'android' && LiteRTModule
   ? new NativeEventEmitter<LiteRTEvents>(LiteRTModule)
@@ -38,7 +38,7 @@ export function createDownloadAttemptId(): string {
 export interface StreamCallbacks {
   onToken: (token: string) => void;
   onDone: () => void;
-  onError: (error: string) => void;
+  onError: (error: string, errorCode?: string) => void;
 }
 
 export interface DownloadCallbacks {
@@ -167,6 +167,45 @@ export interface InitResult {
   chipset: string;
 }
 
+/** Applied to the next engine initialization. A null maximum uses the runtime default. */
+export interface LocalRuntimeOptions {
+  maxNumTokens: number | null;
+  topK: number;
+  topP: number;
+  temperature: number;
+}
+
+/** Native cache usage is not a prediction of the next request's token cost. */
+export interface LocalContextUsage {
+  tokens: number | null;
+  configuredMaxTokens: number | null;
+}
+
+export async function setRuntimeOptions(options: LocalRuntimeOptions): Promise<void> {
+  if (Platform.OS !== 'android' || !LiteRTModule) {
+    throw new Error('LiteRT-LM is only available on Android');
+  }
+  await LiteRTModule.setRuntimeOptions(options);
+}
+
+export async function getContextUsage(): Promise<LocalContextUsage> {
+  if (Platform.OS !== 'android' || !LiteRTModule) {
+    return { tokens: null, configuredMaxTokens: null };
+  }
+  return LiteRTModule.getContextUsage();
+}
+
+export async function compactConversation(
+  systemPrompt: string,
+  serverBaseUrl: string,
+  history: string,
+): Promise<{ mode: 'summary' | 'truncated' }> {
+  if (Platform.OS !== 'android' || !LiteRTModule) {
+    throw new Error('LiteRT-LM is only available on Android');
+  }
+  return LiteRTModule.compactConversation(systemPrompt, serverBaseUrl, history);
+}
+
 export async function initialize(
   modelFilename: string,
   systemPrompt: string,
@@ -206,7 +245,7 @@ export function sendMessage(
   const errorSub = emitter.addListener('onLiteRTError', (event) => {
     if (event.requestId === requestId) {
       cleanup();
-      callbacks.onError(event.error);
+      callbacks.onError(event.error, event.errorCode);
     }
   });
 
@@ -256,7 +295,7 @@ export function sendMessageWithImage(
   const errorSub = emitter.addListener('onLiteRTError', (event) => {
     if (event.requestId === requestId) {
       cleanup();
-      callbacks.onError(event.error);
+      callbacks.onError(event.error, event.errorCode);
     }
   });
 

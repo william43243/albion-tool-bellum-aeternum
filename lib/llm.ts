@@ -2,7 +2,19 @@
 import * as LiteRT from './litert';
 
 // Re-export types
-export type { StreamCallbacks, DownloadCallbacks, DownloadedModel, InitResult } from './litert';
+export type { StreamCallbacks, DownloadCallbacks, DownloadedModel, InitResult, LocalRuntimeOptions, LocalContextUsage } from './litert';
+
+export async function setRuntimeOptions(options: LiteRT.LocalRuntimeOptions): Promise<void> {
+  return LiteRT.setRuntimeOptions(options);
+}
+
+export async function getContextUsage(): Promise<LiteRT.LocalContextUsage> {
+  return LiteRT.getContextUsage();
+}
+
+export async function compactConversation(systemPrompt: string, serverBaseUrl: string, history: string): Promise<{ mode: 'summary' | 'truncated' }> {
+  return LiteRT.compactConversation(systemPrompt, serverBaseUrl, history);
+}
 
 // Preserve the typed bridge API consumed by the advisor.
 export async function getDownloadedModels() {
