@@ -1,0 +1,2905 @@
+{
+  "schema_version": "1.0.0",
+  "percentage_basis": "resource and tier share of documented theoretical zone nodes across all tiers and enchantments",
+  "unknown_means": "no documented data, not absence",
+  "zones": [
+    {
+      "zone_id": "0000",
+      "name": "Thetford",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0004",
+      "name": "Swamp Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0005",
+      "name": "Camlann",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0008",
+      "name": "Morgana's Rest",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0201",
+      "name": "Sleetwater Basin",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0202",
+      "name": "Chillhag",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0203",
+      "name": "Willowsigh Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0204",
+      "name": "Windripple Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0205",
+      "name": "Stinkhag",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0206",
+      "name": "Dusklight Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0207",
+      "name": "Nightcreak Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0208",
+      "name": "Stumprot Swamp",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0209",
+      "name": "Dewleaf Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0210",
+      "name": "Wispwhisper Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0211",
+      "name": "Spectral Sump",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0212",
+      "name": "Bonepool Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0213",
+      "name": "Curlew Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0214",
+      "name": "Slimehag",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0215",
+      "name": "Murky Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0216",
+      "name": "Fog Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0217",
+      "name": "Drownhorse Basin",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0218",
+      "name": "Slithertail Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0219",
+      "name": "Wanderlure Basin",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0220",
+      "name": "Falsestep Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0221",
+      "name": "Darkground Swamp",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0222",
+      "name": "Anklesnag Mire",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0223",
+      "name": "Dusktree Swamp",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0301",
+      "name": "Thetford Portal",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0305",
+      "name": "Wetgrave Bog",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0306",
+      "name": "Scuttlesink Pools",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0307",
+      "name": "Meltwater Bog",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0308",
+      "name": "Drownfield Course",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0309",
+      "name": "Widemoor Shore",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0310",
+      "name": "Drownfield Mire",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0311",
+      "name": "Runnelvein Slough",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0312",
+      "name": "Widemoor Pool",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0313",
+      "name": "Drownfield Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0314",
+      "name": "Willowshade Wetlands",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0315",
+      "name": "Skullmarsh Lower",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0316",
+      "name": "Widemoor Estuary",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0317",
+      "name": "Widemoor Delta",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0318",
+      "name": "Willowshade Mire",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0319",
+      "name": "Willowshade Lake",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0320",
+      "name": "Willowshade Icemarsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0321",
+      "name": "Springsump Basin",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0322",
+      "name": "Longfen Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0323",
+      "name": "Mudfoot Sump",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0324",
+      "name": "Scuttlesink Mouth",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0325",
+      "name": "Meltwater Delta",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0326",
+      "name": "Runnelvein Bog",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0327",
+      "name": "Widemoor Hills",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0328",
+      "name": "Drownfield Wetland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0329",
+      "name": "Drownfield Slough",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0330",
+      "name": "Widemoor End",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0331",
+      "name": "Willowshade Pools",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0332",
+      "name": "Drownfield Rut",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0333",
+      "name": "Widemoor Woods",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0334",
+      "name": "Widemoor Flats",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0335",
+      "name": "Springsump Wetland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0336",
+      "name": "Longfen Arms",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0337",
+      "name": "Mudfoot Mounds",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0338",
+      "name": "Meltwater Sump",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0339",
+      "name": "Wetgrave Swale",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0340",
+      "name": "Drownfield Quag",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0341",
+      "name": "Runnelvein Sink",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0342",
+      "name": "Wetgrave Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0343",
+      "name": "Skullmarsh Upper",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0344",
+      "name": "Willowshade Hills",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0345",
+      "name": "Willowshade Sink",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0346",
+      "name": "Deathwisp Sink",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0347",
+      "name": "Deathwisp Bog",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0348",
+      "name": "Widemoor Fen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0349",
+      "name": "Sunkenbough Woods",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0350",
+      "name": "Twinchannel Narrows",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0351",
+      "name": "Springsump Melt",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0352",
+      "name": "Longfen Veins",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0353",
+      "name": "Scuttlesink Marsh",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0354",
+      "name": "Meltwater Channel",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0355",
+      "name": "Drownfield Sink",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0356",
+      "name": "Black Monastery",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0357",
+      "name": "Unhallowed Cloister",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0358",
+      "name": "Sunkenbough Spring",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "0359",
+      "name": "Deathreach Priory",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1000",
+      "name": "Lymhurst",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1006",
+      "name": "Forest Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1007",
+      "name": "Inis Mon",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1012",
+      "name": "Merlyn's Rest",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1201",
+      "name": "Larchroad",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1202",
+      "name": "Russerdell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1203",
+      "name": "Rowanwood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1204",
+      "name": "Oakcopse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1205",
+      "name": "Highbole Glen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1206",
+      "name": "Willow Wood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1207",
+      "name": "Birchcopse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1208",
+      "name": "Redlake",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1209",
+      "name": "Longtimber Glen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1210",
+      "name": "Murkweald",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1211",
+      "name": "Yew Wood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1212",
+      "name": "Stagbourne",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1213",
+      "name": "Wyre Forest",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1214",
+      "name": "Hornbeam Wood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1215",
+      "name": "Ferndell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1216",
+      "name": "Flynsdell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1217",
+      "name": "Pinecopse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1218",
+      "name": "Deeproot Wood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1220",
+      "name": "Aspenwood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1221",
+      "name": "Spindlewood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1222",
+      "name": "Owlsong Glen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1223",
+      "name": "Nightbloom Forest",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1246",
+      "name": "Cedarcopse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1301",
+      "name": "Lymhurst Portal",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1305",
+      "name": "Brambleshore Hinterlands",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1306",
+      "name": "Deepwood Dell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1307",
+      "name": "Greenshore Peninsula",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1308",
+      "name": "Giantweald Dale",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1309",
+      "name": "Timberscar Dell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1310",
+      "name": "Giantweald Copse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1311",
+      "name": "Watchwood Precipice",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1312",
+      "name": "Deadpine Forest",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1313",
+      "name": "Hightree Steep",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1314",
+      "name": "Southgrove Escarp",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1315",
+      "name": "Watchwood Grove",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1316",
+      "name": "Hightree Lake",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1317",
+      "name": "Hightree Dale",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1318",
+      "name": "Rivercopse Crossing",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1319",
+      "name": "Hightree Strand",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1320",
+      "name": "Hightree Glade",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1321",
+      "name": "Driftwood Vale",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1322",
+      "name": "Hightree Enclave",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1323",
+      "name": "Westweald Thicket",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1324",
+      "name": "Greenhollow Vale",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1325",
+      "name": "Timbertop Dale",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1326",
+      "name": "Timberslope Dell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1327",
+      "name": "Deepwood Gorge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1328",
+      "name": "Giantweald Woods",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1329",
+      "name": "Watchwood Lakeside",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1330",
+      "name": "Watchwood Bluffs",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1331",
+      "name": "Giantweald Roots",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1332",
+      "name": "Hightree Pass",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1333",
+      "name": "Hightree Borderlands",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1334",
+      "name": "Driftwood Glen",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1335",
+      "name": "Hightree Levee",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1336",
+      "name": "Hightree Cliffs",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1337",
+      "name": "Southgrove Copse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1338",
+      "name": "Timbertop Wood",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1339",
+      "name": "Timberslope Grove",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1340",
+      "name": "Deepwood Pines",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1341",
+      "name": "Giantweald Edge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1342",
+      "name": "Timberscar Copse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1343",
+      "name": "Deepwood Copse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1344",
+      "name": "Giantweald Glade",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1345",
+      "name": "Hightree Isle",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1346",
+      "name": "Rivercopse Curve",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1347",
+      "name": "Hightree Hillock",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1348",
+      "name": "Driftwood Hollow",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1349",
+      "name": "Rivercopse Path",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1350",
+      "name": "Southgrove Thicket",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1351",
+      "name": "Westweald Shore",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1352",
+      "name": "Greenhollow Copse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1353",
+      "name": "Timbertop Escarp",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1354",
+      "name": "Timberslope Bridge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1355",
+      "name": "Greenshore Bay",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1356",
+      "name": "Eye of the Forest",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1357",
+      "name": "Eldersleep",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1358",
+      "name": "Darkbough Snag",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "1359",
+      "name": "Rivercopse Fount",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2000",
+      "name": "Bridgewatch",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2002",
+      "name": "Steppe Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2009",
+      "name": "Astolat",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2201",
+      "name": "Kindlegrass Steppe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2202",
+      "name": "Cracked Earth",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2203",
+      "name": "Roastcorpse Steppe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2204",
+      "name": "Deadvein Gully",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2205",
+      "name": "Shiftshadow Expanse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2206",
+      "name": "Parchthroat Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2207",
+      "name": "Drywater Meadow",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2208",
+      "name": "Slowtree Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2209",
+      "name": "Lazygrass Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2210",
+      "name": "Snapshaft Trough",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2211",
+      "name": "Smoothfloor Cleft",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2212",
+      "name": "Longmarch Meadow",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2213",
+      "name": "Steelhide Meadow",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2214",
+      "name": "Fractured Ground",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2215",
+      "name": "Prospector's Hope",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2216",
+      "name": "Dryfield Meadow",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2217",
+      "name": "Sandgust Cleft",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2218",
+      "name": "Longshadow Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2219",
+      "name": "Flatriver Trough",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2220",
+      "name": "Redstone Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2221",
+      "name": "Flimmerair Steppe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2222",
+      "name": "Goldshimmer Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2301",
+      "name": "Bridgewatch Portal",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2305",
+      "name": "Northstrand Dunes",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2306",
+      "name": "Swiftsands Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2307",
+      "name": "Skysand Plateau",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2308",
+      "name": "Drybasin Riverbed",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2309",
+      "name": "Slakesands Canyon",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2310",
+      "name": "Sunfang Ravine",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2311",
+      "name": "Thirstwater Steppe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2312",
+      "name": "Sandmount Strand",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2313",
+      "name": "Dryvein Riverbed",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2314",
+      "name": "Bleachskull Steppe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2315",
+      "name": "Dryvein Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2316",
+      "name": "Sunstrand Shoal",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2317",
+      "name": "Sunstrand Delta",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2318",
+      "name": "Sandmount Esker",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2319",
+      "name": "Dryvein Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2320",
+      "name": "Farshore Esker",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2321",
+      "name": "Sandrift Steppe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2322",
+      "name": "Sandrift Prairie",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2323",
+      "name": "Sandrift Coast",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2324",
+      "name": "Sandrift Shore",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2325",
+      "name": "Farshore Bay",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2326",
+      "name": "Northstrand Beach",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2327",
+      "name": "Drytop Riverbed",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2328",
+      "name": "Drytop Pillars",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2329",
+      "name": "Thirstwater Waste",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2330",
+      "name": "Sunfang Approach",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2331",
+      "name": "Parchsand Cliffs",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2332",
+      "name": "Dryvein Steppe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2333",
+      "name": "Bleachskull Desert",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2334",
+      "name": "Dryvein Oasis",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2335",
+      "name": "Sunstrand Dunes",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2336",
+      "name": "Farshore Heath",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2337",
+      "name": "Sandrift Expanse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2338",
+      "name": "Farshore Lagoon",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2339",
+      "name": "Swiftsands Basin",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2340",
+      "name": "Skysand Ridge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2341",
+      "name": "Drybasin Oasis",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2342",
+      "name": "Slakesands Mesa",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2343",
+      "name": "Sunfang Cliffs",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2344",
+      "name": "Sunfang Wasteland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2345",
+      "name": "Dryvein End",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2346",
+      "name": "Thirstwater Gully",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2347",
+      "name": "Dryvein Confluence",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2348",
+      "name": "Sunstrand Quicksands",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2349",
+      "name": "Sandmount Desert",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2350",
+      "name": "Sandrift Dunes",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2351",
+      "name": "Farshore Drylands",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2352",
+      "name": "Sandrift Fringe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2353",
+      "name": "Farshore Cape",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2354",
+      "name": "Swiftsands Chaparral",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2355",
+      "name": "Citadel of Ash",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2356",
+      "name": "Wailing Bulwark",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2357",
+      "name": "Sunfang Dawn",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2358",
+      "name": "Sandmount Ascent",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2359",
+      "name": "Parchsand Drought",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "2360",
+      "name": "Daemonium Keep",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3002",
+      "name": "Highland Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3003",
+      "name": "Caerleon",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3004",
+      "name": "Martlock",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3201",
+      "name": "Birken Fell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3202",
+      "name": "Mardale",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3203",
+      "name": "Lewsdon Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3204",
+      "name": "Eldon Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3205",
+      "name": "Gutras Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3206",
+      "name": "Haytor",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3207",
+      "name": "Blackthorn Quarry",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3208",
+      "name": "Bowscale Fell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3209",
+      "name": "Brent Knoll",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3210",
+      "name": "Mase Knoll",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3211",
+      "name": "Saddle Tor",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3212",
+      "name": "Croker Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3213",
+      "name": "Vixen Tor",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3214",
+      "name": "Haldon Tor",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3215",
+      "name": "Goffers Knoll",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3216",
+      "name": "Kilmar Tor",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3217",
+      "name": "Carns Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3218",
+      "name": "Brons Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3219",
+      "name": "Felniks Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3220",
+      "name": "Adrens Hill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3221",
+      "name": "Garrow Fell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3222",
+      "name": "Broken Fell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3245",
+      "name": "Runnel Sink",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3249",
+      "name": "Bellever Tor",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3301",
+      "name": "Martlock Portal",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3305",
+      "name": "Flatrock Cliffs",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3306",
+      "name": "Murdergulch Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3307",
+      "name": "Murdergulch Gap",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3308",
+      "name": "Razorrock Passage",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3309",
+      "name": "Braemore Upland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3310",
+      "name": "Razorrock Valley",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3311",
+      "name": "Highstone Meadow",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3312",
+      "name": "Battlebrae Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3313",
+      "name": "Battlebrae Lake",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3314",
+      "name": "Stonemouth Northbluff",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3315",
+      "name": "Highstone Plains",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3316",
+      "name": "Battlebrae Flatland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3317",
+      "name": "Battlebrae Peaks",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3318",
+      "name": "Windgrass Border",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3319",
+      "name": "Highstone Grassland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3320",
+      "name": "Windgrass Gully",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3321",
+      "name": "Windgrass Rill",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3322",
+      "name": "Windgrass Precipice",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3323",
+      "name": "Gravemound Brim",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3324",
+      "name": "Gravemound Hills",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3325",
+      "name": "Stonelake Fields",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3326",
+      "name": "Shaleheath Hills",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3327",
+      "name": "Skylake Bridge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3328",
+      "name": "Flatrock Plateau",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3329",
+      "name": "Thunderrock Rapids",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3330",
+      "name": "Razorrock Ravine",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3331",
+      "name": "Braemore Lowland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3332",
+      "name": "Razorrock Edge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3333",
+      "name": "Windgrass Fields",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3334",
+      "name": "Windgrass Coast",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3335",
+      "name": "Stonemouth Bay",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3336",
+      "name": "Stonelake Hillock",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3337",
+      "name": "Gravemound Slope",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3338",
+      "name": "Shaleheath Steep",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3339",
+      "name": "Skylake Hinterlands",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3340",
+      "name": "Thunderrock Ascent",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3341",
+      "name": "Thunderrock Upland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3342",
+      "name": "Murdergulch Trail",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3343",
+      "name": "Razorrock Chasm",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3344",
+      "name": "Razorrock Verge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3345",
+      "name": "Razorrock Bank",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3346",
+      "name": "Highstone Mound",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3347",
+      "name": "Highstone Plateau",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3348",
+      "name": "Battlebrae Grassland",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3349",
+      "name": "Battlebrae Meadow",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3350",
+      "name": "Windgrass Terrace",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3351",
+      "name": "Gravemound Knoll",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3352",
+      "name": "Gravemound Cliffs",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3353",
+      "name": "Thunderrock Draw",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3354",
+      "name": "Murdergulch Divide",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3355",
+      "name": "Murdergulch Ravine",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3356",
+      "name": "Razorrock Gulch",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3357",
+      "name": "Highstone Loch",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3358",
+      "name": "Stonemouth Southbluff",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "3359",
+      "name": "Redtree Enclave",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4000",
+      "name": "Fort Sterling",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4006",
+      "name": "Mountain Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4201",
+      "name": "Pen Garn",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4202",
+      "name": "Bryn Gorge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4203",
+      "name": "Crose Gorge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4204",
+      "name": "Pen Kerrig",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4205",
+      "name": "Cairn Gorm",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4206",
+      "name": "Tharcal Fissure",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4207",
+      "name": "Pen Gent",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4208",
+      "name": "Mawar Gorge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4209",
+      "name": "Cairn Darg",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4210",
+      "name": "Gwan Gorge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4211",
+      "name": "Creag Garr",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4212",
+      "name": "Cairn Glascore",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4213",
+      "name": "Cairn Camain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4214",
+      "name": "Cairn Fidair",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4215",
+      "name": "Malag Crevasse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4216",
+      "name": "Creag Morr",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4217",
+      "name": "Pen Fenair",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4218",
+      "name": "Cairn Drain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4219",
+      "name": "Caulder Fissure",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4220",
+      "name": "Cairn Cloch",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4221",
+      "name": "Creag Dhor",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4222",
+      "name": "Creag Meagir",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4223",
+      "name": "Domhain Chasm",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4249",
+      "name": "Pen Uchaf",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4300",
+      "name": "Arthur's Rest",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4301",
+      "name": "Fort Sterling Portal",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4305",
+      "name": "Whitebank Descent",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4306",
+      "name": "Frostpeak Vista",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4307",
+      "name": "Everwinter Crossing",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4308",
+      "name": "Whitebank Stream",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4309",
+      "name": "Whitebank Shore",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4310",
+      "name": "Everwinter Shores",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4311",
+      "name": "Whitebank Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4312",
+      "name": "Glacierfall Passage",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4313",
+      "name": "Floatshoal Floe",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4314",
+      "name": "Avalanche Ravine",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4315",
+      "name": "Munten Rise",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4316",
+      "name": "Frostbite Chasm",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4317",
+      "name": "Whitepeak Ascent",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4318",
+      "name": "Iceburn Firth",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4319",
+      "name": "Flammog Fork",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4320",
+      "name": "Frostseep Ravine",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4321",
+      "name": "Everwinter Reach",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4322",
+      "name": "Everwinter Peak",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4323",
+      "name": "Everwinter Plain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4324",
+      "name": "Frostpeak Ascent",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4325",
+      "name": "Everwinter Gorge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4326",
+      "name": "Whitebank Wall",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4327",
+      "name": "Floatshoal Fissure",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4328",
+      "name": "Iceburn Peaks",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4329",
+      "name": "Glacierfall Canyon",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4330",
+      "name": "Flammog Valley",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4331",
+      "name": "Munten Tundra",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4332",
+      "name": "Glacierbreak Summit",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4333",
+      "name": "Firesink Caldera",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4334",
+      "name": "Whitecliff Peak",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4335",
+      "name": "Frostbite Mountain",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4336",
+      "name": "Frostspring Passage",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4337",
+      "name": "Everwinter Passage",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4338",
+      "name": "Whitebank Ridge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4339",
+      "name": "Floatshoal Bight",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4340",
+      "name": "Everwinter Expanse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4341",
+      "name": "Everwinter Gap",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4342",
+      "name": "Iceburn Cliffs",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4343",
+      "name": "Glacierfall Cross",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4344",
+      "name": "Glacierfall Valley",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4345",
+      "name": "Munten Fell",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4346",
+      "name": "Iceburn Tundra",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4347",
+      "name": "Frostseep Crevasse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4348",
+      "name": "Whitepeak Spring",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4349",
+      "name": "Firesink Trench",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4350",
+      "name": "Whitecliff Expanse",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4351",
+      "name": "Frostspring Volcano",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4352",
+      "name": "Whitewall Ridge",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4353",
+      "name": "Everwinter Incline",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4354",
+      "name": "Flammog Desolation",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4355",
+      "name": "Glacierfall Pass",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4356",
+      "name": "Glacierfall Fissure",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4357",
+      "name": "Whitepeak Tundra",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4358",
+      "name": "Avalanche Incline",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    },
+    {
+      "zone_id": "4359",
+      "name": "Whitewall Pass",
+      "status": "unknown",
+      "total_nodes": null,
+      "resources": []
+    }
+  ]
+}

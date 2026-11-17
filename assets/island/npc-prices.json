@@ -1,0 +1,441 @@
+{
+  "schemaVersion": 1,
+  "description": "Reference prices for player purchases from the Farming Merchant, not merchant buyback prices.",
+  "verifiedAt": "2026-11-17",
+  "sourceDumpCommit": "5b581f18e9dc27b0866e78526cea535fb17db02d",
+  "gameVersion": null,
+  "currentPerServerPriceVerified": false,
+  "redistributionRightsStatus": "unconfirmed_review_required",
+  "defaultForUnlistedItems": "unknown",
+  "entries": [
+    {
+      "itemId": "T1_FARM_CARROT_SEED",
+      "category": "crop_seed",
+      "value": 2000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T2_FARM_BEAN_SEED",
+      "category": "crop_seed",
+      "value": 3000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T3_FARM_WHEAT_SEED",
+      "category": "crop_seed",
+      "value": 5000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T4_FARM_TURNIP_SEED",
+      "category": "crop_seed",
+      "value": 7500,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T5_FARM_CABBAGE_SEED",
+      "category": "crop_seed",
+      "value": 10000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T6_FARM_POTATO_SEED",
+      "category": "crop_seed",
+      "value": 15000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T7_FARM_CORN_SEED",
+      "category": "crop_seed",
+      "value": 22500,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T8_FARM_PUMPKIN_SEED",
+      "category": "crop_seed",
+      "value": 30000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/index.php?title=Crops&oldid=80340"
+      ]
+    },
+    {
+      "itemId": "T2_FARM_AGARIC_SEED",
+      "category": "herb_seed",
+      "value": 3000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Arcane_Agaric_Seeds"
+      ]
+    },
+    {
+      "itemId": "T3_FARM_COMFREY_SEED",
+      "category": "herb_seed",
+      "value": 5000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://www.albiondatabase.com/items/brightleaf-comfrey-seeds"
+      ]
+    },
+    {
+      "itemId": "T4_FARM_BURDOCK_SEED",
+      "category": "herb_seed",
+      "value": 7500,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://www.albiondatabase.com/items/crenellated-burdock-seeds"
+      ]
+    },
+    {
+      "itemId": "T5_FARM_TEASEL_SEED",
+      "category": "herb_seed",
+      "value": 10000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Dragon_Teasel_Seeds"
+      ]
+    },
+    {
+      "itemId": "T6_FARM_FOXGLOVE_SEED",
+      "category": "herb_seed",
+      "value": 15000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Elusive_Foxglove_Seed"
+      ]
+    },
+    {
+      "itemId": "T7_FARM_MULLEIN_SEED",
+      "category": "herb_seed",
+      "value": 22500,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Firetouched_Mullein_Seeds"
+      ]
+    },
+    {
+      "itemId": "T8_FARM_YARROW_SEED",
+      "category": "herb_seed",
+      "value": 30000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://aomct.app/db/items/ghoul-yarrow-seeds"
+      ]
+    },
+    {
+      "itemId": "T3_FARM_CHICKEN_BABY",
+      "category": "domestic_young_animal",
+      "value": 5000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T4_FARM_GOAT_BABY",
+      "category": "domestic_young_animal",
+      "value": 7500,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T5_FARM_GOOSE_BABY",
+      "category": "domestic_young_animal",
+      "value": 10000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T6_FARM_SHEEP_BABY",
+      "category": "domestic_young_animal",
+      "value": 15000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T7_FARM_PIG_BABY",
+      "category": "domestic_young_animal",
+      "value": 22500,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T8_FARM_COW_BABY",
+      "category": "domestic_young_animal",
+      "value": 30000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T3_FARM_OX_BABY",
+      "category": "mount_young_animal",
+      "value": 25000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T4_FARM_OX_BABY",
+      "category": "mount_young_animal",
+      "value": 75000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T5_FARM_OX_BABY",
+      "category": "mount_young_animal",
+      "value": 225000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T6_FARM_OX_BABY",
+      "category": "mount_young_animal",
+      "value": 675000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T7_FARM_OX_BABY",
+      "category": "mount_young_animal",
+      "value": null,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "unknown_conflicting_sources",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T8_FARM_OX_BABY",
+      "category": "mount_young_animal",
+      "value": null,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "unknown_conflicting_sources",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T3_FARM_HORSE_BABY",
+      "category": "mount_young_animal",
+      "value": 25000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T4_FARM_HORSE_BABY",
+      "category": "mount_young_animal",
+      "value": 75000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T5_FARM_HORSE_BABY",
+      "category": "mount_young_animal",
+      "value": 225000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T6_FARM_HORSE_BABY",
+      "category": "mount_young_animal",
+      "value": 675000,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "reference",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T7_FARM_HORSE_BABY",
+      "category": "mount_young_animal",
+      "value": null,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "unknown_conflicting_sources",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    },
+    {
+      "itemId": "T8_FARM_HORSE_BABY",
+      "category": "mount_young_animal",
+      "value": null,
+      "currency": "silver",
+      "transaction": "player_buys_from_farming_merchant",
+      "status": "unknown_conflicting_sources",
+      "verifiedAt": "2026-11-17",
+      "sources": [
+        "https://github.com/ao-data/ao-bin-dumps/blob/5b581f18e9dc27b0866e78526cea535fb17db02d/items.json",
+        "https://wiki.albiononline.com/wiki/Baby_Animals"
+      ]
+    }
+  ]
+}

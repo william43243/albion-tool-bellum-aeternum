@@ -1,0 +1,961 @@
+{
+  "schema_version": "1.0.0",
+  "game_data_version": null,
+  "sources": [
+    {
+      "id": "repository_items",
+      "url": "https://github.com/william43243/albion-tool-bellum-aeternum/blob/ce797512770fa7d6f208ed5e3b303c7074b20945/assets/items-db.json",
+      "accessed_at": "2026-11-13",
+      "published_at": null,
+      "license_status": "upstream redistribution rights unconfirmed",
+      "restrictions": "Existing repository data; see docs/data-rights.md."
+    },
+    {
+      "id": "official_biomes",
+      "url": "https://albiononline.com/news/guide-world-albion",
+      "accessed_at": "2026-11-13",
+      "published_at": "2024-01-22",
+      "license_status": "no explicit redistribution license found",
+      "restrictions": "Official content is protected; isolated facts only. No permission to reproduce text or images assumed."
+    },
+    {
+      "id": "pristine_2022",
+      "url": "https://albiononline.com/news/devtalk-fey-armor",
+      "accessed_at": "2026-11-13",
+      "published_at": "2022-11-15",
+      "license_status": "no explicit redistribution license found",
+      "restrictions": "Official content is protected; isolated facts only. No permission to reproduce text or images assumed. Historical announcement; current rules unverified."
+    },
+    {
+      "id": "outlands_2020",
+      "url": "https://forum.albiononline.com/index.php/Thread/122488-Resource-Distribution-Changes-in-the-New-Outlands/",
+      "accessed_at": "2026-11-13",
+      "published_at": "2020-01-15",
+      "license_status": "no explicit redistribution license found",
+      "restrictions": "Official content is protected; isolated facts only. No permission to reproduce text or images assumed. Historical Outlands facts; current distribution unverified."
+    },
+    {
+      "id": "mobs_2021",
+      "url": "https://forum.albiononline.com/index.php/Thread/156750-Open-World-Mob-Changes/",
+      "accessed_at": "2026-11-13",
+      "published_at": "2021-10-29",
+      "license_status": "no explicit redistribution license found",
+      "restrictions": "Official content is protected; isolated facts only. No permission to reproduce text or images assumed. Historical test server facts; current distribution unverified."
+    }
+  ],
+  "resources": [
+    {
+      "resource_id": "T1_WOOD",
+      "name": "Rough Logs",
+      "category": "wood",
+      "tier": 1,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T2_WOOD",
+      "name": "Birch Logs",
+      "category": "wood",
+      "tier": 2,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T3_WOOD",
+      "name": "Chestnut Logs",
+      "category": "wood",
+      "tier": 3,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T4_WOOD",
+      "name": "Pine Logs",
+      "category": "wood",
+      "tier": 4,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T5_WOOD",
+      "name": "Cedar Logs",
+      "category": "wood",
+      "tier": 5,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T6_WOOD",
+      "name": "Bloodoak Logs",
+      "category": "wood",
+      "tier": 6,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T7_WOOD",
+      "name": "Ashenbark Logs",
+      "category": "wood",
+      "tier": 7,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T8_WOOD",
+      "name": "Whitewood Logs",
+      "category": "wood",
+      "tier": 8,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T1_ROCK",
+      "name": "Rough Stone",
+      "category": "stone",
+      "tier": 1,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T2_ROCK",
+      "name": "Limestone",
+      "category": "stone",
+      "tier": 2,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T3_ROCK",
+      "name": "Sandstone",
+      "category": "stone",
+      "tier": 3,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T4_ROCK",
+      "name": "Travertine",
+      "category": "stone",
+      "tier": 4,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T5_ROCK",
+      "name": "Granite",
+      "category": "stone",
+      "tier": 5,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T6_ROCK",
+      "name": "Slate",
+      "category": "stone",
+      "tier": 6,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T7_ROCK",
+      "name": "Basalt",
+      "category": "stone",
+      "tier": 7,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T8_ROCK",
+      "name": "Marble",
+      "category": "stone",
+      "tier": 8,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T2_ORE",
+      "name": "Copper Ore",
+      "category": "ore",
+      "tier": 2,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T3_ORE",
+      "name": "Tin Ore",
+      "category": "ore",
+      "tier": 3,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T4_ORE",
+      "name": "Iron Ore",
+      "category": "ore",
+      "tier": 4,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T5_ORE",
+      "name": "Titanium Ore",
+      "category": "ore",
+      "tier": 5,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T6_ORE",
+      "name": "Runite Ore",
+      "category": "ore",
+      "tier": 6,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T7_ORE",
+      "name": "Meteorite Ore",
+      "category": "ore",
+      "tier": 7,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T8_ORE",
+      "name": "Adamantium Ore",
+      "category": "ore",
+      "tier": 8,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T1_HIDE",
+      "name": "Scraps of Hide",
+      "category": "hide",
+      "tier": 1,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T2_HIDE",
+      "name": "Rugged Hide",
+      "category": "hide",
+      "tier": 2,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T3_HIDE",
+      "name": "Thin Hide",
+      "category": "hide",
+      "tier": 3,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T4_HIDE",
+      "name": "Medium Hide",
+      "category": "hide",
+      "tier": 4,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T5_HIDE",
+      "name": "Heavy Hide",
+      "category": "hide",
+      "tier": 5,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T6_HIDE",
+      "name": "Robust Hide",
+      "category": "hide",
+      "tier": 6,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T7_HIDE",
+      "name": "Thick Hide",
+      "category": "hide",
+      "tier": 7,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T8_HIDE",
+      "name": "Resilient Hide",
+      "category": "hide",
+      "tier": 8,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T2_FIBER",
+      "name": "Cotton",
+      "category": "fiber",
+      "tier": 2,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T3_FIBER",
+      "name": "Flax",
+      "category": "fiber",
+      "tier": 3,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T4_FIBER",
+      "name": "Hemp",
+      "category": "fiber",
+      "tier": 4,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T5_FIBER",
+      "name": "Skyflower",
+      "category": "fiber",
+      "tier": 5,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T6_FIBER",
+      "name": "Amberleaf Cotton",
+      "category": "fiber",
+      "tier": 6,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T7_FIBER",
+      "name": "Sunflax",
+      "category": "fiber",
+      "tier": 7,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    },
+    {
+      "resource_id": "T8_FIBER",
+      "name": "Ghost Hemp",
+      "category": "fiber",
+      "tier": 8,
+      "enchantment": null,
+      "spawn_type": null,
+      "theoretical_quantity": null,
+      "confidence": "catalogued",
+      "source_refs": [
+        "repository_items"
+      ]
+    }
+  ],
+  "mobs": [
+    {
+      "mob_id": "animal:feral_boar",
+      "name": "Feral Boar",
+      "category": "harvestable",
+      "tier": 7,
+      "biomes": [
+        "forest",
+        "swamp"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:direboar",
+      "name": "Direboar",
+      "category": "harvestable",
+      "tier": 7,
+      "biomes": [
+        "forest",
+        "swamp"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:feral_bear",
+      "name": "Feral Bear",
+      "category": "harvestable",
+      "tier": 8,
+      "biomes": [
+        "forest",
+        "swamp"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:direbear",
+      "name": "Direbear",
+      "category": "harvestable",
+      "tier": 8,
+      "biomes": [
+        "forest",
+        "swamp"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:desert_wolf",
+      "name": "Desert Wolf",
+      "category": "harvestable",
+      "tier": 6,
+      "biomes": [
+        "steppe"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:rhino",
+      "name": "Rhino",
+      "category": "harvestable",
+      "tier": 7,
+      "biomes": [
+        "steppe"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:bighorn_rhino",
+      "name": "Bighorn Rhino",
+      "category": "harvestable",
+      "tier": 7,
+      "biomes": [
+        "steppe"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:mammoth",
+      "name": "Mammoth",
+      "category": "harvestable",
+      "tier": 8,
+      "biomes": [
+        "steppe"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "animal:ancient_mammoth",
+      "name": "Ancient Mammoth",
+      "category": "harvestable",
+      "tier": 8,
+      "biomes": [
+        "steppe"
+      ],
+      "resource_id": null,
+      "resource_category": "hide",
+      "enchantment": null,
+      "spawn_type": "resource_mob",
+      "theoretical_quantity": null,
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "outlands_2020"
+      ]
+    },
+    {
+      "mob_id": "faction:heretics",
+      "name": "Heretics",
+      "category": "hostile",
+      "tier": null,
+      "biomes": [],
+      "resource_id": null,
+      "resource_category": null,
+      "enchantment": null,
+      "spawn_type": "open_world",
+      "theoretical_quantity": null,
+      "scope": "open_world",
+      "confidence": "historical",
+      "source_refs": [
+        "mobs_2021"
+      ]
+    },
+    {
+      "mob_id": "faction:keepers",
+      "name": "Keepers",
+      "category": "hostile",
+      "tier": null,
+      "biomes": [],
+      "resource_id": null,
+      "resource_category": null,
+      "enchantment": null,
+      "spawn_type": "open_world",
+      "theoretical_quantity": null,
+      "scope": "open_world",
+      "confidence": "historical",
+      "source_refs": [
+        "mobs_2021"
+      ]
+    },
+    {
+      "mob_id": "faction:undead",
+      "name": "Undead",
+      "category": "hostile",
+      "tier": null,
+      "biomes": [],
+      "resource_id": null,
+      "resource_category": null,
+      "enchantment": null,
+      "spawn_type": "open_world",
+      "theoretical_quantity": null,
+      "scope": "open_world",
+      "confidence": "historical",
+      "source_refs": [
+        "mobs_2021"
+      ]
+    },
+    {
+      "mob_id": "faction:disciples_of_morgana",
+      "name": "Disciples of Morgana",
+      "category": "hostile",
+      "tier": null,
+      "biomes": [],
+      "resource_id": null,
+      "resource_category": null,
+      "enchantment": null,
+      "spawn_type": "open_world",
+      "theoretical_quantity": null,
+      "scope": "open_world",
+      "confidence": "historical",
+      "source_refs": [
+        "mobs_2021"
+      ]
+    }
+  ],
+  "biome_resource_rules": [
+    {
+      "biome": "mountain",
+      "category": "ore",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "mountain",
+      "category": "stone",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "mountain",
+      "category": "fiber",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "forest",
+      "category": "wood",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "forest",
+      "category": "hide",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "forest",
+      "category": "stone",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "swamp",
+      "category": "fiber",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "swamp",
+      "category": "wood",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "swamp",
+      "category": "hide",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "highland",
+      "category": "wood",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "highland",
+      "category": "stone",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "highland",
+      "category": "ore",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "steppe",
+      "category": "hide",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "steppe",
+      "category": "fiber",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    },
+    {
+      "biome": "steppe",
+      "category": "ore",
+      "confidence": "documented_rule",
+      "source_refs": [
+        "official_biomes"
+      ]
+    }
+  ],
+  "enchantment_rules": [
+    {
+      "category": "wood",
+      "enchantment": 4,
+      "min_tier": 4,
+      "max_tier": 8,
+      "spawn_type": "resource_treasure",
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "pristine_2022"
+      ]
+    },
+    {
+      "category": "ore",
+      "enchantment": 4,
+      "min_tier": 4,
+      "max_tier": 8,
+      "spawn_type": "resource_treasure",
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "pristine_2022"
+      ]
+    },
+    {
+      "category": "fiber",
+      "enchantment": 4,
+      "min_tier": 4,
+      "max_tier": 8,
+      "spawn_type": "resource_treasure",
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "pristine_2022"
+      ]
+    },
+    {
+      "category": "hide",
+      "enchantment": 4,
+      "min_tier": 4,
+      "max_tier": 8,
+      "spawn_type": "resource_treasure",
+      "scope": "outlands",
+      "confidence": "historical",
+      "source_refs": [
+        "pristine_2022"
+      ]
+    }
+  ],
+  "zone_occurrences": [],
+  "zone_totals": []
+}
