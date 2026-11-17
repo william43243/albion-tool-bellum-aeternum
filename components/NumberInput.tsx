@@ -22,6 +22,7 @@ export default function NumberInput({ label, value, onChangeText, placeholder, i
       <Text style={[styles.label, focused && styles.labelFocused]}>{label}</Text>
       <TextInput
         style={[styles.input, focused && styles.inputFocused, !parsed.valid && styles.inputInvalid]}
+        accessibilityLabel={label}
         value={value}
         onChangeText={(text) => { if (/^[0-9 .,]*$/.test(text)) onChangeText(text); }}
         onFocus={() => setFocused(true)}
@@ -40,10 +41,10 @@ export default function NumberInput({ label, value, onChangeText, placeholder, i
 const styles = StyleSheet.create({
   container: { marginBottom: SPACING.md },
   label: { color: COLORS.textSecondary, fontSize: FONT_SIZE.sm, marginBottom: SPACING.xs, fontWeight: FONT_WEIGHT.medium, letterSpacing: 0.2 },
-  labelFocused: { color: COLORS.primaryLight },
-  input: { backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm + 3, color: COLORS.text, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold },
+  labelFocused: { color: COLORS.primary },
+  input: { backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.sm, minHeight: 48, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm + 3, color: COLORS.text, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold, fontVariant: ['tabular-nums'] },
   inputFocused: { borderColor: COLORS.primary, backgroundColor: COLORS.surface2 },
   inputInvalid: { borderColor: COLORS.loss },
-  validation: { color: COLORS.loss, fontSize: FONT_SIZE.xs, marginTop: SPACING.xs },
-  info: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: SPACING.xs, fontStyle: 'italic' },
+  validation: { color: COLORS.loss, fontSize: FONT_SIZE.sm, marginTop: SPACING.xs },
+  info: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm, marginTop: SPACING.xs },
 });

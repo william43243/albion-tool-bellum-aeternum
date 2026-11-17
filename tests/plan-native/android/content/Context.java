@@ -1,0 +1,1 @@
+package android.content; public class Context { public android.content.res.AssetManager getAssets(){ return new android.content.res.AssetManager(); } }

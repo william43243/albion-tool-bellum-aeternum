@@ -19,6 +19,8 @@ export default function PremiumToggle({
     <View style={styles.container}>
       <TouchableOpacity
         style={[styles.option, !isPremium && styles.activeOption]}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: !isPremium }}
         onPress={() => onToggle(false)}
       >
         <Text style={[styles.optionText, !isPremium && styles.activeText]}>
@@ -27,6 +29,8 @@ export default function PremiumToggle({
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.option, isPremium && styles.premiumActive]}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: isPremium }}
         onPress={() => onToggle(true)}
       >
         <Text style={[styles.optionText, isPremium && styles.premiumText]}>
@@ -48,17 +52,21 @@ const styles = StyleSheet.create({
   },
   option: {
     flex: 1,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: SPACING.sm,
     alignItems: 'center',
     borderRadius: BORDER_RADIUS.sm,
   },
   activeOption: {
-    backgroundColor: COLORS.surfaceLight,
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.borderStrong,
   },
   premiumActive: {
-    backgroundColor: COLORS.premiumBg,
+    backgroundColor: COLORS.primaryFaint,
     borderWidth: 1,
-    borderColor: COLORS.premiumGold,
+    borderColor: COLORS.primary,
   },
   optionText: {
     color: COLORS.textMuted,
@@ -70,7 +78,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   premiumText: {
-    color: COLORS.premiumGold,
+    color: COLORS.primary,
     fontWeight: '700',
   },
 });

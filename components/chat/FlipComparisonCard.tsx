@@ -1,3 +1,4 @@
+import { COLORS } from '../../constants/theme';
 import React,{useMemo} from 'react';
 import {Text,View,StyleSheet} from 'react-native';
 import {parseFlipToolResult} from '../../lib/flipToolResult';
@@ -27,6 +28,6 @@ function FlipComparisonCard({name,result}:{name:string;result?:string}){
   <Text style={[s.small, {fontSize:11*scale,lineHeight:16*scale}]}>Stock et remplissage des ordres non vérifiés. Transport et pertes PvP non déduits. Distance en zones, pas en minutes. Prix à revérifier avant le départ.</Text>
  </View>;
 }
-const s=StyleSheet.create({root:{padding:12,gap:7},title:{color:'#f4db9d',fontSize:14,fontWeight:'700'},text:{color:'#d5e2e4',fontSize:13},small:{color:'#a3b8bd',fontSize:11,lineHeight:16},warning:{color:'#f0bd84',fontSize:13,lineHeight:19},candidate:{marginTop:8,paddingTop:10,borderTopWidth:1,borderTopColor:'#354b54',gap:4}});
+const s=StyleSheet.create({root:{padding:12,gap:7},title:{color:COLORS.text,fontSize:14,fontWeight:'700'},text:{color:COLORS.text,fontSize:13},small:{color:COLORS.textSecondary,fontSize:11,lineHeight:16},warning:{color:COLORS.warning,fontSize:13,lineHeight:19},candidate:{marginTop:8,paddingTop:10,borderTopWidth:1,borderTopColor:COLORS.border,gap:4}});
 
 export default React.memo(FlipComparisonCard);

@@ -55,7 +55,7 @@ function screen(streaming: boolean, activeTicket: boolean) {
     renderStream: activeTicket ? { session: 1, stream: 1 } : null,
     advisorSession: { isStreamCurrent: () => activeTicket },
     React: { createElement: (type: string, props: object, ...children: unknown[]) => ({ type, props, children }) },
-    View: 'View', Text: 'Text', ActivityIndicator: 'ActivityIndicator', TouchableOpacity: 'TouchableOpacity',
+    View: 'View', Text: 'Text', BellumIcon: 'BellumIcon', ActivityIndicator: 'ActivityIndicator', TouchableOpacity: 'TouchableOpacity',
     styles: {}, COLORS: {}, SPACING: {}, lang: 'fr', input: 'question', fetchingData: false,
     engineState: 'ready', handleStop: stop, handleSend: send,
   };
@@ -82,12 +82,15 @@ test('active generation still offers Stop and idle state returns the Send action
   const active = screen(true, true);
   assert.equal(active.action.type, 'TouchableOpacity');
   assert.equal(active.action.props.onPress, active.stop);
+  assert.equal(active.action.children[0].children[0], 'Arrêter');
   assert.equal(active.action.props.accessibilityLabel, 'Arrêter la génération');
   assert.equal(active.resetDisabled, false);
 
   const idle = screen(false, false);
   assert.equal(idle.action.type, 'TouchableOpacity');
   assert.equal(idle.action.props.onPress, idle.send);
+  assert.equal(idle.action.children[0].type, 'BellumIcon');
+  assert.equal(idle.action.children[0].props.name, 'send');
   assert.equal(idle.resetDisabled, false);
   assert.equal(idle.inputEditable, true);
 });

@@ -1,3 +1,4 @@
+import { COLORS } from '../../constants/theme';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {ActivityIndicator,Pressable,ScrollView,Text,View} from 'react-native';
 import Svg,{Circle,Line,Rect,Text as SvgText} from 'react-native-svg';
@@ -26,24 +27,24 @@ export default function HourlyCandleChart({result,limit}:{result?:string;limit:n
    .catch(()=>{if(active)setError(true)});
   return()=>{active=false};
  },[meta,retry]);
- if(!meta)return <Text style={{color:'#e0c286'}}>Moyennes horaires indisponibles pour cet historique. Revenez en mode Ligne.</Text>;
- if(error)return <View><Text style={{color:'#ffb1a5'}}>Impossible de charger les moyennes horaires. Vérifiez le réseau ou réessayez plus tard.</Text><Pressable onPress={()=>setRetry(n=>n+1)}><Text style={{color:'#f4db9d',paddingVertical:8}}>Réessayer</Text></Pressable></View>;
- if(!data)return <View style={{flexDirection:'row',gap:8}}><ActivityIndicator color="#f4db9d"/><Text style={{color:'#c1d2d2'}}>Chargement des moyennes horaires…</Text></View>;
+ if(!meta)return <Text style={{color:COLORS.textSecondary}}>Moyennes horaires indisponibles pour cet historique. Revenez en mode Ligne.</Text>;
+ if(error)return <View><Text style={{color:COLORS.loss}}>Impossible de charger les moyennes horaires. Vérifiez le réseau ou réessayez plus tard.</Text><Pressable onPress={()=>setRetry(n=>n+1)}><Text style={{color:COLORS.primary,paddingVertical:8}}>Réessayer</Text></Pressable></View>;
+ if(!data)return <View style={{flexDirection:'row',gap:8}}><ActivityIndicator color={COLORS.primary}/><Text style={{color:COLORS.textSecondary}}>Chargement des moyennes horaires…</Text></View>;
  const list=(data[city]||[]).filter(c=>c.day<=limit);const all=data[city]||[];
  const chosen=list.find(c=>c.day===selected);const min=list.length?Math.min(...list.map(c=>c.low)):0,max=list.length?Math.max(...list.map(c=>c.high)):1;const pad=Math.max(1,(max-min)*0.08);const lo=Math.max(0,min-pad),hi=max+pad;
  const days=Math.round((meta.end-meta.start)/86400000), step=Math.max(15,(width-60)/Math.max(days,1)), graphWidth=Math.max(width,days*step+58),h=260;
  const x=(day:number)=>12+((day-meta.start)/86400000+0.5)*step;const y=(v:number)=>12+(hi-v)/(hi-lo)*(h-44);const candleWidth=Math.min(12,Math.max(3,step*0.55));
  return <View style={{gap:8}} onLayout={e=>setWidth(Math.max(220,e.nativeEvent.layout.width))}>
-  <Text style={{color:'#e0c286',fontSize:12}}>Bougies de moyennes horaires · 1 jour UTC. Première et dernière moyennes disponibles ; ce ne sont pas les hauts et bas de toutes les transactions. Une bougie en pointillé indique une journée incomplète ; un point représente une seule heure.</Text>
-  <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>{meta.cities.map(c=><Pressable accessibilityRole="button" accessibilityState={{selected:city===c}} key={c} onPress={()=>{setCity(c);setSelected(null)}} style={{padding:6,borderRadius:6,backgroundColor:city===c?'#635334':'#1d2935'}}><Text style={{color:'#f5dfaa'}}>{c}</Text></Pressable>)}</View>
-  {all.length===0?<Text style={{color:'#bccfd0'}}>Aucune moyenne horaire disponible pour {city}.</Text>:<ScrollView horizontal ref={scroll} onContentSizeChange={()=>scroll.current?.scrollToEnd({animated:false})}><Svg width={graphWidth} height={h} style={{backgroundColor:'#0b121b',borderRadius:8}}>
-   {[0,1,2,3,4].map(k=>{const yy=12+k*(h-44)/4;return <React.Fragment key={k}><Line x1={10} x2={graphWidth-45} y1={yy} y2={yy} stroke="#293643"/><SvgText x={graphWidth-42} y={yy+4} fill="#a5b4c3" fontSize={10}>{(hi-(hi-lo)*k/4).toFixed(0)}</SvgText></React.Fragment>})}
-   {list.map(c=>{const xx=x(c.day),up=c.close>=c.open,color=up?'#63d58a':'#ee7872',yy1=y(Math.max(c.open,c.close)),yy2=y(Math.min(c.open,c.close));return <React.Fragment key={c.day}>
-    {c.count===1?<Circle cx={xx} cy={y(c.open)} r={4} fill={color} onPress={()=>setSelected(c.day)}/>:<><Line x1={xx} x2={xx} y1={y(c.high)} y2={y(c.low)} stroke={color} strokeWidth={1.5} strokeDasharray={c.count<24?'3 2':undefined}/><Rect x={xx-candleWidth/2} y={yy1} width={candleWidth} height={Math.max(2,yy2-yy1)} fill={c.count<24?'#101821':color} stroke={color} strokeWidth={1.5} strokeDasharray={c.count<24?'3 2':undefined} onPress={()=>setSelected(c.day)}/></>}
-    {((c.day-meta.start)/86400000)%Math.max(1,Math.ceil(days/8))===0&&<SvgText x={xx} y={h-8} fill="#a5b4c3" fontSize={9} textAnchor="middle">{new Date(c.day).toISOString().slice(5,10)}</SvgText>}
+  <Text style={{color:COLORS.textSecondary,fontSize:12}}>Bougies de moyennes horaires · 1 jour UTC. Première et dernière moyennes disponibles ; ce ne sont pas les hauts et bas de toutes les transactions. Une bougie en pointillé indique une journée incomplète ; un point représente une seule heure.</Text>
+  <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>{meta.cities.map(c=><Pressable accessibilityRole="button" accessibilityState={{selected:city===c}} key={c} onPress={()=>{setCity(c);setSelected(null)}} style={{padding:6,borderRadius:6,backgroundColor:city===c?COLORS.primarySoft:COLORS.surface}}><Text style={{color:COLORS.text}}>{c}</Text></Pressable>)}</View>
+  {all.length===0?<Text style={{color:COLORS.textSecondary}}>Aucune moyenne horaire disponible pour {city}.</Text>:<ScrollView horizontal ref={scroll} onContentSizeChange={()=>scroll.current?.scrollToEnd({animated:false})}><Svg width={graphWidth} height={h} style={{backgroundColor:COLORS.backgroundElevated,borderRadius:8}}>
+   {[0,1,2,3,4].map(k=>{const yy=12+k*(h-44)/4;return <React.Fragment key={k}><Line x1={10} x2={graphWidth-45} y1={yy} y2={yy} stroke={COLORS.borderStrong}/><SvgText x={graphWidth-42} y={yy+4} fill={COLORS.textSecondary} fontSize={10}>{(hi-(hi-lo)*k/4).toFixed(0)}</SvgText></React.Fragment>})}
+   {list.map(c=>{const xx=x(c.day),up=c.close>=c.open,color=up?COLORS.profit:COLORS.loss,yy1=y(Math.max(c.open,c.close)),yy2=y(Math.min(c.open,c.close));return <React.Fragment key={c.day}>
+    {c.count===1?<Circle cx={xx} cy={y(c.open)} r={4} fill={color} onPress={()=>setSelected(c.day)}/>:<><Line x1={xx} x2={xx} y1={y(c.high)} y2={y(c.low)} stroke={color} strokeWidth={1.5} strokeDasharray={c.count<24?'3 2':undefined}/><Rect x={xx-candleWidth/2} y={yy1} width={candleWidth} height={Math.max(2,yy2-yy1)} fill={c.count<24?COLORS.surface:color} stroke={color} strokeWidth={1.5} strokeDasharray={c.count<24?'3 2':undefined} onPress={()=>setSelected(c.day)}/></>}
+    {((c.day-meta.start)/86400000)%Math.max(1,Math.ceil(days/8))===0&&<SvgText x={xx} y={h-8} fill={COLORS.textSecondary} fontSize={9} textAnchor="middle">{new Date(c.day).toISOString().slice(5,10)}</SvgText>}
    </React.Fragment>})}
   </Svg></ScrollView>}
-  {chosen&&<Text style={{color:'#fff',fontSize:12}}>{new Date(chosen.day).toISOString().slice(0,10)} UTC · {chosen.count}/24 heures · Première {chosen.open} · Haut {chosen.high} · Bas {chosen.low} · Dernière {chosen.close}{chosen.count<24?' · Incomplet':''}</Text>}
-  {!chosen&&<Text style={{color:'#a8babd',fontSize:11}}>Touchez une bougie pour voir ses valeurs et sa couverture. Les journées sans données restent vides.</Text>}
+  {chosen&&<Text style={{color:COLORS.text,fontSize:12}}>{new Date(chosen.day).toISOString().slice(0,10)} UTC · {chosen.count}/24 heures · Première {chosen.open} · Haut {chosen.high} · Bas {chosen.low} · Dernière {chosen.close}{chosen.count<24?' · Incomplet':''}</Text>}
+  {!chosen&&<Text style={{color:COLORS.textSecondary,fontSize:11}}>Touchez une bougie pour voir ses valeurs et sa couverture. Les journées sans données restent vides.</Text>}
  </View>;
 }

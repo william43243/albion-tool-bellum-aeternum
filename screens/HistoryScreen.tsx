@@ -46,16 +46,7 @@ const PERIODS = [
   { key: '1y', days: 365 },
 ] as const;
 
-// Very distinct colors per city — high contrast on dark bg
-const CITY_COLORS: Record<string, string> = {
-  Caerleon: '#FF4444',
-  Bridgewatch: '#FF9F1C',
-  'Fort Sterling': '#00D4FF',
-  Lymhurst: '#44FF44',
-  Thetford: '#C77DFF',
-  Martlock: '#FFE03D',
-  Brecilien: '#FF66B2',
-};
+const CITY_COLORS = COLORS.cityColors;
 
 const screenWidth = Dimensions.get('window').width - SPACING.lg * 2;
 
@@ -174,8 +165,9 @@ export default function HistoryScreen({ t, lang, server }: Props) {
   }), [historyData, selectedItems, livePoints, liveDashedSegments]);
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t('history')}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{t('history')}</Text>
       <QualitySelector value={quality} lang={lang} onChange={(next) => { setQuality(next); setHistoryData([]); }} />
 
       {/* Item Selection */}
@@ -201,15 +193,17 @@ export default function HistoryScreen({ t, lang, server }: Props) {
               key={city}
               style={[
                 styles.chip,
-                isSelected && { backgroundColor: color + '20', borderColor: color },
+                isSelected && { backgroundColor: COLORS.surface2, borderColor: COLORS.borderStrong },
               ]}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isSelected }}
               onPress={() => toggleCity(city)}
             >
               {isSelected && (
                 <View style={[styles.chipDot, { backgroundColor: color }]} />
               )}
               <Text
-                style={[styles.chipText, isSelected && { color, fontWeight: '700' }]}
+                style={[styles.chipText, isSelected && { color: COLORS.text, fontWeight: '700' }]}
               >
                 {city}
               </Text>
@@ -225,6 +219,8 @@ export default function HistoryScreen({ t, lang, server }: Props) {
             <TouchableOpacity
               key={p.key}
               style={[styles.periodBtn, period === p.days && styles.periodBtnActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: period === p.days }}
               onPress={() => setPeriod(p.days)}
             >
               <Text style={[styles.periodBtnText, period === p.days && styles.periodBtnTextActive]}>
@@ -236,6 +232,8 @@ export default function HistoryScreen({ t, lang, server }: Props) {
         <View style={styles.scaleGroup}>
           <TouchableOpacity
             style={[styles.scaleBtn, timeScale === 24 && styles.scaleBtnActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: timeScale === 24 }}
             onPress={() => setTimeScale(24)}
           >
             <Text style={[styles.scaleBtnText, timeScale === 24 && styles.scaleBtnTextActive]}>
@@ -244,6 +242,8 @@ export default function HistoryScreen({ t, lang, server }: Props) {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.scaleBtn, timeScale === 1 && styles.scaleBtnActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: timeScale === 1 }}
             onPress={() => setTimeScale(1)}
           >
             <Text style={[styles.scaleBtnText, timeScale === 1 && styles.scaleBtnTextActive]}>
@@ -334,7 +334,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
                 backgroundGradientFrom: COLORS.card,
                 backgroundGradientTo: COLORS.card,
                 decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(200, 168, 78, ${opacity * 0.3})`,
+                color: (opacity = 1) => `rgba(101, 95, 86, ${opacity * 0.3})`,
                 labelColor: () => COLORS.textSecondary,
                 propsForDots: {
                   r: '4',
@@ -343,7 +343,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
                 },
                 propsForBackgroundLines: {
                   strokeDasharray: '4 4',
-                  stroke: COLORS.border + '60',
+                  stroke: COLORS.border,
                   strokeWidth: 1,
                 },
                 propsForLabels: {
@@ -391,7 +391,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
             {chartInfo.legendEntries.map((entry, idx) => (
               <View key={idx} style={styles.legendRow}>
                 <View style={[styles.legendColorBar, { backgroundColor: entry.color }]} />
-                <Text style={[styles.legendLabel, { color: entry.color }]}>
+                <Text style={styles.legendLabel}>
                   {entry.label}
                 </Text>
                 <Text style={styles.legendLastPrice}>
@@ -475,7 +475,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
 
       {!chartInfo && !loading && (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyIcon}>{'\u{1F4CA}'}</Text>
+
           <Text style={styles.emptyText}>
             {lang === 'fr'
               ? 'S\u00e9lectionne un item et des villes\npuis appuie sur "Comparer"'
@@ -484,6 +484,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
         </View>
       )}
 
+    </ScrollView>
       <ItemPicker
         visible={showItemPicker}
         onClose={() => setShowItemPicker(false)}
@@ -496,7 +497,7 @@ export default function HistoryScreen({ t, lang, server }: Props) {
         selectedIds={selectedItems.map((i) => i.id)}
         onMultiSelect={setSelectedItems}
       />
-    </ScrollView>
+    </>
   );
 }
 
@@ -510,12 +511,14 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl * 3,
   },
   title: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: FONT_SIZE.title,
     fontWeight: '800',
     marginBottom: SPACING.lg,
   },
   selectBtn: {
+    minHeight: 48,
+    justifyContent: 'center',
     backgroundColor: COLORS.surface,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
@@ -542,6 +545,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   chip: {
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.sm + 2,
@@ -562,19 +568,19 @@ const styles = StyleSheet.create({
     marginRight: SPACING.xs,
   },
 
-  // Controls row: period + scale side by side
+  // Keep both selector groups comfortably tappable at narrow widths.
   controlsRow: {
-    flexDirection: 'row',
     gap: SPACING.sm,
     marginBottom: SPACING.lg,
   },
   periodGroup: {
-    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
   },
-  periodBtn: {
+  periodBtn: { minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs + 1,
     borderRadius: BORDER_RADIUS.sm,
@@ -583,7 +589,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   periodBtnActive: {
-    backgroundColor: COLORS.primary + '25',
+    backgroundColor: COLORS.primaryFaint,
     borderColor: COLORS.primary,
   },
   periodBtnText: {
@@ -598,7 +604,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
   },
-  scaleBtn: {
+  scaleBtn: { minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs + 1,
     borderRadius: BORDER_RADIUS.sm,
@@ -607,30 +615,32 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   scaleBtnActive: {
-    backgroundColor: COLORS.info + '20',
-    borderColor: COLORS.info,
+    backgroundColor: COLORS.primaryFaint,
+    borderColor: COLORS.primary,
   },
   scaleBtnText: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
   },
   scaleBtnTextActive: {
-    color: COLORS.info,
+    color: COLORS.primary,
     fontWeight: '700',
   },
 
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.xs, marginBottom: SPACING.xs },
-  liveBtn: { flex: 1, paddingVertical: SPACING.sm, borderRadius: BORDER_RADIUS.sm, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.info },
-  liveBtnActive: { backgroundColor: COLORS.info + '30' },
-  liveBtnText: { color: COLORS.info, fontWeight: '700', textAlign: 'center', fontSize: FONT_SIZE.xs },
+  liveBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center', flex: 1, paddingVertical: SPACING.sm, borderRadius: BORDER_RADIUS.sm, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary },
+  liveBtnActive: { backgroundColor: COLORS.primaryFaint },
+  liveBtnText: { color: COLORS.primary, fontWeight: '700', textAlign: 'center', fontSize: FONT_SIZE.xs },
   cadenceGroup: { flexDirection: 'row', gap: 3 },
-  cadenceBtn: { paddingHorizontal: SPACING.xs, paddingVertical: SPACING.sm, borderRadius: BORDER_RADIUS.sm, borderWidth: 1, borderColor: COLORS.border },
-  cadenceActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '25' },
+  cadenceBtn: { minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center', paddingHorizontal: SPACING.xs, paddingVertical: SPACING.sm, borderRadius: BORDER_RADIUS.sm, borderWidth: 1, borderColor: COLORS.border },
+  cadenceActive: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryFaint },
   cadenceText: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs },
   liveStatus: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginBottom: SPACING.sm },
   liveError: { color: COLORS.loss, fontSize: FONT_SIZE.xs, marginBottom: SPACING.sm },
 
   fetchBtn: {
+    minHeight: 48,
+    justifyContent: 'center',
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
@@ -646,10 +656,9 @@ const styles = StyleSheet.create({
   // Chart card
   chartCard: {
     backgroundColor: COLORS.card,
-    borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.text,
   },
   chartTitle: {
     color: COLORS.text,
@@ -678,7 +687,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border + '60',
+    borderTopColor: COLORS.border,
   },
   legendTitle: {
     color: COLORS.textMuted,
@@ -701,10 +710,12 @@ const styles = StyleSheet.create({
   },
   legendLabel: {
     flex: 1,
+    color: COLORS.text,
     fontSize: FONT_SIZE.sm,
     fontWeight: '600',
   },
   legendLastPrice: {
+    fontVariant: ['tabular-nums'],
     color: COLORS.text,
     fontSize: FONT_SIZE.sm,
     fontWeight: '700',
@@ -715,7 +726,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border + '60',
+    borderTopColor: COLORS.border,
   },
   statsHeader: {
     flexDirection: 'row',
@@ -760,7 +771,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border + '60',
+    borderTopColor: COLORS.border,
   },
   trendRow: {
     flexDirection: 'row',
@@ -792,11 +803,6 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: SPACING.xxl * 2,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: SPACING.md,
-    opacity: 0.4,
   },
   emptyText: {
     color: COLORS.textMuted,

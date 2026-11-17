@@ -1,3 +1,4 @@
+import BellumIcon from '../components/BellumIcon';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
@@ -1065,7 +1066,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
   // ─── MODEL SELECTION SCREEN ──────────────────────────────────
 
   if (screen === 'models') {
-    const qualityColors: Record<string, string> = { basic: COLORS.warning, good: COLORS.info, excellent: COLORS.profit, overkill: '#C77DFF' };
+    const qualityColors: Record<string, string> = { basic: COLORS.warning, good: COLORS.info, excellent: COLORS.profit, overkill: '#794775' };
     const qualityLabels: Record<string, Record<string, string>> = {
       basic: { fr: 'Basique', en: 'Basic', es: 'Básico' },
       good: { fr: 'Bon', en: 'Good', es: 'Bueno' },
@@ -1087,7 +1088,7 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
         </Text>
 
         {backendInfo?.isMediaTek && backendInfo.backendUsed === 'cpu' && (
-          <View style={[styles.backendBanner, { backgroundColor: '#4a3500' }]}>
+          <View style={[styles.backendBanner, { backgroundColor: COLORS.primarySoft }]}>
             <Text style={styles.backendBannerTitle}>
               {lang === 'fr' ? 'Chipset MediaTek détecté' : lang === 'es' ? 'Chipset MediaTek detectado' : 'MediaTek chipset detected'}
             </Text>
@@ -1215,9 +1216,10 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.deleteBtn, blockedTerminalModelId === model.id && { opacity: 0.35 }]}
                         disabled={blockedTerminalModelId === model.id}
+                        accessibilityRole="button" accessibilityLabel={lang === 'fr' ? 'Supprimer le modèle' : lang === 'es' ? 'Eliminar modelo' : 'Delete model'}
                         onPress={() => handleDeleteModel(model)}
                       >
-                        <Text style={styles.deleteBtnText}>{'\u{1F5D1}'}</Text>
+                        <BellumIcon name="trash" size={22} color={COLORS.loss} />
                       </TouchableOpacity>
                     </>
                   )}
@@ -1325,8 +1327,8 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
               {selectedItem ? selectedItem.n : t('selectItem')}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.resetBtn, preparingContext && { opacity: 0.4 }]} onPress={handleReset} disabled={preparingContext} accessibilityState={{ disabled: preparingContext }}>
-            <Text style={styles.resetBtnText}>{'\u{1F5D1}'}</Text>
+          <TouchableOpacity style={[styles.resetBtn, preparingContext && { opacity: 0.4 }]} accessibilityRole="button" accessibilityLabel={lang === 'fr' ? 'Réinitialiser la conversation' : lang === 'es' ? 'Reiniciar conversación' : 'Reset conversation'} onPress={handleReset} disabled={preparingContext} accessibilityState={{ disabled: preparingContext }}>
+            <BellumIcon name="trash" size={22} color={COLORS.loss} />
           </TouchableOpacity>
         </View>
         <Text style={styles.contextCacheNote}>
@@ -1418,17 +1420,19 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           <>
             <TouchableOpacity
               style={styles.imageBtn}
+              accessibilityRole="button" accessibilityLabel={lang === 'fr' ? 'Joindre une image' : lang === 'es' ? 'Adjuntar imagen' : 'Attach image'}
               onPress={handlePickImage}
               disabled={streaming || fetchingData || engineState !== 'ready'}
             >
-              <Text style={styles.imageBtnText}>{'\u{1F5BC}'}</Text>
+              <BellumIcon name="image" size={22} color={COLORS.text} />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.imageBtn}
+              accessibilityRole="button" accessibilityLabel={lang === 'fr' ? 'Prendre une photo' : lang === 'es' ? 'Tomar una foto' : 'Take a photo'}
               onPress={handleTakePhoto}
               disabled={streaming || fetchingData || engineState !== 'ready'}
             >
-              <Text style={styles.imageBtnText}>{'\u{1F4F7}'}</Text>
+              <BellumIcon name="camera" size={22} color={COLORS.text} />
             </TouchableOpacity>
           </>
         )}
@@ -1459,10 +1463,11 @@ export default function AdvisorScreen({ t, lang, server, playerCity, onCityDetec
           </TouchableOpacity>
         ) : <TouchableOpacity
           style={[styles.sendBtn, (!input.trim() || streaming || fetchingData || engineState !== 'ready') && styles.sendBtnDisabled]}
+          accessibilityRole="button" accessibilityLabel={lang === 'fr' ? 'Envoyer au conseiller' : lang === 'es' ? 'Enviar al asesor' : 'Send to advisor'}
           onPress={handleSend}
           disabled={!input.trim() || streaming || fetchingData || engineState !== 'ready'}
         >
-          <Text style={styles.sendBtnText}>{'\u{27A4}'}</Text>
+          <BellumIcon name="send" size={22} color={COLORS.background} />
         </TouchableOpacity>}
       </View>
 
@@ -1532,7 +1537,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   backendBannerTitle: {
-    color: COLORS.loss,
+    color: COLORS.primary,
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
     marginBottom: SPACING.xs,
@@ -1695,6 +1700,10 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
   },
   deleteBtn: {
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: COLORS.loss + '15',
     borderWidth: 1,
     borderColor: COLORS.loss + '40',
@@ -1783,6 +1792,9 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
   },
   resetBtn: {
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
     backgroundColor: COLORS.surface,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
@@ -1883,8 +1895,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   imageBtn: {
-    width: 40,
-    height: 44,
+    width: 48,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     opacity: 0.7,
@@ -1894,9 +1906,9 @@ const styles = StyleSheet.create({
   },
   sendBtn: {
     backgroundColor: COLORS.primary,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 5,
     justifyContent: 'center',
     alignItems: 'center',
   },

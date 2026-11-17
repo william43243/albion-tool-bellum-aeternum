@@ -55,7 +55,9 @@ test('retry budget and server Retry-After are bounded by event lifetime', async 
   assert.equal(throttled, 1);
 });
 
-test('in-flight calls abort on revocation, and a stuck fetch cannot hold the queue forever', async () => {
+test('in-flight calls abort on revocation, and a stuck fetch cannot hold the queue forever', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+  const flushMicrotasks = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
   let calls = 0, aborted = 0;
   const transport = new AnalyticsTransport(async (_url, init) => {
     calls++; init.signal.addEventListener('abort', () => { aborted++; });
@@ -65,12 +67,16 @@ test('in-flight calls abort on revocation, and a stuck fetch cannot hold the que
   transport.send('/event', '{}', 1);
   transport.send('/event', '{}', 1);
   assert.equal(calls, 1);
-  await sleep(40);
+  t.mock.timers.tick(15);
+  await flushMicrotasks();
   assert.equal(calls, 2);
+  assert.equal(aborted, 1);
+  t.mock.timers.tick(15);
+  await flushMicrotasks();
   assert.equal(aborted, 2);
   transport.send('/event', '{}', 1);
   transport.clear();
-  await sleep(5);
+  await flushMicrotasks();
   assert.equal(aborted, 3);
 });
 

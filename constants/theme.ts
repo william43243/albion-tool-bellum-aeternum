@@ -1,62 +1,23 @@
-// Albion Online inspired theme — refined dark + gold system.
-// All original token names are preserved for backward compatibility;
-// new tokens (elevated surfaces, gold ramp, soft semantics, shadows,
-// typography) are additive so screens can opt into a richer look.
 export const COLORS = {
-  // ── Primary Albion gold ramp ─────────────────────────────────
-  primary: '#c8a84e',      // Gold/amber (Albion gold) — brand anchor
-  primaryLight: '#e3c674', // Lighter gold for hovers / active accents
-  primaryDark: '#a08030',  // Deeper gold for pressed / borders
-  primarySoft: '#c8a84e26', // ~15% gold — subtle fills / tinted surfaces
-  primaryFaint: '#c8a84e14', // ~8% gold — barely-there wash
-  secondary: '#4a9e4a',    // Green (profit accent)
-  accent: '#d4a017',       // Orange-gold accent
-
-  // ── Semantic ─────────────────────────────────────────────────
-  profit: '#3fb950',       // Refined green (GitHub-dark friendly)
-  profitSoft: '#56d364',   // Lighter profit for emphasis text
-  profitBg: '#3fb95018',    // Translucent profit backdrop
-  loss: '#f85149',         // Refined red
-  lossSoft: '#ff7b72',     // Lighter loss for emphasis text
-  lossBg: '#f8514918',      // Translucent loss backdrop
-  warning: '#e3a008',
-  info: '#4493f8',
-
-  // ── Dark theme surfaces (low → high elevation) ───────────────
-  background: '#0b0f16',   // App base
-  backgroundElevated: '#0f141c',
-  surface: '#151b24',      // Inputs / chips base
-  surfaceLight: '#212936', // Raised controls / active pills
-  surface2: '#1b222d',     // Secondary elevated surface
-  card: '#181e28',         // Cards
-  cardElevated: '#1d2531', // Cards that need to pop
-
-  // ── Borders ──────────────────────────────────────────────────
-  border: '#2a323d',       // Default subtle border
-  borderStrong: '#3a4553', // Stronger divider
-  borderGold: '#c8a84e40', // Subtle gold border for premium accents
-
-  // ── Text ─────────────────────────────────────────────────────
-  text: '#e9eef5',
-  textSecondary: '#9aa5b3',
-  textMuted: '#697180',
-
-  // ── Premium ──────────────────────────────────────────────────
-  premiumGold: '#FFD700',
-  premiumBg: '#2d2200',
-
-  // ── Overlay ──────────────────────────────────────────────────
-  overlay: 'rgba(0,0,0,0.6)',
-
-  // City colors for charts (kept for reference / compatibility)
+  // Comptoir de guilde: paper, ink and a single oxide accent. The 'Light'
+  // aliases are ink on a light surface, never pale text on paper.
+  primary: '#913D31', primaryLight: '#813729', primaryDark: '#6D2E24',
+  primarySoft: '#F3E1D8', primaryFaint: '#FAF1EA', onPrimary: '#FFFFFF',
+  secondary: '#2E643D', accent: '#913D31',
+  profit: '#24623E', profitSoft: '#245939', profitBg: '#E9F1E8',
+  loss: '#A12231', lossSoft: '#922438', lossBg: '#F8E7E6',
+  warning: '#785200', info: '#315D68',
+  background: '#F6F3EB', backgroundElevated: '#FFFEFA',
+  surface: '#FFFEFA', surfaceLight: '#EDE8DD', surface2: '#F0ECE3',
+  card: '#FFFEFA', cardElevated: '#FFFFFF',
+  border: '#CFC7B7', borderStrong: '#827869', borderGold: '#B7A490',
+  text: '#262620', textSecondary: '#544F48', textMuted: '#655F56',
+  premiumGold: '#79500E', premiumBg: '#F5EAD4',
+  overlay: 'rgba(34,32,28,0.40)',
+  // Data colors are not navigation or branding colors.
   cityColors: {
-    Caerleon: '#FF6B6B',
-    Bridgewatch: '#FFA94D',
-    'Fort Sterling': '#74C0FC',
-    Lymhurst: '#69DB7C',
-    Thetford: '#B197FC',
-    Martlock: '#FFD43B',
-    Brecilien: '#F06595',
+    Caerleon: '#9C343E', Bridgewatch: '#975014', 'Fort Sterling': '#176687',
+    Lymhurst: '#296442', Thetford: '#705281', Martlock: '#79600B', Brecilien: '#9C3872',
   } as Record<string, string>,
 };
 
@@ -70,7 +31,7 @@ export const SPACING = {
 };
 
 export const FONT_SIZE = {
-  xs: 10,
+  xs: 12,
   sm: 12,
   md: 14,
   lg: 16,
@@ -90,43 +51,19 @@ export const FONT_WEIGHT = {
 } as const;
 
 export const BORDER_RADIUS = {
-  sm: 6,
-  md: 10,
-  lg: 14,
-  xl: 20,
+  sm: 3,
+  md: 5,
+  lg: 7,
+  xl: 10,
   pill: 999,
 };
 
-// Elevation / shadow tokens. Values map cleanly to both native RN
-// (shadow* + elevation) and react-native-web (boxShadow) — no CSS-only APIs.
+
+// Shadow is reserved for a floating layer. Flat ledger panels use rules instead.
+const paperShadow = { shadowColor: '#29251C', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 1 };
 export const SHADOWS = {
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  // Warm gold glow for hero / active accents
-  gold: {
-    shadowColor: '#c8a84e',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
-  },
+  sm: { ...paperShadow, shadowOpacity: 0, elevation: 0 },
+  md: paperShadow,
+  lg: { ...paperShadow, shadowRadius: 3, elevation: 2 },
+  gold: { ...paperShadow, shadowOpacity: 0, elevation: 0 },
 };

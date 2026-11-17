@@ -4,7 +4,7 @@
   "main": "index.ts",
   "scripts": {
     "prepare:data": "node scripts/prepare-map.mjs",
-    "check:data": "node scripts/prepare-map.mjs --check",
+    "check:data": "node scripts/prepare-map.mjs --check && node scripts/plan-catalog.mjs --check && node scripts/plan-zone-db.mjs --check",
     "start": "expo start",
     "android": "expo run:android",
     "test": "tsx --test tests/*.test.ts",

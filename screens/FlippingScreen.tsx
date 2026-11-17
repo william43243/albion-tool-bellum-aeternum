@@ -60,7 +60,7 @@ export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: 
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t('flipping')}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{t('flipping')}</Text>
 
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>{t('flippingInfo')}</Text>
@@ -76,12 +76,16 @@ export default function FlippingScreen({ t, lang, isPremium, onPremiumChange }: 
       <View style={styles.orderToggle}>
         <TouchableOpacity
           style={[styles.orderBtn, useBuyOrder && styles.orderBtnActive]}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: useBuyOrder }}
           onPress={() => setUseBuyOrder((value) => !value)}
         >
           <Text style={[styles.orderBtnText, useBuyOrder && styles.orderBtnTextActive]}>{t('useBuyOrder')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.orderBtn, useSellOrder && styles.orderBtnActive]}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: useSellOrder }}
           onPress={() => setUseSellOrder((value) => !value)}
         >
           <Text style={[styles.orderBtnText, useSellOrder && styles.orderBtnTextActive]}>{t('useSellOrder')}</Text>
@@ -180,18 +184,17 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl * 2,
   },
   title: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: FONT_SIZE.title,
     fontWeight: '800',
     marginBottom: SPACING.md,
   },
   infoBox: {
-    backgroundColor: COLORS.info + '15',
-    borderRadius: 8,
+    backgroundColor: COLORS.surface2,
     padding: SPACING.md,
     marginBottom: SPACING.lg,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.info,
+    borderLeftColor: COLORS.borderStrong,
   },
   infoText: {
     color: COLORS.textSecondary,
@@ -202,19 +205,22 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   sectionTitle: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
     marginBottom: SPACING.sm,
   },
   orderToggle: {
     flexDirection: 'row',
-    marginBottom: SPACING.lg,
+    marginTop: SPACING.sm,
     gap: SPACING.sm,
   },
   orderBtn: {
     flex: 1,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
     alignItems: 'center',
     borderRadius: BORDER_RADIUS.sm,
     backgroundColor: COLORS.surface,
@@ -222,7 +228,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   orderBtnActive: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.primaryFaint,
     borderColor: COLORS.primary,
   },
   orderBtnText: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm },

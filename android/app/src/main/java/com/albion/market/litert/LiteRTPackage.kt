@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class LiteRTPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(LiteRTModule(reactContext))
+        return listOf(LiteRTModule(reactContext), PlanModule(reactContext), ProductionModule(reactContext))
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {

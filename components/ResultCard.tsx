@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS, SHADOWS, FONT_WEIGHT } from '../constants/theme';
+import { COLORS, SPACING, FONT_SIZE, FONT_WEIGHT } from '../constants/theme';
 
 interface ResultRow {
   label: string;
@@ -32,33 +32,20 @@ export default function ResultCard({ title, rows, highlight }: Props) {
       ? COLORS.profit
       : COLORS.loss
     : undefined;
-  const highlightBg = isPositive ? COLORS.profitBg : COLORS.lossBg;
 
   return (
     <View style={styles.card}>
       <Text style={styles.title}>{title}</Text>
 
       {highlight && (
-        <View
-          style={[
-            styles.highlightBox,
-            { borderColor: highlightColor, backgroundColor: highlightBg },
-          ]}
-        >
-          <View style={styles.highlightHeader}>
-            <View style={[styles.badge, { backgroundColor: highlightColor + '26', borderColor: highlightColor + '55' }]}>
-              <Text style={[styles.badgeArrow, { color: highlightColor }]}>
-                {isPositive ? '▲' : '▼'}
-              </Text>
-              <Text style={[styles.badgeText, { color: highlightColor }]}>
-                {highlight.label}
-              </Text>
-            </View>
+        <View style={styles.highlightBox}>
+          <Text style={styles.highlightLabel}>{highlight.label}</Text>
+          <View style={styles.highlightNumber}>
+            <Text style={[styles.highlightValue, { color: highlight.value === 0 ? COLORS.text : highlightColor }]}>
+              {highlight.value > 0 ? '+' : ''}{formatSilver(highlight.value)}
+            </Text>
+            <Text style={styles.highlightUnit}>silver</Text>
           </View>
-          <Text style={[styles.highlightValue, { color: highlightColor }]}>
-            {formatSilver(highlight.value)}
-          </Text>
-          <Text style={styles.highlightUnit}>silver</Text>
         </View>
       )}
 
@@ -84,80 +71,75 @@ export default function ResultCard({ title, rows, highlight }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.cardElevated,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
+    backgroundColor: COLORS.card,
+    padding: SPACING.md,
     marginVertical: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderGold,
-    ...SHADOWS.md,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.text,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   title: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: FONT_SIZE.lg,
     fontWeight: FONT_WEIGHT.bold,
-    marginBottom: SPACING.md,
-    letterSpacing: 0.3,
-  },
-  highlightBox: {
-    borderRadius: BORDER_RADIUS.lg,
-    paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  highlightHeader: {
     marginBottom: SPACING.sm,
   },
-  badge: {
+  highlightBox: {
     flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: BORDER_RADIUS.pill,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: SPACING.xs - 1,
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderStrong,
+    paddingBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
-  badgeArrow: {
-    fontSize: FONT_SIZE.xs,
-    marginRight: SPACING.xs,
+  highlightLabel: {
+    color: COLORS.text,
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.semibold,
   },
-  badgeText: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+  highlightNumber: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    marginLeft: 'auto',
   },
   highlightValue: {
-    fontSize: FONT_SIZE.hero,
+    fontSize: FONT_SIZE.title,
     fontWeight: FONT_WEIGHT.heavy,
-    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
   },
   highlightUnit: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.sm,
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: SPACING.xs + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border + '40',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border,
   },
   rowLabel: {
+    flex: 1,
     color: COLORS.textSecondary,
     fontSize: FONT_SIZE.md,
   },
   rowValue: {
+    maxWidth: '50%',
     color: COLORS.text,
     fontSize: FONT_SIZE.md,
-    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
+    textAlign: 'right',
+    fontWeight: FONT_WEIGHT.medium,
   },
   boldText: {
-    fontWeight: '700',
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.text,
   },
 });

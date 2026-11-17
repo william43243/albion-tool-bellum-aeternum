@@ -30,3 +30,16 @@ test('same-zone route and strict map command resolution',()=>{
  assert.equal(resolveMapAction({type:'focus_zone',zoneId:'Caerleon'}).status,'unknown_zone');
  assert.throws(()=>planWorldRoute('3003','3004','magic' as never));
 });
+test('risk exclusions are hard constraints on every zone, including start and destination',()=>{
+ const graph=[z('A','city',['R','U','B']),z('R','red',['Z']),z('U','unknown',['Z']),z('B','blue',['C']),z('C','yellow',['Z']),z('Z','city',[])];
+ const noRed=planWorldRoute('A','Z','fewest_transitions',graph,['red']);
+ assert.equal(noRed.status,'found');if(noRed.status==='found'){assert.deepEqual(noRed.zoneIds,['A','U','Z']);assert.equal(noRed.unknownRiskZones,1);}
+ const noRedOrUnknown=planWorldRoute('A','Z','fewest_transitions',graph,['red','unknown']);
+ assert.equal(noRedOrUnknown.status,'found');if(noRedOrUnknown.status==='found')assert.deepEqual(noRedOrUnknown.zoneIds,['A','B','C','Z']);
+ assert.equal(planWorldRoute('A','Z','fewest_lethal',graph,['red','unknown','blue']).status,'unreachable');
+ assert.equal(planWorldRoute('A','Z','fewest_transitions',graph,['city']).status,'unreachable');
+ assert.equal(planWorldRoute('A','A','fewest_transitions',graph,['city']).status,'unreachable');
+ assert.equal(planWorldRoute('missing','Z','fewest_transitions',graph,['city']).status,'unknown_zone');
+ const action=resolveMapAction({type:'plan_route',from:'A',to:'Z',policy:'fewest_transitions',excludedRisks:['red','unknown']},graph);
+ assert.equal(action.status,'found');assert.ok('zoneIds' in action);if('zoneIds' in action)assert.deepEqual(action.zoneIds,['A','B','C','Z']);
+});

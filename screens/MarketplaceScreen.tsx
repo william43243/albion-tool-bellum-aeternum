@@ -1,4 +1,5 @@
 import PriceAlertsPanel from '../components/PriceAlertsPanel';
+import BellumIcon from '../components/BellumIcon';
 import React, { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   View,
@@ -147,18 +148,19 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
   };
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t('marketplace')}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{t('marketplace')}</Text>
 
       <View style={styles.watchCard}>
         <View style={styles.watchHeader}>
           <Text style={styles.watchTitle}>{lang === 'fr' ? 'Favoris' : lang === 'es' ? 'Favoritos' : 'Watchlist'} ({watchlistLoaded ? watchlist.length : '…'})</Text>
-          <TouchableOpacity style={styles.watchScanBtn} onPress={scanWatchlist} disabled={watchLoading || !watchlistLoaded || !watchlist.length}><Text style={styles.watchScanText}>{watchLoading ? '…' : lang === 'fr' ? 'Scanner' : 'Scan'}</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.watchScanBtn} onPress={scanWatchlist} accessibilityRole="button" disabled={watchLoading || !watchlistLoaded || !watchlist.length}><Text style={styles.watchScanText}>{watchLoading ? '…' : lang === 'fr' ? 'Scanner' : 'Scan'}</Text></TouchableOpacity>
         </View>
         {watchlist.length === 0 ? <Text style={styles.watchEmpty}>{lang === 'fr' ? 'Sélectionne un item pour l’ajouter automatiquement.' : 'Select an item to add it automatically.'}</Text> : watchlist.map((entry) => {
           const { hasResponse, count } = summarizeWatchlistPrices(watchResults, entry.itemId, entry.quality);
           const cityCountLabel = lang === 'fr' ? 'villes avec données' : lang === 'es' ? 'ciudades con datos' : 'cities with data';
-          return <View style={styles.watchRow} key={`${entry.itemId}:${entry.quality}`}><Text style={styles.watchName} numberOfLines={1}>{entry.itemName} · Q{entry.quality}</Text><Text style={styles.watchCount}>{hasResponse ? `${count} ${cityCountLabel}` : '—'}</Text><TouchableOpacity onPress={() => removeWatch(entry)} style={styles.watchRemove}><Text style={styles.watchRemoveText}>×</Text></TouchableOpacity></View>;
+          return <View style={styles.watchRow} key={`${entry.itemId}:${entry.quality}`}><Text style={styles.watchName} numberOfLines={1}>{entry.itemName} · Q{entry.quality}</Text><Text style={styles.watchCount}>{hasResponse ? `${count} ${cityCountLabel}` : '—'}</Text><TouchableOpacity onPress={() => removeWatch(entry)} style={styles.watchRemove} accessibilityRole="button" accessibilityLabel={lang === 'fr' ? `Retirer ${entry.itemName} des favoris` : lang === 'es' ? `Quitar ${entry.itemName} de favoritos` : `Remove ${entry.itemName} from watchlist`}><BellumIcon name="close" size={18} color={COLORS.textSecondary} /></TouchableOpacity></View>;
         })}
         <PriceAlertsPanel lang={lang} />
       </View>
@@ -177,6 +179,8 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
       <View style={styles.orderToggle}>
         <TouchableOpacity
           style={[styles.orderBtn, useBuyOrder && styles.orderBtnActive]}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: useBuyOrder }}
           onPress={() => setUseBuyOrder((value) => !value)}
         >
           <Text style={[styles.orderBtnText, useBuyOrder && styles.orderBtnTextActive]}>
@@ -185,6 +189,8 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.orderBtn, useSellOrder && styles.orderBtnActive]}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: useSellOrder }}
           onPress={() => setUseSellOrder((value) => !value)}
         >
           <Text style={[styles.orderBtnText, useSellOrder && styles.orderBtnTextActive]}>
@@ -201,6 +207,8 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
               <TouchableOpacity
                 key={city}
                 style={[styles.cityChip, selectedCity === city && styles.cityChipActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedCity === city }}
                 onPress={() => setSelectedCity(city)}
               >
                 <Text
@@ -217,6 +225,7 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
         </View>
         <TouchableOpacity
           style={styles.fetchBtn}
+          accessibilityRole="button"
           onPress={() => setShowItemPicker(true)}
           disabled={loading}
         >
@@ -344,7 +353,7 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
             </View>
           </View>
 
-          <TouchableOpacity style={styles.copyBtn} onPress={copyResult}>
+          <TouchableOpacity accessibilityRole="button" style={styles.copyBtn} onPress={copyResult}>
             <Text style={styles.copyBtnText}>{t('copy')}</Text>
           </TouchableOpacity>
         </>
@@ -353,20 +362,40 @@ export default function MarketplaceScreen({ t, lang, server, isPremium, onPremiu
       {comparisonRows.length > 0 && (
         <View style={styles.compareCard}>
           <Text style={styles.compareTitle}>{lang === 'fr' ? 'Comparer les stratégies' : lang === 'es' ? 'Comparar estrategias' : 'Compare strategies'}</Text>
-          {comparisonRows.map(({ mode, value, breakEven }) => <View style={styles.compareRow} key={mode}><Text style={styles.compareMode}>{mode.replace('-', ' → ')}</Text><Text style={[styles.compareProfit, { color: value.profitPerItem >= 0 ? COLORS.profit : COLORS.loss }]}>{Math.round(value.profitPerItem).toLocaleString()} /u</Text><Text style={styles.compareBreakEven}>BE {breakEven.toLocaleString()}</Text></View>)}
-          <Text style={styles.compareHint}>{lang === 'fr' ? 'BE = prix de vente minimal à l’équilibre. Les ordres ne garantissent pas l’exécution.' : 'BE = minimum break-even sale price. Orders do not guarantee execution.'}</Text>
+          <View style={styles.compareHeader}>
+            <Text style={styles.compareHeading}>{lang === 'fr' ? 'Achat → Vente' : lang === 'es' ? 'Compra → Venta' : 'Buy → Sell'}</Text>
+            <Text style={[styles.compareHeading, styles.compareNumericHeading]}>{lang === 'fr' ? 'Gain / u' : lang === 'es' ? 'Ganancia / u' : 'Profit / unit'}</Text>
+            <Text style={[styles.compareHeading, styles.compareNumericHeading]}>{lang === 'fr' ? 'Équilibre' : lang === 'es' ? 'Equilibrio' : 'Break-even'}</Text>
+          </View>
+          {comparisonRows.map(({ mode, value, breakEven }) => {
+            const orderLabel = lang === 'fr' ? 'Ordre' : lang === 'es' ? 'Orden' : 'Order';
+            const instantLabel = lang === 'fr' ? 'Direct' : lang === 'es' ? 'Directo' : 'Instant';
+            const strategy = mode.split('-').map((part) => part === 'order' ? orderLabel : instantLabel).join(' → ');
+            const roundedProfit = Math.round(value.profitPerItem);
+            return (
+              <View style={styles.compareRow} key={mode}>
+                <Text style={styles.compareMode}>{strategy}</Text>
+                <Text style={[styles.compareProfit, { color: value.profitPerItem >= 0 ? COLORS.profit : COLORS.loss }]}>
+                  {roundedProfit > 0 ? '+' : ''}{roundedProfit.toLocaleString()}
+                </Text>
+                <Text style={styles.compareBreakEven}>{breakEven.toLocaleString()}</Text>
+              </View>
+            );
+          })}
+          <Text style={styles.compareHint}>{lang === 'fr' ? 'L’équilibre indique le prix de vente minimal. Les ordres ne garantissent pas l’exécution.' : 'Break-even is the minimum sale price. Orders do not guarantee execution.'}</Text>
         </View>
       )}
 
       <PremiumInfoPanel title={t('premiumBonuses')} bonuses={t('premiumBonusList')} />
 
+    </ScrollView>
       <ItemPicker
         visible={showItemPicker}
         onClose={() => setShowItemPicker(false)}
         onSelect={handleFetchPrices}
         lang={lang}
       />
-    </ScrollView>
+    </>
   );
 }
 
@@ -380,28 +409,30 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl * 2,
   },
   title: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: FONT_SIZE.title,
     fontWeight: '800',
     marginBottom: SPACING.lg,
   },
-  watchCard: { backgroundColor: COLORS.card, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, marginBottom: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
+  watchCard: { borderTopWidth: 1, borderTopColor: COLORS.borderStrong, paddingTop: SPACING.xs, marginBottom: SPACING.lg },
   watchHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.sm },
   watchTitle: { color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '700' },
-  watchScanBtn: { minHeight: 44, paddingHorizontal: SPACING.md, justifyContent: 'center', borderRadius: BORDER_RADIUS.sm, backgroundColor: COLORS.primary },
-  watchScanText: { color: COLORS.background, fontWeight: '800' },
+  watchScanBtn: { minHeight: 48, paddingHorizontal: SPACING.md, justifyContent: 'center', borderRadius: BORDER_RADIUS.sm },
+  watchScanText: { color: COLORS.primary, fontWeight: '700' },
   watchEmpty: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm },
-  watchRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border + '60' },
+  watchRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border },
   watchName: { flex: 1, color: COLORS.textSecondary, fontSize: FONT_SIZE.sm },
   watchCount: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginHorizontal: SPACING.sm },
-  watchRemove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  watchRemoveText: { color: COLORS.loss, fontSize: FONT_SIZE.xl },
-  compareCard: { backgroundColor: COLORS.card, borderRadius: BORDER_RADIUS.md, padding: SPACING.md, marginVertical: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
-  compareTitle: { color: COLORS.primary, fontSize: FONT_SIZE.md, fontWeight: '800', marginBottom: SPACING.sm },
-  compareRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border + '60' },
-  compareMode: { flex: 1, color: COLORS.textSecondary, fontSize: FONT_SIZE.xs },
-  compareProfit: { width: 90, textAlign: 'right', fontWeight: '800', fontSize: FONT_SIZE.sm },
-  compareBreakEven: { width: 90, textAlign: 'right', color: COLORS.textMuted, fontSize: FONT_SIZE.xs },
+  watchRemove: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  compareCard: { backgroundColor: COLORS.card, padding: SPACING.md, marginVertical: SPACING.lg, borderTopWidth: 2, borderTopColor: COLORS.text },
+  compareTitle: { color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '800', marginBottom: SPACING.sm },
+  compareRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: COLORS.border },
+  compareHeader: { flexDirection: 'row', alignItems: 'flex-end', paddingVertical: SPACING.sm },
+  compareHeading: { flex: 1, color: COLORS.textSecondary, fontSize: FONT_SIZE.sm, fontWeight: '700' },
+  compareNumericHeading: { textAlign: 'right' },
+  compareMode: { flex: 1, color: COLORS.text, fontSize: FONT_SIZE.sm },
+  compareProfit: { flex: 1, textAlign: 'right', fontVariant: ['tabular-nums'], fontWeight: '800', fontSize: FONT_SIZE.sm },
+  compareBreakEven: { flex: 1, textAlign: 'right', fontVariant: ['tabular-nums'], color: COLORS.textMuted, fontSize: FONT_SIZE.xs },
   compareHint: { color: COLORS.textMuted, fontSize: FONT_SIZE.xs, marginTop: SPACING.sm },
   orderToggle: {
     flexDirection: 'row',
@@ -411,6 +442,8 @@ const styles = StyleSheet.create({
   },
   orderBtn: {
     flex: 1,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: SPACING.sm,
     alignItems: 'center',
     borderRadius: BORDER_RADIUS.sm,
@@ -419,7 +452,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   orderBtnActive: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.primaryFaint,
     borderColor: COLORS.primary,
   },
   orderBtnText: {
@@ -437,6 +470,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   cityChip: {
+    minHeight: 48,
+    justifyContent: 'center',
     paddingHorizontal: SPACING.sm + 2,
     paddingVertical: SPACING.xs + 1,
     borderRadius: BORDER_RADIUS.sm,
@@ -446,19 +481,21 @@ const styles = StyleSheet.create({
     marginRight: SPACING.xs,
   },
   cityChipActive: {
-    backgroundColor: COLORS.info + '20',
-    borderColor: COLORS.info,
+    backgroundColor: COLORS.primaryFaint,
+    borderColor: COLORS.primary,
   },
   cityChipText: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
   },
   cityChipTextActive: {
-    color: COLORS.info,
+    color: COLORS.primary,
     fontWeight: '600',
   },
   fetchBtn: {
-    backgroundColor: COLORS.info,
+    backgroundColor: COLORS.primary,
+    minHeight: 48,
+    justifyContent: 'center',
     paddingVertical: SPACING.sm,
     borderRadius: BORDER_RADIUS.sm,
     alignItems: 'center',
@@ -469,9 +506,9 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
   },
   barContainer: {
-    backgroundColor: COLORS.card,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.sm,
     marginVertical: SPACING.sm,
   },
   barRow: {
@@ -482,11 +519,12 @@ const styles = StyleSheet.create({
   barLabel: {
     color: COLORS.textSecondary,
     fontSize: FONT_SIZE.sm,
-    width: 50,
+    flexBasis: 80,
+    marginRight: SPACING.sm,
   },
   barTrack: {
     flex: 1,
-    height: 16,
+    height: 8,
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.sm,
     overflow: 'hidden',
@@ -497,6 +535,7 @@ const styles = StyleSheet.create({
   },
   dataAge: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: SPACING.md,
     marginBottom: SPACING.md,
     paddingHorizontal: SPACING.xs,

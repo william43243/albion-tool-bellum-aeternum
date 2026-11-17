@@ -296,6 +296,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   primaryButton: {
+    minHeight: 48, justifyContent: 'center',
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
@@ -303,11 +304,12 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
   },
   primaryButtonText: {
-    color: COLORS.background,
+    color: COLORS.onPrimary,
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
   },
   secondaryButton: {
+    minHeight: 48, justifyContent: 'center',
     backgroundColor: COLORS.surfaceLight,
     paddingVertical: SPACING.md,
     borderRadius: BORDER_RADIUS.md,

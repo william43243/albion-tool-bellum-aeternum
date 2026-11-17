@@ -1,3 +1,4 @@
+import BellumIcon from '../components/BellumIcon';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
@@ -58,8 +59,9 @@ export default function CraftingScreen({ t, lang, active }: Props) {
   }, [iv, stationTax, quantity, lang]);
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t('crafting')}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{t('crafting')}</Text>
 
       <TouchableOpacity
         style={styles.selectBtn}
@@ -132,7 +134,7 @@ export default function CraftingScreen({ t, lang, active }: Props) {
       )}
 
       <View style={styles.infoBox}>
-        <Text style={styles.infoIcon}>ℹ️</Text>
+        <View style={styles.infoIcon}><BellumIcon name="info" size={18} color={COLORS.textSecondary} /></View>
         <Text style={styles.infoText}>{t('craftingFeeInfo')}</Text>
       </View>
 
@@ -150,6 +152,7 @@ export default function CraftingScreen({ t, lang, active }: Props) {
 
       <PremiumInfoPanel title={t('premiumBonuses')} bonuses={t('premiumBonusList')} />
 
+    </ScrollView>
       <ItemPicker
         visible={showItemPicker}
         onClose={() => setShowItemPicker(false)}
@@ -161,7 +164,7 @@ export default function CraftingScreen({ t, lang, active }: Props) {
         }}
         lang={lang}
       />
-    </ScrollView>
+    </>
   );
 }
 
@@ -175,15 +178,18 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl * 2,
   },
   title: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: FONT_SIZE.title,
     fontWeight: '800',
     marginBottom: SPACING.lg,
   },
   selectBtn: {
     backgroundColor: COLORS.surface,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -196,16 +202,15 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: COLORS.info + '15',
+    backgroundColor: COLORS.surface2,
     borderRadius: BORDER_RADIUS.sm,
     padding: SPACING.md,
     marginVertical: SPACING.sm,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.info,
+    borderLeftColor: COLORS.borderStrong,
   },
   infoIcon: {
     marginRight: SPACING.sm,
-    fontSize: FONT_SIZE.md,
   },
   infoText: {
     color: COLORS.textSecondary,
@@ -213,15 +218,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formulaBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
+    paddingVertical: SPACING.md,
     marginVertical: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderStrong,
   },
   formulaTitle: {
-    color: COLORS.primary,
+    color: COLORS.text,
     fontSize: FONT_SIZE.md,
     fontWeight: '700',
     marginBottom: SPACING.xs,

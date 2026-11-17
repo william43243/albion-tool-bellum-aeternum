@@ -122,7 +122,14 @@ android {
         debug {
             signingConfig signingConfigs.debug
             // Explicit side-by-side QA packaging; never overwrite the signed release app.
-            if ((findProperty('ALBION_QA') ?: 'false').toBoolean()) {
+            if ((findProperty('ALBION_REFONTE_QA') ?: 'false').toBoolean()) {
+                applicationIdSuffix '.refonteqa'
+                manifestPlaceholders = [albionAppLabel: 'Bellum Refonte QA']
+            } else if ((findProperty('ALBION_ECONOMY_QA') ?: 'false').toBoolean()) {
+                // Isolated test package: keep an existing QA chat and its data untouched.
+                applicationIdSuffix '.economyqa'
+                manifestPlaceholders = [albionAppLabel: 'Albion Economy QA']
+            } else if ((findProperty('ALBION_QA') ?: 'false').toBoolean()) {
                 applicationIdSuffix '.qa'
                 manifestPlaceholders = [albionAppLabel: 'Albion Tool QA']
             }

@@ -48,11 +48,11 @@ test('real hook handles show/hide, already-resized roots, and listener cleanup',
   view = render(false); assert.equal(view.maxHeight, undefined); assert.equal(view.keyboardVisible, false);
   cleanup(); assert.equal(removed, 3); assert.equal(listeners.size, 0);
 });
-test('only OpenAI advisor uses Android cap; keyboard compaction does not remount chat', () => {
+test('both advisor providers use the Android cap; keyboard compaction does not remount chat', () => {
   const app = readFileSync('App.tsx', 'utf8');
   const hub = readFileSync('screens/AdvisorHubScreen.tsx', 'utf8');
   const chat = readFileSync('screens/OpenAIChatScreen.tsx', 'utf8');
-  assert.match(app, /useAndroidKeyboardViewport\(activeTab === 'advisor' && advisorProvider === 'openai'\)/);
+  assert.match(app, /useAndroidKeyboardViewport\(activeTab === 'advisor'\)/);
   assert.match(app, /maxHeight: keyboardViewport.maxHeight/);
   assert.match(app, /keyboardViewport.keyboardVisible && \{ display: 'none' \}/);
   assert.match(hub, /<OpenAIChatScreen compact=\{compact\}/);

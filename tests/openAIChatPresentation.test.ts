@@ -27,10 +27,10 @@ function harness() {
   const env: Record<string, any> = {
     input: 'Show prices', ready: true, model: 'account-model', selected: { displayName: 'Account model' }, server: 'europe', SERVERS: { europe: 'https://europe.albion-online-data.com' },
     running: { current: false }, cancelling: { current: false }, alive: { current: true }, epoch: { current: 0 }, nextId: { current: 0 }, followBottom: { current: true },
-    messages: [], error: '', busy: false, fastTest: false, reasoningHigh:false, playerCity:'Caerleon', isPremium:true,
+    messages: [], error: '', busy: false, playerCity:'Caerleon', isPremium:true,
     canSubmitChat, completedChatHistory,
     setStopping(_value: boolean) {},
-    setFastTest(value: boolean) { env.fastTest = value; },
+    setShowJumpToBottom(_value: boolean) {},
     setBusy(value: boolean) { env.busy = value; },
     setInput(value: any) { env.input = typeof value === 'function' ? value(env.input) : value; },
     setError(value: string) { env.error = value; },
@@ -98,7 +98,7 @@ test('stop rejects late tokens and completion, and unlocks only after cancellati
 test('source has no control-character corruption and no remote markdown renderer', () => {
   assert.doesNotMatch(source, /[\x00-\x08\x0b\x0c\x0e-\x1f]/);
   assert.doesNotMatch(readFileSync('components/chat/ChatMarkdown.tsx', 'utf8'), /<WebView|<Image\s|Linking\.openURL/);
-  assert.match(source, /Fast support is unconfirmed/);
+  assert.doesNotMatch(source, /fastTest|reasoningHigh|experimentalFast|reasoningEffort/);
 });
 
 test('stale session read cannot reconnect UI after disconnect invalidates it', async () => {
@@ -179,26 +179,13 @@ test('sign-in is synchronously locked and late resolution after sign-out cannot 
   env.authAttempt.current++; pending.resolve(); await work; assert.equal(refreshes, 0);
 });
 
-test('Fast experiment requires explicit arming, is one-shot, and displays actual unconfirmed tier', async () => {
-  const h = harness(); h.env.fastTest = true;
-  const work = h.send();
-  assert.equal(h.args().fast, true); assert.equal(h.args().experimentalFast, true); assert.equal(h.env.fastTest, false);
-  h.emit({ type: 'completed', requestedServiceTier: 'fast', effectiveServiceTier: 'default', fastConfirmed: false });
-  h.pending.resolve('Normal tier answer'); await work;
-  assert.equal(h.env.messages[1].effectiveServiceTier, 'default'); assert.equal(h.env.messages[1].fastConfirmed, false);
-});
-test('Fast confirmation is taken only from backend completion, not from requested mode', async () => {
-  const h = harness(); h.env.fastTest = true; const work = h.send();
-  assert.equal(h.env.messages[1].fastConfirmed, undefined);
-  h.emit({ type: 'completed', requestedServiceTier: 'fast', effectiveServiceTier: 'priority', fastConfirmed: true });
-  h.pending.resolve('Confirmed response'); await work;
-  assert.equal(h.env.messages[1].fastConfirmed, true); assert.equal(h.env.messages[1].effectiveServiceTier, 'priority');
-});
-test('unsupported Fast is an explicit failed turn without hidden normal-mode retry', async () => {
-  const h = harness(); h.env.fastTest = true; const work = h.send();
-  h.pending.reject(new Error('FAST_UNSUPPORTED')); await work;
-  assert.equal(h.requests(), 1); assert.equal(h.env.messages[1].state, 'error'); assert.equal(h.env.messages[1].fastConfirmed, undefined);
-  assert.equal(h.env.fastTest, false); assert.match(h.env.error, /FAST_UNSUPPORTED/);
+test('OpenAI chat leaves service tier and reasoning to native defaults', async () => {
+  const h = harness(); const work = h.send();
+  assert.equal(h.args().fast, undefined);
+  assert.equal(h.args().experimentalFast, undefined);
+  assert.equal(h.args().reasoningEffort, undefined);
+  h.emit({type:'completed'}); h.pending.resolve('Ready'); await work;
+  assert.equal(h.env.messages[1].state, 'completed');
 });
 
 for (const code of ['EMPTY_MODEL_RESPONSE', 'MODEL_REFUSAL', 'STREAM_OUTPUT_CONFLICT']) {

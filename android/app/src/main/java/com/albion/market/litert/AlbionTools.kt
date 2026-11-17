@@ -203,11 +203,25 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
     }
 
     private val worldMapTools by lazy { WorldMapTools(context) }
+    private val planner by lazy { PlanEngine(context) }
     val getRouteTool: OpenApiTool get() = worldMapTools.route
 
     private val compareFlipTool by lazy { FlipComparisonTool(getPricesTool,worldMapTools,::parseAodpTimestamp) }
+    private fun islandAsset(name: String): JSONObject {
+        val bytes=context.assets.open(name).use { stream ->
+            val out=ByteArrayOutputStream();val buffer=ByteArray(8192)
+            while (true) { val n=stream.read(buffer);if(n<0)break;require(out.size()+n<=2*1024*1024) { "Island asset too large" };out.write(buffer,0,n) }
+            out.toByteArray()
+        }
+        return JSONObject(String(bytes,Charsets.UTF_8))
+    }
+    private val islandServer by lazy { when(serverBaseUrl) { "https://west.albion-online-data.com/api/v2/stats" -> "americas"; "https://europe.albion-online-data.com/api/v2/stats" -> "europe"; else -> "asia" } }
+    private val islandMarket by lazy { IslandMarketAverages(islandServer, { input -> getHistoryTool.execute(input) }) }
 
-    fun allTools(includeFlipComparison:Boolean=false): List<OpenApiTool> = listOf(searchItemTool, getPricesTool, getHistoryTool, getTimeTool, getRouteTool, worldMapTools.search, worldMapTools.show) + if(includeFlipComparison) listOf(compareFlipTool) else emptyList()
+    fun allTools(includeFlipComparison:Boolean=false): List<OpenApiTool> {
+        val server=when(serverBaseUrl) { "https://west.albion-online-data.com/api/v2/stats" -> "americas"; "https://europe.albion-online-data.com/api/v2/stats" -> "europe"; else -> "asia" }
+        return listOf(searchItemTool, getPricesTool, getHistoryTool, getTimeTool, getRouteTool, worldMapTools.search, worldMapTools.show, if(includeFlipComparison) planner.tool else planner.localTool, planner.zoneResourcesTool) + ProductionTools.all({ cancelled || Thread.currentThread().isInterrupted },server) + IslandTools.all({ islandAsset("island-farmables.json") }, { try { islandAsset("island-npc-prices.json") } catch (_: Exception) { null } }, { query, stop -> JSONObject(islandMarket.getAverages(query.toString(),stop)) }, islandServer, { cancelled || Thread.currentThread().isInterrupted }) + if(includeFlipComparison) listOf(compareFlipTool) else emptyList()
+    }
 
     private fun httpGet(urlStr: String): String {
         check(!cancelled) { "Tool cancelled" }

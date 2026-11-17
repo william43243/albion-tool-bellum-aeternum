@@ -13,6 +13,12 @@ public class WorldRouteGraphTest {
   try{g.route("A","X","fewest_transitions");throw new AssertionError("unknown accepted");}catch(IllegalArgumentException expected){}
   WorldRouteGraph unknown=new WorldRouteGraph(Arrays.asList(z("A","city","U","B"),z("U","unknown","Z"),z("B","blue","C"),z("C","yellow","Z"),z("Z","city")));
   if(unknown.route("A","Z","fewest_lethal").contains("U"))throw new AssertionError("unknown considered safe");
+  WorldRouteGraph restricted=new WorldRouteGraph(Arrays.asList(z("A","city","R","U","B"),z("R","red","Z"),z("U","unknown","Z"),z("B","blue","C"),z("C","yellow","Z"),z("Z","city")));
+  if(!restricted.route("A","Z","fewest_transitions",Set.of("red")).equals(Arrays.asList("A","U","Z")))throw new AssertionError("red exclusion or unknown handling");
+  if(!restricted.route("A","Z","fewest_transitions",Set.of("red","unknown")).equals(Arrays.asList("A","B","C","Z")))throw new AssertionError("strict exclusion parity");
+  if(!restricted.route("A","Z","fewest_lethal",Set.of("red","unknown","blue")).isEmpty())throw new AssertionError("excluded routes reachable");
+  if(!restricted.route("A","Z","fewest_transitions",Set.of("city")).isEmpty())throw new AssertionError("excluded endpoints");
+  if(!restricted.route("A","A","fewest_transitions",Set.of("city")).isEmpty())throw new AssertionError("excluded same-zone route");
   Map<String,Object> data=JSONObjectUtils.parse(Files.readString(Path.of("android/app/src/main/assets/world-map.local.json")));
   List<WorldRouteGraph.Zone> list=new ArrayList<>();
   for(Object obj:(List<?>)data.get("zones")){Map<?,?> row=(Map<?,?>)obj;List<String> exits=new ArrayList<>();for(Object e:(List<?>)row.get("exits"))exits.add((String)e);list.add(new WorldRouteGraph.Zone((String)row.get("id"),(String)row.get("name"),(String)row.get("risk"),exits));}

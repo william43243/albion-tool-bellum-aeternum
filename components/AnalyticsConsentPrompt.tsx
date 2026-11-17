@@ -38,13 +38,13 @@ export default function AnalyticsConsentPrompt({ visible, t, onChoice }: Props) 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'center', padding: SPACING.xl, backgroundColor: '#000000CC' },
+  backdrop: { flex: 1, justifyContent: 'center', padding: SPACING.xl, backgroundColor: COLORS.overlay },
   card: { backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.lg, padding: SPACING.xl, borderWidth: 1, borderColor: COLORS.borderStrong },
-  title: { color: COLORS.primary, fontSize: FONT_SIZE.xl, fontWeight: '800', marginBottom: SPACING.md },
+  title: { color: COLORS.text, fontSize: FONT_SIZE.xl, fontWeight: '800', marginBottom: SPACING.md },
   body: { color: COLORS.text, fontSize: FONT_SIZE.md, lineHeight: 22, marginBottom: SPACING.xl },
   actions: { flexDirection: 'row', gap: SPACING.md },
-  secondaryButton: { flex: 1, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: 'center' },
-  primaryButton: { flex: 1, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, backgroundColor: COLORS.primary, alignItems: 'center' },
+  secondaryButton: { flex: 1, padding: SPACING.md, minHeight: 48, justifyContent: 'center', borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: 'center' },
+  primaryButton: { flex: 1, padding: SPACING.md, minHeight: 48, justifyContent: 'center', borderRadius: BORDER_RADIUS.md, backgroundColor: COLORS.primary, alignItems: 'center' },
   secondaryText: { color: COLORS.text, fontWeight: '700' },
-  primaryText: { color: COLORS.background, fontWeight: '800' },
+  primaryText: { color: COLORS.onPrimary, fontWeight: '800' },
 });

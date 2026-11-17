@@ -5,17 +5,17 @@
     "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0d1117"
+      "backgroundColor": "#F6F3EB"
     },
     "android": {
       "package": "com.albion.market",
       "versionCode": 19,
       "softwareKeyboardLayoutMode": "pan",
-      "backgroundColor": "#0d1117",
+      "backgroundColor": "#F6F3EB",
       "adaptiveIcon": {
         "backgroundColor": "#0d1117",
         "foregroundImage": "./assets/android-icon-foreground.png",

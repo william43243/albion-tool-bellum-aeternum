@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Application from 'expo-application';
-import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
+import { COLORS, SPACING, FONT_SIZE } from '../constants/theme';
 import { Language } from '../lib/i18n';
 import { Server, marketCacheInfo, clearMarketMemoryCache } from '../lib/api';
 import PremiumInfoPanel from '../components/PremiumInfoPanel';
@@ -22,11 +22,7 @@ interface Props {
   onAnalyticsConsentChange: (choice: 'accepted' | 'refused') => void;
 }
 
-const SERVER_OPTIONS: { key: Server; flag: string }[] = [
-  { key: 'americas', flag: '\uD83C\uDDFA\uD83C\uDDF8' },
-  { key: 'europe', flag: '\uD83C\uDDEA\uD83C\uDDFA' },
-  { key: 'asia', flag: '\uD83C\uDDEF\uD83C\uDDF5' },
-];
+const SERVER_OPTIONS: Server[] = ['americas', 'europe', 'asia'];
 
 export default function SettingsScreen({
   t,
@@ -41,41 +37,47 @@ export default function SettingsScreen({
   const cacheText=(fr:string,en:string,es:string)=>lang==='fr'?fr:lang==='es'?es:en;
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{t('settings')}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{t('settings')}</Text>
 
       {/* Language */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('language')}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{t('language')}</Text>
         <View style={styles.langRow}>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ selected: lang === 'fr' }}
             style={[styles.langBtn, lang === 'fr' && styles.langBtnActive]}
             onPress={() => onSwitchLanguage('fr')}
           >
             <Text style={[styles.langBtnText, lang === 'fr' && styles.langBtnTextActive]}>
-              🇫🇷 {t('french')}
+              {t('french')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ selected: lang === 'en' }}
             style={[styles.langBtn, lang === 'en' && styles.langBtnActive]}
             onPress={() => onSwitchLanguage('en')}
           >
             <Text style={[styles.langBtnText, lang === 'en' && styles.langBtnTextActive]}>
-              🇬🇧 {t('english')}
+              {t('english')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityState={{ selected: lang === 'es' }}
             style={[styles.langBtn, lang === 'es' && styles.langBtnActive]}
             onPress={() => onSwitchLanguage('es')}
           >
             <Text style={[styles.langBtnText, lang === 'es' && styles.langBtnTextActive]}>
-              🇪🇸 {t('spanish')}
+              {t('spanish')}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{cacheText('Cache des données marché','Market data cache','Caché del mercado')}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{cacheText('Cache des données marché','Market data cache','Caché del mercado')}</Text>
         <Text style={styles.settingDescription}>{cacheText('Cache temporaire en mémoire :','Temporary in-memory cache:','Caché temporal en memoria:')} {cacheInfo.prices} {cacheText('prix','prices','precios')} · {cacheInfo.history} {cacheText('historiques','histories','históricos')} · {cacheInfo.other} {cacheText('autres','other','otros')} · {cacheInfo.ttlMinutes} min</Text>
         <Text style={styles.settingDescription}>{cacheText('Ce cache se vide à la fermeture de l’app. Les résultats du chat et les données enregistrées ailleurs ne sont pas inclus.','This cache clears when the app closes. Chat results and data stored elsewhere are not included.','Esta caché se borra al cerrar la app. No incluye resultados del chat ni datos guardados en otro lugar.')}</Text>
         <View style={styles.langRow}><TouchableOpacity accessibilityRole="button" style={styles.langBtn} onPress={()=>setCacheInfo(marketCacheInfo())}><Text style={styles.langBtnText}>{cacheText('Actualiser','Refresh','Actualizar')}</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" style={styles.langBtn} onPress={()=>{clearMarketMemoryCache();setCacheInfo(marketCacheInfo());}}><Text style={styles.langBtnText}>{cacheText('Vider ce cache','Clear this cache','Vaciar caché')}</Text></TouchableOpacity></View>
@@ -83,7 +85,7 @@ export default function SettingsScreen({
 
       {/* Privacy-minimized product analytics */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('analyticsConsent')}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{t('analyticsConsent')}</Text>
         <Text style={styles.settingDescription}>{t('analyticsSettingsDescription')}</Text>
         <View style={styles.langRow}>
           <TouchableOpacity
@@ -113,16 +115,18 @@ export default function SettingsScreen({
 
       {/* Server */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('server')}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{t('server')}</Text>
         <View style={styles.langRow}>
-          {SERVER_OPTIONS.map((opt) => (
+          {SERVER_OPTIONS.map((region) => (
             <TouchableOpacity
-              key={opt.key}
-              style={[styles.langBtn, server === opt.key && styles.langBtnActive]}
-              onPress={() => onSwitchServer(opt.key)}
+              key={region}
+              accessibilityRole="button"
+              accessibilityState={{ selected: server === region }}
+              style={[styles.langBtn, server === region && styles.langBtnActive]}
+              onPress={() => onSwitchServer(region)}
             >
-              <Text style={[styles.langBtnText, server === opt.key && styles.langBtnTextActive]}>
-                {opt.flag} {t(`server${opt.key.charAt(0).toUpperCase() + opt.key.slice(1)}` as any)}
+              <Text style={[styles.langBtnText, server === region && styles.langBtnTextActive]}>
+                {t(`server${region.charAt(0).toUpperCase() + region.slice(1)}` as any)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -137,7 +141,7 @@ export default function SettingsScreen({
 
       {/* Formulas Reference */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
           {t('referenceFormulas')}
         </Text>
 
@@ -159,45 +163,49 @@ export default function SettingsScreen({
 
       {/* Sources */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('credits')}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>{t('credits')}</Text>
 
         <TouchableOpacity
+          accessibilityRole="link"
           style={styles.linkRow}
           onPress={() => Linking.openURL('https://wiki.albiononline.com/wiki/Marketplace')}
         >
-          <Text style={styles.linkText}>📖 Albion Online Wiki - Marketplace</Text>
+          <Text style={styles.linkText}>Albion Online Wiki - Marketplace</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          accessibilityRole="link"
           style={styles.linkRow}
           onPress={() => Linking.openURL('https://wiki.albiononline.com/wiki/Margin')}
         >
-          <Text style={styles.linkText}>📖 Albion Online Wiki - Margin</Text>
+          <Text style={styles.linkText}>Albion Online Wiki - Margin</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          accessibilityRole="link"
           style={styles.linkRow}
           onPress={() => Linking.openURL('https://www.albion-online-data.com/')}
         >
-          <Text style={styles.linkText}>📊 Albion Online Data Project (API)</Text>
+          <Text style={styles.linkText}>Albion Online Data Project (API)</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          accessibilityRole="link"
           style={styles.linkRow}
           onPress={() => Linking.openURL('https://github.com/ao-data/ao-bin-dumps')}
         >
-          <Text style={styles.linkText}>💾 ao-data/ao-bin-dumps (Item Data)</Text>
+          <Text style={styles.linkText}>ao-data/ao-bin-dumps (Item Data)</Text>
         </TouchableOpacity>
       </View>
 
       {/* Donate */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
           {t('donate')}
         </Text>
         <View style={styles.donateCard}>
-          <Text style={styles.donateIcon}>₿</Text>
           <Text style={styles.donateText}>
             {t('donateText')}
           </Text>
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.btcAddressBox}
             onPress={async () => {
               await Clipboard.setStringAsync(BTC_ADDRESS);
@@ -233,149 +241,29 @@ export default function SettingsScreen({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  content: {
-    padding: SPACING.lg,
-    paddingBottom: SPACING.xxl * 2,
-  },
-  title: {
-    color: COLORS.primary,
-    fontSize: FONT_SIZE.title,
-    fontWeight: '800',
-    marginBottom: SPACING.lg,
-  },
-  section: {
-    marginBottom: SPACING.xl,
-  },
-  sectionTitle: {
-    color: COLORS.text,
-    fontSize: FONT_SIZE.lg,
-    fontWeight: '700',
-    marginBottom: SPACING.md,
-  },
-  settingDescription: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.sm,
-    lineHeight: 20,
-    marginBottom: SPACING.md,
-  },
-  langRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  langBtn: {
-    flex: 1,
-    paddingVertical: SPACING.md,
-    alignItems: 'center',
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  langBtnActive: {
-    backgroundColor: COLORS.primary + '20',
-    borderColor: COLORS.primary,
-  },
-  langBtnText: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.md,
-    fontWeight: '500',
-  },
-  langBtnTextActive: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  formulaCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  formulaTitle: {
-    color: COLORS.primary,
-    fontSize: FONT_SIZE.md,
-    fontWeight: '700',
-    marginBottom: SPACING.xs,
-  },
-  formulaText: {
-    color: COLORS.text,
-    fontSize: FONT_SIZE.sm,
-    fontFamily: 'monospace',
-    marginBottom: 2,
-  },
-  linkRow: {
-    paddingVertical: SPACING.sm + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border + '40',
-  },
-  linkText: {
-    color: COLORS.info,
-    fontSize: FONT_SIZE.md,
-  },
-  versionBox: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xl,
-    marginTop: SPACING.lg,
-  },
-  versionText: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
-  },
-  versionNumber: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.sm,
-    marginTop: SPACING.xs,
-  },
-  versionSub: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.xs,
-    marginTop: SPACING.xs,
-    textAlign: 'center',
-  },
-  donateCard: {
-    backgroundColor: '#1a1500',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    borderWidth: 1,
-    borderColor: '#F7931A40',
-    alignItems: 'center',
-  },
-  donateIcon: {
-    fontSize: 36,
-    color: '#F7931A',
-    marginBottom: SPACING.sm,
-  },
-  donateText: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.sm,
-    textAlign: 'center',
-    marginBottom: SPACING.md,
-    lineHeight: 20,
-  },
-  btcAddressBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    width: '100%',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F7931A60',
-  },
-  btcAddress: {
-    color: '#F7931A',
-    fontSize: FONT_SIZE.sm,
-    fontFamily: 'monospace',
-    fontWeight: '600',
-  },
-  btcCopyHint: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.xs,
-    marginTop: SPACING.xs,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  content: { padding: SPACING.lg, paddingBottom: SPACING.xxl * 2 },
+  title: { color: COLORS.text, fontSize: FONT_SIZE.title, fontWeight: '800', letterSpacing: -0.4, marginBottom: SPACING.lg },
+  section: { marginBottom: SPACING.lg, paddingTop: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
+  sectionTitle: { color: COLORS.text, fontSize: FONT_SIZE.lg, fontWeight: '800', marginBottom: SPACING.sm },
+  settingDescription: { color: COLORS.textSecondary, fontSize: FONT_SIZE.sm, lineHeight: 20, marginBottom: SPACING.sm },
+  langRow: { flexDirection: 'row', gap: SPACING.xs, alignItems: 'stretch' },
+  langBtn: { flex: 1, minWidth: 0, minHeight: 48, paddingVertical: 6, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', borderRadius: 3, backgroundColor: COLORS.card, borderWidth: 1, borderBottomWidth: 2, borderColor: COLORS.borderStrong },
+  langBtnActive: { backgroundColor: COLORS.primarySoft, borderColor: COLORS.primary },
+  langBtnText: { color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '500', textAlign: 'center' },
+  langBtnTextActive: { color: COLORS.primary, fontWeight: '800' },
+  formulaCard: { backgroundColor: COLORS.card, padding: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderColor: COLORS.border },
+  formulaTitle: { color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '800', marginBottom: SPACING.xs },
+  formulaText: { color: COLORS.text, fontSize: FONT_SIZE.sm, fontFamily: 'monospace', marginBottom: 2 },
+  linkRow: { minHeight: 48, justifyContent: 'center', paddingVertical: 7, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: COLORS.border },
+  linkText: { color: COLORS.primary, fontSize: FONT_SIZE.md, textDecorationLine: 'underline' },
+  versionBox: { paddingVertical: SPACING.lg, marginTop: SPACING.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.border },
+  versionText: { color: COLORS.text, fontSize: FONT_SIZE.md, fontWeight: '800' },
+  versionNumber: { color: COLORS.textSecondary, fontVariant: ['tabular-nums'], fontSize: FONT_SIZE.sm, marginTop: SPACING.xs },
+  versionSub: { color: COLORS.textSecondary, fontSize: FONT_SIZE.sm, marginTop: SPACING.xs },
+  donateCard: { gap: SPACING.sm },
+  donateText: { color: COLORS.textSecondary, fontSize: FONT_SIZE.sm, lineHeight: 20 },
+  btcAddressBox: { backgroundColor: COLORS.card, borderRadius: 3, padding: SPACING.sm, minHeight: 48, justifyContent: 'center', borderWidth: 1, borderColor: COLORS.borderStrong },
+  btcAddress: { color: COLORS.text, fontSize: FONT_SIZE.sm, fontFamily: 'monospace', fontWeight: '600' },
+  btcCopyHint: { color: COLORS.primary, fontSize: FONT_SIZE.sm, marginTop: SPACING.xs },
 });

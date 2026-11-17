@@ -1,3 +1,4 @@
+import { COLORS } from '../../constants/theme';
 import React,{useMemo,useState} from 'react';
 import {Modal,Pressable,Text,View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -14,11 +15,11 @@ function MapPreviewCard({name,result}:{name:string;result?:string}){
  const [fullScreen,setFullScreen]=useState(false);
  const [open,setOpen]=useState(false),[width,setWidth]=useState(280);
  if(!action)return null;
- const route=action.type==='plan_route'?planWorldRoute(action.from,action.to,action.policy):null;
+ const route=action.type==='plan_route'?planWorldRoute(action.from,action.to,action.policy,zones,action.excludedRisks):null;
  const selected=action.type==='focus_zone'?[zoneById.get(action.zoneId)!]:route?.status==='found'?route.zoneIds.map(id=>zoneById.get(id)!):[];
  const camera=fitZones(selected,width,180),ids=new Set(selected.map(z=>z.id));
  const title=action.type==='focus_zone'?selected[0].name:`${selected[0].name} → ${selected[selected.length-1].name}`;
- return <View style={{marginTop:8,borderRadius:12,overflow:'hidden',borderWidth:1,borderColor:'#496169'}} onLayout={e=>setWidth(e.nativeEvent.layout.width)}>
+ return <View style={{marginTop:8,borderRadius:4,overflow:'hidden',borderWidth:1,borderColor:COLORS.border}} onLayout={e=>setWidth(e.nativeEvent.layout.width)}>
   <Pressable accessibilityRole="button" accessibilityLabel={`Ouvrir la carte : ${title}`} onPress={()=>{setFullScreen(false);setOpen(true);}}>
    <View style={{height:180,backgroundColor:'#102a32'}}><Svg width={width} height={180} pointerEvents="none"><G transform={`translate(${camera.x},${camera.y}) scale(${camera.scale})`}>
     <SvgImage href={require('../../assets/map/terrain-original.png')} x={-560} y={-520} width={1088} height={1104} preserveAspectRatio="none"/>
@@ -26,10 +27,10 @@ function MapPreviewCard({name,result}:{name:string;result?:string}){
     {selected.slice(1).map((z,i)=><Line key={'line'+z.id} x1={selected[i].x} y1={selected[i].y} x2={z.x} y2={z.y} stroke="#f6d787" strokeWidth={3/camera.scale}/>)}
     {selected.map((z,i)=><G key={'focus'+z.id}><Circle cx={z.x} cy={z.y} r={5/camera.scale} fill={riskColors[z.risk]} stroke="#fff1ce" strokeWidth={1/camera.scale}/>{(i===0||i===selected.length-1)&&<Label x={z.x} y={z.y+15/camera.scale} textAnchor="middle" fontFamily="Arial" fontSize={11/camera.scale} fill="#fff1ce">{z.name}</Label>}</G>)}
    </G></Svg></View>
-   <View style={{backgroundColor:'#162c34',padding:10,gap:4}}><Text style={{color:'#f4db9d',fontWeight:'700',fontSize:14*scale}}>{title}</Text><Text style={{color:'#c3d4d5',fontSize:12*scale}}>{route?.status==='found'?`${route.transitions} transitions · ${route.lethalZones} zones rouges/noires`:'Zone sélectionnée'} · Ouvrir la carte ↗</Text><Text style={{color:'#96adaf',fontSize:10*scale}}>Données statiques · pas d’activité de kills en direct</Text></View>
+   <View style={{backgroundColor:COLORS.backgroundElevated,padding:10,gap:4}}><Text style={{color:COLORS.primary,fontWeight:'700',fontSize:14*scale}}>{title}</Text><Text style={{color:COLORS.text,fontSize:12*scale}}>{route?.status==='found'?`${route.transitions} transitions · ${route.lethalZones} zones rouges/noires`:'Zone sélectionnée'} · Ouvrir la carte ↗</Text><Text style={{color:COLORS.textSecondary,fontSize:10*scale}}>Données statiques · pas d’activité de kills en direct</Text></View>
   </Pressable>
   <Modal visible={open} animationType="slide" onRequestClose={()=>{if(fullScreen)setFullScreen(false);else setOpen(false);}}>
-   <SafeAreaView style={{flex:1,backgroundColor:'#0c1823'}}>{!fullScreen&&<Pressable accessibilityRole="button" onPress={()=>setOpen(false)} style={{padding:14}}><Text style={{color:'#f4db9d'}}>← Revenir au chat</Text></Pressable>}{open&&<WorldMapScreen fullScreen={fullScreen} onFullScreenChange={setFullScreen} action={{sequence:1,command:action}}/>}</SafeAreaView>
+   <SafeAreaView style={{flex:1,backgroundColor:COLORS.background}}>{!fullScreen&&<Pressable accessibilityRole="button" onPress={()=>setOpen(false)} style={{padding:14,minHeight:48}}><Text style={{color:COLORS.primary}}>← Revenir au chat</Text></Pressable>}{open&&<WorldMapScreen fullScreen={fullScreen} onFullScreenChange={setFullScreen} action={action.type==='focus_zone'?{sequence:1,command:action}:undefined} plannedRoute={route?.status==='found'?{sequence:1,zoneIds:route.zoneIds}:undefined}/>}</SafeAreaView>
   </Modal>
  </View>;
 }

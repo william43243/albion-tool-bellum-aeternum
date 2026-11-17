@@ -7,14 +7,14 @@ import { Language } from '../lib/i18n';
 export default function QualitySelector({ value, onChange, lang }: { value: Quality; onChange: (quality: Quality) => void; lang: Language }) {
   return <View>
     <Text style={styles.label}>{lang === 'fr' ? 'Qualité' : lang === 'es' ? 'Calidad' : 'Quality'}: {QUALITY_LABELS[value][lang]}</Text>
-    <View style={styles.row}>{([1, 2, 3, 4, 5] as Quality[]).map((quality) => <TouchableOpacity key={quality} onPress={() => onChange(quality)} style={[styles.chip, quality === value && styles.active]} accessibilityRole="button" accessibilityLabel={QUALITY_LABELS[quality][lang]}><Text style={[styles.text, quality === value && styles.activeText]}>{quality}</Text></TouchableOpacity>)}</View>
+    <View style={styles.row}>{([1, 2, 3, 4, 5] as Quality[]).map((quality) => <TouchableOpacity key={quality} onPress={() => onChange(quality)} style={[styles.chip, quality === value && styles.active]} accessibilityRole="button" accessibilityState={{selected: quality === value}} accessibilityLabel={QUALITY_LABELS[quality][lang]}><Text style={[styles.text, quality === value && styles.activeText]}>{quality}</Text></TouchableOpacity>)}</View>
   </View>;
 }
 const styles = StyleSheet.create({
   label: { color: COLORS.textSecondary, fontSize: FONT_SIZE.sm, marginBottom: SPACING.xs },
-  row: { flexDirection: 'row', gap: SPACING.xs, marginBottom: SPACING.md },
-  chip: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1, borderRadius: BORDER_RADIUS.sm },
-  active: { borderColor: COLORS.primary, backgroundColor: COLORS.primary + '25' },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.xs, marginBottom: SPACING.md },
+  chip: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.surface, borderColor: COLORS.border, borderWidth: 1, borderRadius: BORDER_RADIUS.sm },
+  active: { borderColor: COLORS.primary, backgroundColor: COLORS.primarySoft },
   text: { color: COLORS.textMuted, fontWeight: '700' },
   activeText: { color: COLORS.primary },
 });

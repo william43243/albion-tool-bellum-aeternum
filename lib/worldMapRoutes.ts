@@ -8,11 +8,14 @@ export type RouteResult = {
 } | { status: 'unreachable' | 'unknown_zone'; policy: RoutePolicy; scope: 'static_cluster_exits' };
 const lethal = (z: WorldZone) => z.risk === 'red' || z.risk === 'black';
 /** Directed source exits only. Costs are lexicographic, not an invented travel-time model. */
-export function planWorldRoute(from: string, to: string, policy: RoutePolicy, graph: readonly WorldZone[] = zones): RouteResult {
+export function planWorldRoute(from: string, to: string, policy: RoutePolicy, graph: readonly WorldZone[] = zones, excludedRisks: readonly ZoneRisk[] = []): RouteResult {
   if (policy !== 'fewest_transitions' && policy !== 'fewest_lethal') throw new Error('Unknown route policy');
   const byId = new Map(graph.map(z => [z.id, z]));
   const base = { policy, scope: 'static_cluster_exits' as const };
   if (!byId.has(from) || !byId.has(to)) return { ...base, status: 'unknown_zone' };
+  const excluded = new Set(excludedRisks);
+  // A restriction applies to the entire route, including the origin and destination.
+  if (excluded.has(byId.get(from)!.risk) || excluded.has(byId.get(to)!.risk)) return { ...base, status: 'unreachable' };
   // Unknown risk is ranked with lethal for avoidance, never silently considered safe.
   type Cost = [number, number];
   const less = (a: Cost, b: Cost) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
@@ -26,7 +29,7 @@ export function planWorldRoute(from: string, to: string, policy: RoutePolicy, gr
     pending.delete(current);
     if (current === to) break;
     for (const id of [...byId.get(current)!.exits].sort()) {
-      const next = byId.get(id); if (!next) continue;
+      const next = byId.get(id); if (!next || excluded.has(next.risk)) continue;
       const hazard = lethal(next) || next.risk === 'unknown' ? 1 : 0;
       const prior = scores.get(current)!;
       const cost: Cost = policy === 'fewest_lethal' ? [prior[0] + hazard, prior[1] + 1] : [prior[0] + 1, prior[1] + hazard];
@@ -45,12 +48,12 @@ export function planWorldRoute(from: string, to: string, policy: RoutePolicy, gr
 
 /** Typed contract for a future app tool bridge. It does not run a model or invent locations. */
 export type MapAction = { type: 'focus_zone'; zoneId: string } |
-  { type: 'plan_route'; from: string; to: string; policy: RoutePolicy };
+  { type: 'plan_route'; from: string; to: string; policy: RoutePolicy; excludedRisks?: readonly ZoneRisk[] };
 export function resolveMapAction(action: MapAction, graph: readonly WorldZone[] = zones) {
   if (action.type === 'focus_zone') {
     const zone = graph.find(z => z.id === action.zoneId);
     return zone ? { status: 'found' as const, zone } : { status: 'unknown_zone' as const };
   }
-  if (action.type === 'plan_route') return planWorldRoute(action.from, action.to, action.policy, graph);
+  if (action.type === 'plan_route') return planWorldRoute(action.from, action.to, action.policy, graph, action.excludedRisks);
   throw new Error('Unknown map action');
 }

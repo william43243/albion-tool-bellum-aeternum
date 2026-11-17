@@ -1,13 +1,18 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   Modal,
+  Keyboard,
+  Platform,
   StyleSheet,
 } from 'react-native';
+import BellumIcon from './BellumIcon';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import {
   AlbionItem,
@@ -30,6 +35,10 @@ interface Props {
   onMultiSelect?: (items: AlbionItem[]) => void;
 }
 
+const labelsEs: Record<ItemCategory,string> = {
+  resource:'Recursos', equipment:'Equipo', weapon:'Armas', consumable:'Consumibles',
+  mount:'Monturas', farmable:'Agricultura', furniture:'Muebles', journal:'Diarios', trophy:'Trofeos',
+};
 const TIERS = ['3', '4', '5', '6', '7', '8'];
 
 export default function ItemPicker({
@@ -41,6 +50,15 @@ export default function ItemPicker({
   selectedIds = [],
   onMultiSelect,
 }: Props) {
+  const insets = useSafeAreaInsets();
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+  useEffect(() => {
+    if (!visible || Platform.OS !== 'android') { setKeyboardTop(null); return; }
+    const show = Keyboard.addListener('keyboardDidShow', event => setKeyboardTop(event.endCoordinates.screenY));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardTop(null));
+    setKeyboardTop(Keyboard.isVisible() ? Keyboard.metrics()?.screenY ?? null : null);
+    return () => { show.remove(); hide.remove(); };
+  }, [visible]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
   const [tier, setTier] = useState<string | null>(null);
@@ -83,6 +101,8 @@ export default function ItemPicker({
       const isSelected = selected.has(item.id);
       return (
         <TouchableOpacity
+          accessibilityRole={multiSelect ? "checkbox" : "button"}
+          accessibilityState={multiSelect ? {checked: isSelected} : undefined}
           style={[styles.itemRow, isSelected && styles.itemRowSelected]}
           onPress={() => handleItemPress(item)}
           activeOpacity={0.6}
@@ -106,7 +126,7 @@ export default function ItemPicker({
             )}
           </View>
           {multiSelect && (
-            <Text style={styles.checkbox}>{isSelected ? '\u2611' : '\u2610'}</Text>
+            <View style={[styles.checkbox, isSelected && {borderColor: COLORS.primary}]}>{isSelected && <BellumIcon name="check" size={16} color={COLORS.primary} />}</View>
           )}
         </TouchableOpacity>
       );
@@ -115,21 +135,23 @@ export default function ItemPicker({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.modal}>
+        {/* This modal starts at screen Y=0; the IME top is its usable height. */}
+        <View style={[styles.sheetViewport, { paddingTop: insets.top }, keyboardTop !== null && { bottom: undefined, height: keyboardTop }]}>
+        <View style={[styles.modal, { paddingBottom: keyboardTop !== null ? SPACING.sm : Math.max(insets.bottom, SPACING.xl), paddingLeft: insets.left, paddingRight: insets.right }]} accessibilityViewIsModal>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, keyboardTop !== null && { paddingVertical: SPACING.sm }]}>
             <View>
               <Text style={styles.title}>
-                {lang === 'fr' ? 'Rechercher un item' : 'Search item'}
+                {lang === 'fr' ? 'Rechercher un objet' : lang === 'es' ? 'Buscar un objeto' : 'Search items'}
               </Text>
-              <Text style={styles.subtitle}>
-                {getItemCount().toLocaleString()} items
-              </Text>
+              {keyboardTop === null && <Text style={styles.subtitle}>
+                {getItemCount().toLocaleString()} {lang === 'fr' ? 'objets' : lang === 'es' ? 'objetos' : 'items'}
+              </Text>}
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtnWrap}>
-              <Text style={styles.closeBtn}>\u2715</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtnWrap} accessibilityRole="button" accessibilityLabel={lang === "fr" ? "Fermer" : lang === "es" ? "Cerrar" : "Close"}>
+              <BellumIcon name="close" color={COLORS.text} size={20} />
             </TouchableOpacity>
           </View>
 
@@ -137,7 +159,7 @@ export default function ItemPicker({
           <TextInput
             style={styles.searchInput}
             placeholder={
-              lang === 'fr' ? 'Nom, ID ou mot-cl\u00e9...' : 'Name, ID or keyword...'
+              lang === 'fr' ? 'Nom, ID ou mot-clé…' : lang === 'es' ? 'Nombre, ID o palabra clave…' : 'Name, ID or keyword…'
             }
             placeholderTextColor={COLORS.textMuted}
             value={search}
@@ -146,19 +168,21 @@ export default function ItemPicker({
           />
 
           {/* Tier filter */}
-          <View style={styles.filterRow}>
+          <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} style={{flexGrow: 0, flexShrink: 0}} contentContainerStyle={styles.filterRow}>
             <TouchableOpacity
               style={[styles.filterChip, !tier && styles.filterChipActive]}
-              onPress={() => setTier(null)}
+              accessibilityRole="button" accessibilityState={{selected: !tier}}
+                onPress={() => setTier(null)}
             >
               <Text style={[styles.filterText, !tier && styles.filterTextActive]}>
-                {lang === 'fr' ? 'Tous' : 'All'}
+                {lang === 'fr' ? 'Tous' : lang === 'es' ? 'Todos' : 'All'}
               </Text>
             </TouchableOpacity>
             {TIERS.map((t) => (
               <TouchableOpacity
                 key={t}
                 style={[styles.filterChip, tier === t && styles.filterChipActive]}
+                accessibilityRole="button" accessibilityState={{selected: tier === t}}
                 onPress={() => setTier(tier === t ? null : t)}
               >
                 <Text style={[styles.filterText, tier === t && styles.filterTextActive]}>
@@ -166,45 +190,48 @@ export default function ItemPicker({
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
           {/* Category filter */}
-          <View style={styles.filterRow}>
+          <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} style={{flexGrow: 0, flexShrink: 0}} contentContainerStyle={styles.filterRow}>
             <TouchableOpacity
               style={[styles.filterChip, !category && styles.filterChipActive]}
-              onPress={() => setCategory(null)}
+              accessibilityRole="button" accessibilityState={{selected: !category}}
+                onPress={() => setCategory(null)}
             >
               <Text style={[styles.filterText, !category && styles.filterTextActive]}>
-                {lang === 'fr' ? 'Tout' : 'All'}
+                {lang === 'fr' ? 'Tout' : lang === 'es' ? 'Todo' : 'All'}
               </Text>
             </TouchableOpacity>
             {ITEM_CATEGORIES.map((cat) => (
               <TouchableOpacity
                 key={cat}
                 style={[styles.filterChip, category === cat && styles.filterChipActive]}
+                accessibilityRole="button" accessibilityState={{selected: category === cat}}
                 onPress={() => setCategory(category === cat ? null : cat)}
               >
                 <Text
                   style={[styles.filterText, category === cat && styles.filterTextActive]}
                 >
-                  {CATEGORY_LABELS[cat]?.[lang] || cat}
+                  {lang === 'es' ? labelsEs[cat] : CATEGORY_LABELS[cat]?.[lang] || cat}
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
           {/* Results count */}
           <Text style={styles.resultCount}>
-            {filteredItems.length} {lang === 'fr' ? 'r\u00e9sultats' : 'results'}
+            {filteredItems.length} {lang === 'fr' ? 'résultats' : lang === 'es' ? 'resultados' : 'results'}
             {filteredItems.length >= 80
               ? lang === 'fr'
                 ? ' (affiner la recherche)'
-                : ' (refine search)'
+                : lang === 'es' ? ' (acota la búsqueda)' : ' (refine search)'
               : ''}
           </Text>
 
           {/* Item list */}
           <FlatList
+            keyboardShouldPersistTaps="handled"
             data={filteredItems}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
@@ -225,10 +252,11 @@ export default function ItemPicker({
               <Text style={styles.confirmText}>
                 {lang === 'fr'
                   ? `Confirmer (${selected.size})`
-                  : `Confirm (${selected.size})`}
+                  : lang === 'es' ? `Confirmar (${selected.size})` : `Confirm (${selected.size})`}
               </Text>
             </TouchableOpacity>
           )}
+        </View>
         </View>
       </View>
     </Modal>
@@ -238,15 +266,17 @@ export default function ItemPicker({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: '#00000099',
+    backgroundColor: COLORS.overlay,
+  },
+  sheetViewport: {
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
     justifyContent: 'flex-end',
   },
   modal: {
+    flex: 1,
     backgroundColor: COLORS.background,
     borderTopLeftRadius: BORDER_RADIUS.xl,
     borderTopRightRadius: BORDER_RADIUS.xl,
-    maxHeight: '90%',
-    minHeight: '70%',
     paddingBottom: SPACING.xl,
   },
   header: {
@@ -268,11 +298,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeBtnWrap: {
-    padding: SPACING.sm,
-  },
-  closeBtn: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.xl,
+    minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center',
   },
   searchInput: {
     backgroundColor: COLORS.surface,
@@ -287,12 +313,13 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     paddingHorizontal: SPACING.md,
     gap: SPACING.xs,
     marginBottom: SPACING.xs,
   },
   filterChip: {
+    minHeight: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.xs,
     borderRadius: BORDER_RADIUS.sm,
@@ -301,7 +328,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   filterChipActive: {
-    backgroundColor: COLORS.primary + '25',
+    backgroundColor: COLORS.primarySoft,
     borderColor: COLORS.primary,
   },
   filterText: {
@@ -328,10 +355,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     height: 56,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border + '30',
+    borderBottomColor: COLORS.border,
   },
   itemRowSelected: {
-    backgroundColor: COLORS.primary + '15',
+    backgroundColor: COLORS.primaryFaint,
   },
   itemInfo: {
     flex: 1,
@@ -354,13 +381,13 @@ const styles = StyleSheet.create({
     marginRight: SPACING.sm,
   },
   tierBadge: {
-    backgroundColor: COLORS.primary + '20',
+    backgroundColor: COLORS.surface2,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   tierText: {
-    color: COLORS.primary,
+    color: COLORS.textSecondary,
     fontSize: FONT_SIZE.xs,
     fontWeight: '700',
   },
@@ -368,11 +395,9 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
   },
-  checkbox: {
-    color: COLORS.primary,
-    fontSize: FONT_SIZE.xl,
-  },
+  checkbox: { width: 20, height: 20, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: 'center', justifyContent: 'center', borderRadius: 3 },
   confirmBtn: {
+    minHeight: 48, justifyContent: 'center',
     backgroundColor: COLORS.primary,
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.md,
@@ -381,7 +406,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmText: {
-    color: COLORS.background,
+    color: COLORS.onPrimary,
     fontSize: FONT_SIZE.lg,
     fontWeight: '700',
   },
