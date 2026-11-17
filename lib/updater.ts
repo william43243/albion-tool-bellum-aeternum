@@ -47,6 +47,7 @@ export const PUBLIC_SIGNING_KEY =
   '696c75604e00842f94169d077b092dd12b9d832fc34f0b4ff9e16a131dd78ddc';
 
 const MANIFEST_URL = 'https://albion-tool-bellum-aeternum.com/api/version';
+const UPDATE_CHECK_TIMEOUT_MS = 15_000;
 
 /**
  * Downloaded APKs live in documentDirectory, not cacheDirectory — Android
@@ -201,18 +202,25 @@ function utf8Encode(s: string): Uint8Array {
 export async function checkForUpdate(): Promise<VersionManifest | null> {
   const installedName = Application.nativeApplicationVersion ?? 'unknown';
 
-  const res = await fetch(MANIFEST_URL, {
-    headers: {
-      'X-Current-Version': installedName,
-      'X-Platform': 'android',
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error('update check failed: HTTP ' + res.status);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPDATE_CHECK_TIMEOUT_MS);
+  let data: Record<string, unknown>;
+  try {
+    const res = await fetch(MANIFEST_URL, {
+      headers: {
+        'X-Current-Version': installedName,
+        'X-Platform': 'android',
+        'Cache-Control': 'no-cache',
+      },
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error('update check failed: HTTP ' + res.status);
+    }
+    data = (await res.json()) as Record<string, unknown>;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const data = (await res.json()) as Record<string, unknown>;
 
   // Strip the signature out and verify what remains.
   const manifest_signature = data.manifest_signature;

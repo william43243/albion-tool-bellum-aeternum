@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, Keyboard, Modal, Pressable, ScrollView, View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { useAndroidKeyboardViewport } from './hooks/useAndroidKeyboardViewport';
+import { useAutomaticUpdate } from './hooks/useAutomaticUpdate';
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useLanguage } from './hooks/useLanguage';
 import { useServer } from './hooks/useServer';
@@ -9,6 +10,7 @@ import { usePlayerCity } from './hooks/usePlayerCity';
 import CitySelector from './components/CitySelector';
 import BellumIcon from './components/BellumIcon';
 import AnalyticsConsentPrompt from './components/AnalyticsConsentPrompt';
+import UpdatePrompt from './components/UpdatePrompt';
 import { COLORS, SPACING, FONT_SIZE } from './constants/theme';
 import {
   AnalyticsConsent,
@@ -48,6 +50,7 @@ function AppContent() {
   const [advisorProvider, setAdvisorProvider] = useState<'local' | 'openai'>('openai');
   const openAIChatVisible = activeTab === 'advisor' && advisorProvider === 'openai';
   const keyboardViewport = useAndroidKeyboardViewport(activeTab === 'advisor');
+  const automaticUpdate = useAutomaticUpdate();
   const [isPremium, setIsPremium] = useState(true);
   const [analyticsConsent, setAnalyticsConsentState] = useState<AnalyticsConsent>('undecided');
   const [analyticsLoaded, setAnalyticsLoaded] = useState(false);
@@ -194,6 +197,12 @@ function AppContent() {
         visible={analyticsLoaded && analyticsConsent === 'undecided'}
         t={t}
         onChoice={changeAnalyticsConsent}
+      />
+      <UpdatePrompt
+        manifest={automaticUpdate.promptManifest}
+        visible={analyticsConsent !== 'undecided' && city !== null && !showCitySelector && !showToolIndex && !keyboardViewport.keyboardVisible}
+        t={t}
+        onLater={automaticUpdate.dismiss}
       />
 
       {!shellHidden && <View style={[

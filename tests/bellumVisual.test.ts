@@ -88,6 +88,7 @@ async function navigation(width: number, fontScale: number, horizontalInset = 0,
     if (id.endsWith('/useServer')) return { useServer: () => ({ serverLoaded: true }) };
     if (id.endsWith('/usePlayerCity')) return { usePlayerCity: () => ({ city: 'Martlock', cityLoaded: true }) };
     if (id.endsWith('/useAndroidKeyboardViewport')) return { useAndroidKeyboardViewport: () => ({ keyboardVisible: false }) };
+    if (id.endsWith('/useAutomaticUpdate')) return { useAutomaticUpdate: () => ({ promptManifest: null, dismiss() {} }) };
     if (id === './lib/analytics') return { initializeAnalyticsConsent: () => Promise.resolve('refused'), trackPageView: () => {}, trackToolUse: () => {} };
     return id;
   });

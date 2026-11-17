@@ -25,15 +25,16 @@ function signed(value: Updater.VersionManifest) {
   return { ...value, manifest_signature: Buffer.from(signature).toString('hex') };
 }
 
-function execute(code: string, dependencies: Record<string, unknown>) {
+function execute(code: string, dependencies: Record<string, unknown>, globals: Record<string, unknown> = {}) {
   const output = ts.transpileModule(code, { compilerOptions: {
     module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true,
   } }).outputText;
   const exports: Record<string, unknown> = {};
   runInNewContext(output, {
-    exports, Uint8Array, ArrayBuffer, TextEncoder, atob,
+    exports, Uint8Array, ArrayBuffer, TextEncoder, AbortController, setTimeout, clearTimeout, atob,
     console: { warn() {} },
     fetch: dependencies.fetch,
+    ...globals,
     require(name: string) {
       assert.ok(name in dependencies, `Unexpected dependency: ${name}`);
       return dependencies[name];
@@ -205,6 +206,31 @@ test('tampered signed content and an untrusted signing key remain rejected', asy
   await assert.rejects(production.updater.checkForUpdate(), /signature invalid/);
   assert.deepEqual(h.events, []);
   assert.deepEqual(production.events, []);
+});
+
+test('version checks bypass cached responses and abort a stalled request', async () => {
+  let timeout!: () => void;
+  let cleared = false;
+  let captured: any;
+  const updater = execute(source, {
+    'expo-file-system/legacy': {}, 'expo-crypto': {}, 'expo-intent-launcher': {},
+    'expo-application': { nativeApplicationVersion: '2.1.0', nativeBuildVersion: '19' },
+    tweetnacl: nacl,
+    fetch(_url: string, options: any) {
+      captured = options;
+      return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(new Error('aborted'))));
+    },
+  }, {
+    setTimeout(callback: () => void, ms: number) { assert.equal(ms, 15_000); timeout = callback; return 7; },
+    clearTimeout(id: number) { assert.equal(id, 7); cleared = true; },
+  }) as unknown as typeof Updater;
+  const pending = updater.checkForUpdate();
+  assert.equal(captured.headers['X-Current-Version'], '2.1.0');
+  assert.equal(captured.headers['X-Platform'], 'android');
+  assert.equal(captured.headers['Cache-Control'], 'no-cache');
+  timeout();
+  await assert.rejects(pending, /aborted/);
+  assert.equal(cleared, true);
 });
 
 test('existing permission and Expo provider declarations require no broader storage grant', () => {

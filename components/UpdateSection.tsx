@@ -2,15 +2,12 @@
  * UpdateSection
  *
  * Settings-screen section that lets the user manually check for an APK
- * update, download it, verify it, and hand it to Android's package
- * installer. See lib/updater.ts for the actual crypto + install logic.
+ * update and open the verified site's download in the browser.
  *
  * On web this component renders nothing (there's no APK to update). On
  * Android, it walks the user through a small state machine:
  *
  *   idle → checking → (updateAvailable | upToDate | error)
- *   updateAvailable → downloading → (ready | error)
- *   ready → installing (hand-off to Android installer)
  */
 
 import React, { useEffect, useState } from 'react';
@@ -26,12 +23,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import { COLORS, SPACING, FONT_SIZE, BORDER_RADIUS } from '../constants/theme';
 import { Language } from '../lib/i18n';
-import {
-  checkForUpdate,
-  downloadUpdate,
-  installUpdate,
-  VersionManifest,
-} from '../lib/updater';
+import type { VersionManifest } from '../lib/updater';
+import { checkForUpdateShared } from '../lib/updateCheckCoordinator';
+import { openUpdateInBrowser } from '../lib/updateBrowser';
 import { captureAnalyticsAuthorization, trackEvent } from '../lib/analytics';
 
 interface Props {
@@ -44,9 +38,6 @@ type State =
   | 'checking'
   | 'upToDate'
   | 'updateAvailable'
-  | 'downloading'
-  | 'ready'
-  | 'installing'
   | 'error';
 
 const LAST_KNOWN_VERSION_KEY = '@albion/lastKnownVersion';
@@ -54,9 +45,8 @@ const LAST_KNOWN_VERSION_KEY = '@albion/lastKnownVersion';
 export default function UpdateSection({ t, lang }: Props) {
   const [state, setState] = useState<State>('idle');
   const [manifest, setManifest] = useState<VersionManifest | null>(null);
-  const [localPath, setLocalPath] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [openingBrowser, setOpeningBrowser] = useState(false);
 
   const installedVersion = Application.nativeApplicationVersion ?? '—';
 
@@ -99,7 +89,7 @@ export default function UpdateSection({ t, lang }: Props) {
     setErrorMessage(null);
     trackEvent('update_check_started', 'updates', {}, analyticsAuthorization);
     try {
-      const result = await checkForUpdate();
+      const result = await checkForUpdateShared();
       if (result) {
         setManifest(result);
         setState('updateAvailable');
@@ -120,44 +110,21 @@ export default function UpdateSection({ t, lang }: Props) {
   };
 
   const handleDownload = async () => {
-    if (!manifest) return;
+    if (!manifest || openingBrowser) return;
+    setOpeningBrowser(true);
     const analyticsAuthorization = captureAnalyticsAuthorization();
-    setState('downloading');
-    setProgress(0);
     setErrorMessage(null);
-    trackEvent('update_download_started', 'updates', {
-      target: manifest.version,
-    }, analyticsAuthorization);
     try {
-      const uri = await downloadUpdate(manifest, (frac) => setProgress(frac));
-      setLocalPath(uri);
-      setState('ready');
-      trackEvent('update_download_completed', 'updates', {
+      await openUpdateInBrowser(manifest);
+      trackEvent('update_browser_opened', 'updates', { target: manifest.version }, analyticsAuthorization);
+    } catch {
+      setErrorMessage(t('updateBrowserError'));
+      setState('error');
+      trackEvent('update_browser_open_failed', 'updates', {
         target: manifest.version,
       }, analyticsAuthorization);
-    } catch (err: any) {
-      setErrorMessage(err?.message || String(err));
-      setState('error');
-      trackEvent('update_download_failed', 'updates', {
-        target: manifest.version,
-      }, analyticsAuthorization);
-    }
-  };
-
-  const handleInstall = async () => {
-    if (!localPath || !manifest) return;
-    // Fire-and-forget analytics synchronously BEFORE the intent: once the
-    // installer kicks in our process may be killed and trailing awaits
-    // would never resolve.
-    trackEvent('update_install_attempted', 'updates', {
-      target: manifest.version,
-    });
-    setState('installing');
-    try {
-      await installUpdate(localPath);
-    } catch (err: any) {
-      setErrorMessage(err?.message || String(err));
-      setState('error');
+    } finally {
+      setOpeningBrowser(false);
     }
   };
 
@@ -209,42 +176,11 @@ export default function UpdateSection({ t, lang }: Props) {
             {releaseNotes ? (
               <Text style={styles.releaseNotes}>{releaseNotes}</Text>
             ) : null}
-            <Text style={styles.warning}>{t('uninstallOldVersionWarning')}</Text>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleDownload}>
-              <Text style={styles.primaryButtonText}>{t('downloadUpdate')}</Text>
+            <Text style={styles.warning}>{t('updateBrowserInstructions')}</Text>
+            <TouchableOpacity accessibilityRole="button" disabled={openingBrowser} style={styles.primaryButton} onPress={handleDownload}>
+              {openingBrowser ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.primaryButtonText}>{t('downloadUpdate')}</Text>}
             </TouchableOpacity>
           </>
-        )}
-
-        {state === 'downloading' && (
-          <>
-            <Text style={styles.statusText}>
-              {t('downloading')} {Math.round(progress * 100)}%
-            </Text>
-            <View style={styles.progressBarBg}>
-              <View
-                style={[styles.progressBarFill, { width: `${Math.round(progress * 100)}%` }]}
-              />
-            </View>
-          </>
-        )}
-
-        {state === 'ready' && manifest && (
-          <>
-            <Text style={styles.readyText}>
-              v{manifest.version} {t('readyToInstall')}
-            </Text>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleInstall}>
-              <Text style={styles.primaryButtonText}>{t('installNow')}</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {state === 'installing' && (
-          <View style={styles.statusRow}>
-            <ActivityIndicator color={COLORS.primary} />
-            <Text style={styles.statusText}>{t('installing')}</Text>
-          </View>
         )}
 
         {state === 'error' && (
@@ -355,23 +291,6 @@ const styles = StyleSheet.create({
     color: COLORS.warning,
     fontSize: FONT_SIZE.xs,
     lineHeight: FONT_SIZE.xs * 1.4,
-    marginBottom: SPACING.sm,
-  },
-  progressBarBg: {
-    height: 8,
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: BORDER_RADIUS.sm,
-    overflow: 'hidden',
-    marginTop: SPACING.sm,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: COLORS.primary,
-  },
-  readyText: {
-    color: COLORS.profit,
-    fontSize: FONT_SIZE.md,
-    fontWeight: '600',
     marginBottom: SPACING.sm,
   },
   errorText: {
