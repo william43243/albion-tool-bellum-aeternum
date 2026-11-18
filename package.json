@@ -1,6 +1,6 @@
 {
   "name": "albion-calculator",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "main": "index.ts",
   "scripts": {
     "prepare:data": "node scripts/prepare-map.mjs",
