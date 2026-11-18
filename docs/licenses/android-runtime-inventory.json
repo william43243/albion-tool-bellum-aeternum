@@ -1,7 +1,7 @@
 {
   "inputs": {
-    "package-lock.json": "2ad88cdb2458a24112b4b0f144ebb286aa67f0665da8801c404f62f1263e9b32",
-    "android/app/build.gradle": "a9409bf7b8904df0ac4e638f99772b4f258fd2592e46e9e42e067408780e00a3",
+    "package-lock.json": "2bc1760029e7868771ccf9dac757485e468daca2da5e24983ab96bc10ee75a12",
+    "android/app/build.gradle": "bd03d2ccf4562c3c3ac37c645e3d9371c9a6b168e51dfb6b881f8190feb08e71",
     "android/build.gradle": "ba7f78ece8a63edbc6cf83ca3c0f9a18aa47e047943ff3e6f7637c030ff0c94d",
     "android/gradle.properties": "1a12d006be727c2bd47cedbb0d8ba66ae1f38b5a8617afa938d11c42be02799c"
   },

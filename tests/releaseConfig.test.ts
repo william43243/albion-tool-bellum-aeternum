@@ -37,8 +37,8 @@ test('release version names and codes stay synchronized', () => {
   assert.equal(appJson.expo.version, packageJson.version);
   assert.equal(nativeVersionName, packageJson.version);
   assert.equal(appJson.expo.android.versionCode, nativeVersionCode);
-  assert.equal(packageJson.version, '2.1.1');
-  assert.equal(nativeVersionCode, 20);
+  assert.equal(packageJson.version, '2.1.2');
+  assert.equal(nativeVersionCode, 21);
 });
 
 test('release workflow verifies the packaged minimum SDK field emitted by aapt2', () => {
