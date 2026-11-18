@@ -7,7 +7,7 @@ import java.util.concurrent.CancellationException
 
 /** Model-facing adapters. Prices, rates, yields and market snapshots are never model inputs. */
 object IslandTools {
- val toolActions = setOf("get_island_economy_data", "optimize_island_profitability")
+ val toolActions = setOf("get_island_economy_data", "optimize_island_profitability", "compare_island_crops")
  private val cities=setOf("Caerleon","Bridgewatch","Fort Sterling","Lymhurst","Thetford","Martlock","Brecilien")
  private val servers=setOf("americas","europe","asia")
  private fun keys(o:JSONObject)=o.keys().asSequence().toSet()
@@ -61,6 +61,17 @@ object IslandTools {
    .put("city",scalarSchema("string","Market city; null if unknown."))
    .put("days",scalarSchema("integer","Complete UTC history days: 7, 30, 60 or 90; null if unknown."))
    .put("quality",scalarSchema("integer","Market quality 1 to 5; null if unknown."))
+  else if(action=="compare_island_crops") JSONObject()
+   .put("server",scalarSchema("string","Active server americas, europe or asia; null uses the app server."))
+   .put("island_city",scalarSchema("string","City where the island is located; null if unknown."))
+   .put("market_city",scalarSchema("string","City where the player will sell the crops; null if unknown."))
+   .put("plot_count",scalarSchema("integer","Number of available building plots, not individual planting positions; null compares one plot."))
+   .put("premium",scalarSchema("boolean","Whether the character has Albion Premium; null if unknown."))
+   .put("focus_budget",scalarSchema("integer","Focus available per harvest, zero when none; null compares without focus and discloses that default."))
+   .put("focus_per_plant",scalarSchema("integer","Actual focus cost per watered plant only if explicitly known; null uses the no-specialization base cost."))
+   .put("history_days",scalarSchema("integer","Requested history window: 7, 30, 60 or 90 complete UTC days; null defaults to 7."))
+   .put("category",scalarSchema("string","farm, herbgarden, or null to compare both."))
+   .put("crop_ids",arraySchema(scalarSchema("string","Exact seed ID or harvested product ID. Include every explicitly requested crop; null compares all relevant crops.",false)))
   else JSONObject().put("server",scalarSchema("string","Active server americas, europe or asia; null uses the app server."))
    .put("islands",arraySchema(island(),false)).put("premium",scalarSchema("boolean","Whether the user has Premium; null if unknown."))
    .put("focus_available",scalarSchema("integer","Available focus; null if unknown."))
@@ -70,6 +81,7 @@ object IslandTools {
    .put("price_days",scalarSchema("integer","Historical price window 7, 30, 60 or 90 complete UTC days; null uses an explicitly disclosed 7-day window."))
    .put("objective",scalarSchema("string","profit, focus, liquidity or compare; null if unknown."))
   val desc=if(action=="get_island_economy_data") "List catalogue identifiers and bounded historical market observations. Catalogue entries are candidates; never treat unverified raw game data as yields or prices. Historical averages are not executable prices. Ask for a market city and period when needed."
+   else if(action=="compare_island_crops") "Compare farm crops and herb-garden crops over the requested historical window, fetching every selected product together. With no crop named use null crop_ids to compare all, or filter the explicitly requested category; if one or several crops are named, pass only those exact IDs. Compare the same available empty building plots for each option. This returns per-crop observed 90/60/30/7-day coverage, assumptions, reference seed costs and estimated profit; never describe history as a current guaranteed price. Ask for island city, sale city or Premium if unknown."
    else "Analyze only explicit island capacities and crop choices using the deterministic engine. A farm plot has nine planting slots; eight plots differ from eight slots. Ask for missing island city, capacity, occupation, focus and crop choice; never invent them. Do not replace a user's crop with another. Use NPC purchases by default; select market only when explicitly requested, never substitute market for unknown NPC prices. Animals, prices and yields remain unknown unless returned by this tool. Never claim a profit or ranking when unavailable."
   return JSONObject().put("name",action).put("description",desc).put("parameters",objectSchema(props))
  }
@@ -81,6 +93,17 @@ object IslandTools {
    val category=string(p,"category",20,true);require(category==null || category in setOf("farm","herbgarden","pasture","kennel")) { "INVALID_ARGUMENT" }
    city(p,"city"); val days=int(p,"days",90);require(days==null || days in setOf(7,30,60,90)) { "INVALID_ARGUMENT" }
    val q=int(p,"quality",5);require(q==null || q>=1) { "INVALID_ARGUMENT" };return
+  }
+  if(action=="compare_island_crops") {
+   fields(p,setOf("server","island_city","market_city","plot_count","premium","focus_budget","focus_per_plant","history_days","category","crop_ids"))
+   val server=string(p,"server",20,true);require(server==null || server in servers && (expectedServer==null || server==expectedServer)) { "SERVER_MISMATCH" }
+   city(p,"island_city");city(p,"market_city");bool(p,"premium")
+   val plots=int(p,"plot_count",1000);require(plots==null || plots>0) { "INVALID_ARGUMENT" }
+   int(p,"focus_budget",10_000_000);val focusCost=int(p,"focus_per_plant",10_000);require(focusCost==null || focusCost>0) { "INVALID_ARGUMENT" }
+   val days=int(p,"history_days",90);require(days==null || days in setOf(7,30,60,90)) { "INVALID_ARGUMENT" }
+   val category=string(p,"category",20,true);require(category==null || category in setOf("farm","herbgarden")) { "INVALID_ARGUMENT" }
+   val ids=arr(p,"crop_ids");if(ids!=null){require(ids.length() in 1..15) { "INVALID_ARGUMENT" };val seen=HashSet<String>();for(i in 0 until ids.length()){val id=ids.get(i);require(id is String && id.matches(Regex("[A-Z0-9_@.\\-]{1,100}")) && seen.add(id)) { "INVALID_ARGUMENT" }}}
+   return
   }
   fields(p,setOf("server","islands","premium","focus_available","specializations","budget_silver","sale_cities","simulation_days","price_days","objective"))
   val server=string(p,"server",20,true);require(server==null || server in servers && (expectedServer==null || server==expectedServer)) { "SERVER_MISMATCH" }
@@ -100,7 +123,7 @@ object IslandTools {
   require(total<=128) { "INVALID_ARGUMENT" }
  }
  private fun failure(code:String,message:String)=JSONObject().put("status","error").put("error",JSONObject().put("code",code).put("message",message))
- fun all(loadCatalog:()->JSONObject, loadNpcPrices:()->JSONObject?, market:(JSONObject,()->Boolean)->JSONObject, server:String, cancelled:()->Boolean):List<OpenApiTool> = toolActions.sorted().map { action -> object:OpenApiTool {
+ fun all(loadCatalog:()->JSONObject, loadNpcPrices:()->JSONObject?, market:(JSONObject,()->Boolean)->JSONObject, server:String, cancelled:()->Boolean, historyBatch:((JSONObject,()->Boolean)->JSONObject)?=null):List<OpenApiTool> = toolActions.sorted().map { action -> object:OpenApiTool {
   override fun getToolDescriptionJsonString()=definition(action).toString()
   override fun execute(paramsJsonString:String):String {
    try {
@@ -109,6 +132,10 @@ object IslandTools {
     val p=JSONObject(paramsJsonString);validateToolRequest(action,p,server)
     val catalog=try { loadCatalog() } catch(_:Exception) { return failure("CATALOG_UNAVAILABLE","Island catalogue is unavailable.").toString() };if(cancelled()) throw CancellationException()
     val npc=loadNpcPrices();if(npc!=null)catalog.put("npc_prices",npc)
+    if(action=="compare_island_crops") {
+     val result=IslandCropComparison.execute(p,catalog,npc,server,historyBatch,cancelled)
+     val encoded=result.toString();return if(encoded.length<=120_000) encoded else failure("RESULT_LIMIT","Island history is too large; request fewer crops.").toString()
+    }
     if(action=="optimize_island_profitability") {
      // Only explicitly selected market purchases with an explicit purchase city are queried.
      val validIds=HashSet<String>();val farmables=catalog.getJSONArray("farmables")

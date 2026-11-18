@@ -12,6 +12,7 @@ import java.net.URLEncoder
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.zip.GZIPInputStream
 
 class AlbionTools(private val serverBaseUrl: String, private val context: Context) {
 
@@ -217,13 +218,14 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
     }
     private val islandServer by lazy { when(serverBaseUrl) { "https://west.albion-online-data.com/api/v2/stats" -> "americas"; "https://europe.albion-online-data.com/api/v2/stats" -> "europe"; else -> "asia" } }
     private val islandMarket by lazy { IslandMarketAverages(islandServer, { input -> getHistoryTool.execute(input) }) }
+    private val islandHistoryBatch by lazy { IslandHistoryBatch(islandServer, { url -> httpGet(url, true) }, ::parseAodpTimestamp) }
 
     fun allTools(includeFlipComparison:Boolean=false): List<OpenApiTool> {
         val server=when(serverBaseUrl) { "https://west.albion-online-data.com/api/v2/stats" -> "americas"; "https://europe.albion-online-data.com/api/v2/stats" -> "europe"; else -> "asia" }
-        return listOf(searchItemTool, getPricesTool, getHistoryTool, getTimeTool, getRouteTool, worldMapTools.search, worldMapTools.show, if(includeFlipComparison) planner.tool else planner.localTool, planner.zoneResourcesTool) + ProductionTools.all({ cancelled || Thread.currentThread().isInterrupted },server) + IslandTools.all({ islandAsset("island-farmables.json") }, { try { islandAsset("island-npc-prices.json") } catch (_: Exception) { null } }, { query, stop -> JSONObject(islandMarket.getAverages(query.toString(),stop)) }, islandServer, { cancelled || Thread.currentThread().isInterrupted }) + if(includeFlipComparison) listOf(compareFlipTool) else emptyList()
+        return listOf(searchItemTool, getPricesTool, getHistoryTool, getTimeTool, getRouteTool, worldMapTools.search, worldMapTools.show, if(includeFlipComparison) planner.tool else planner.localTool, planner.zoneResourcesTool) + ProductionTools.all({ cancelled || Thread.currentThread().isInterrupted },server) + IslandTools.all({ islandAsset("island-farmables.json") }, { try { islandAsset("island-npc-prices.json") } catch (_: Exception) { null } }, { query, stop -> JSONObject(islandMarket.getAverages(query.toString(),stop)) }, islandServer, { cancelled || Thread.currentThread().isInterrupted }, { query, stop -> islandHistoryBatch.get(query, stop) }) + if(includeFlipComparison) listOf(compareFlipTool) else emptyList()
     }
 
-    private fun httpGet(urlStr: String): String {
+    private fun httpGet(urlStr: String, compressed: Boolean = false): String {
         check(!cancelled) { "Tool cancelled" }
         val deadline = android.os.SystemClock.elapsedRealtime() + 30_000
         val conn = URL(urlStr).openConnection() as HttpURLConnection
@@ -231,10 +233,13 @@ class AlbionTools(private val serverBaseUrl: String, private val context: Contex
         if (cancelled) { conn.disconnect(); throw IllegalStateException("Tool cancelled") }
         conn.connectTimeout = CONNECT_TIMEOUT; conn.readTimeout = READ_TIMEOUT; conn.instanceFollowRedirects = false
         conn.setRequestProperty("User-Agent", "AlbionMarket/1.0")
+        if (compressed) conn.setRequestProperty("Accept-Encoding", "gzip")
         return try {
             val status = conn.responseCode
             if (status !in 200..299) throw IllegalStateException("AODP HTTP $status")
-            conn.inputStream.use { input ->
+            val response = conn.inputStream
+            val decoded = if (conn.contentEncoding?.equals("gzip", ignoreCase = true) == true) GZIPInputStream(response) else response
+            decoded.use { input ->
                 val out = ByteArrayOutputStream(); val buffer = ByteArray(4096)
                 while(true) { check(!cancelled && android.os.SystemClock.elapsedRealtime() <= deadline) { "Tool cancelled or timed out" }; val count = input.read(buffer); if(count < 0) break
                     require(out.size() + count <= MAX_RESPONSE_BYTES) { "AODP response too large" };out.write(buffer,0,count) }

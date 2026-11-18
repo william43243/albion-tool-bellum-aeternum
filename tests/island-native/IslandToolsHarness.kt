@@ -23,7 +23,7 @@ fun main() {
  var queries=0
  val tools=IslandTools.all(::catalog,{null},{ q,_->queries++;JSONObject().put("status","ok").put("server","americas").put("results",JSONArray().put(JSONObject().put("status","ok").put("server","americas").put("item_id","T3_FARM_WHEAT_SEED").put("city",q.getString("city")).put("quality",1).put("average",42))) },"americas",{false})
   .associateBy { JSONObject(it.getToolDescriptionJsonString()).getString("name") }
- check(tools.keys==IslandTools.toolActions && tools.size==2)
+ check(tools.keys==IslandTools.toolActions && tools.size==3)
  for(tool in tools.values)strict(JSONObject(tool.getToolDescriptionJsonString()).getJSONObject("parameters"))
  val list=JSONObject(tools.getValue("get_island_economy_data").execute(dataRequest().toString()))
  check(list.getString("status")=="ok" && list.getJSONArray("items").length()==1 && list.isNull("market_averages"))

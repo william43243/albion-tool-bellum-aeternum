@@ -252,6 +252,7 @@ export default function OpenAIChatScreen({ lang, server, active, onBack, compact
     plan_gathering: tr('Plan de récolte', 'Gathering plan', 'Plan de recolección'),
     get_zone_resources: tr('Ressources de zone', 'Zone resources', 'Recursos de zona'),
     compare_flip_routes: tr('Comparaison et trajets', 'Comparison and routes', 'Comparación y rutas'),
+    compare_island_crops: tr('Comparaison des cultures', 'Crop comparison', 'Comparación de cultivos'),
     create_price_alert: tr('Alerte de prix', 'Price alert', 'Alerta de precio'),
   } as Record<string, string>)[name] ?? tr('Outil Albion', 'Albion tool', 'Herramienta Albion');
 
@@ -284,6 +285,7 @@ export default function OpenAIChatScreen({ lang, server, active, onBack, compact
               <Text style={[styles.toolLabel,{fontSize:14*textScale,lineHeight:21*textScale}, tool.status === 'error' && styles.errorText]}>{tool.status === 'completed' ? '✓ ' : tool.status === 'error' ? '! ' : ''}{toolLabel(tool.name)} · {tool.status === 'running' ? tr('en cours', 'running', 'en curso') : tool.status === 'completed' ? tr('terminé', 'completed', 'completado') : tr('erreur / interrompu', 'error / interrupted', 'error / interrumpido')} {expanded[tool.callId] ? '▴' : '▾'}</Text>
             </TouchableOpacity>
             {tool.name==='compare_flip_routes'&&tool.status==='running'&&<View style={styles.analysisProgress}><ActivityIndicator size="small" color={COLORS.primary}/><Text style={styles.analysisProgressText}>{tr('Analyse des prix, frais et trajets en cours…','Analyzing prices, fees and routes…','Analizando precios, comisiones y rutas…')}</Text></View>}
+            {tool.name==='compare_island_crops'&&tool.status==='running'&&<View style={styles.analysisProgress}><ActivityIndicator size="small" color={COLORS.primary}/><Text style={styles.analysisProgressText}>{tr('Comparaison des cultures et de leur historique…','Comparing crops and their price history…','Comparando cultivos y su historial…')}</Text></View>}
             {expanded[tool.callId] && <>{tool.status === 'completed' && <><HistoryChartCard name={tool.name} result={tool.result}/><MapPreviewCard name={tool.name} result={tool.result}/><FlipComparisonCard name={tool.name} result={tool.result}/></>}<Text style={styles.toolName}>{tool.name}</Text><Text selectable style={[styles.toolResult,{fontSize:12*textScale,lineHeight:18*textScale}]}>{tool.result ?? tr('Aucun résultat reçu.', 'No result received.', 'No se recibió ningún resultado.')}</Text></>}
           </View>)}
           {!!message.content && <ChatMarkdown content={message.content} />}
