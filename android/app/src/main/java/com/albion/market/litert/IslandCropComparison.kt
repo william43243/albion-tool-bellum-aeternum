@@ -79,6 +79,7 @@ object IslandCropComparison {
             val focusBudget = if (p.isNull("focus_budget")) 0 else p.getInt("focus_budget")
             val days = if (p.isNull("history_days")) 7 else p.getInt("history_days")
             val focusCost = if (p.isNull("focus_per_plant")) 1000 else p.getInt("focus_per_plant")
+            val showChart = p.opt("show_chart") == true
             val plants = plots * 9
             val watered = minOf(plants, focusBudget / focusCost)
             val saleTax = if (premium) 0.04 else 0.08
@@ -144,6 +145,29 @@ object IslandCropComparison {
                 return if (row.optString("status") == "ok" && value is Number && value.toDouble().isFinite() &&
                     value.toDouble() > 0 && value.toDouble() <= 1e12 && row.optInt("usable_days") in 1..days) value.toDouble() else null
             }
+            // Daily points use only observations returned for that day. Multiple
+            // buckets on the same day are quantity-weighted; gaps stay gaps.
+            fun dailyPrices(id: String): Map<Int, Double> {
+                val row = observations[id] ?: return emptyMap()
+                if (row.optString("status") != "ok") return emptyMap()
+                val points = row.optJSONArray("observations") ?: return emptyMap()
+                if (points.length() > 1000) return emptyMap()
+                val sums = HashMap<Int, Pair<Double, Double>>()
+                for (i in 0 until points.length()) {
+                    val point = points.optJSONArray(i) ?: continue
+                    if (point.length() != 3) continue
+                    val day = point.opt(0); val value = point.opt(1); val count = point.opt(2)
+                    if (day !is Number || value !is Number || count !is Number) continue
+                    val dayValue = day.toDouble(); val priceValue = value.toDouble(); val quantity = count.toDouble()
+                    if (!dayValue.isFinite() || dayValue % 1.0 != 0.0 || dayValue < 0 || dayValue >= days ||
+                        !priceValue.isFinite() || priceValue <= 0 || priceValue > 1e12 ||
+                        !quantity.isFinite() || quantity <= 0 || quantity > 1e12) continue
+                    val key = dayValue.toInt(); val prior = sums[key] ?: (0.0 to 0.0)
+                    val sum = prior.first + priceValue * quantity; val weight = prior.second + quantity
+                    if (sum.isFinite() && weight.isFinite()) sums[key] = sum to weight
+                }
+                return sums.mapValues { (_, value) -> value.first / value.second }
+            }
             val resultRows = ArrayList<JSONObject>(); var missingResults = 0
             for (crop in wanted) {
                 active()
@@ -182,6 +206,21 @@ object IslandCropComparison {
                     .put("estimated_replacement_seed_cost", replacementCost ?: JSONObject.NULL)
                     .put("estimated_profit_excluding_surplus", partialProfit ?: JSONObject.NULL)
                     .put("estimated_profit_per_cycle", profit ?: JSONObject.NULL)
+                if (showChart) {
+                    val points = JSONArray()
+                    if (replacementCost != null && surplus != null) {
+                        val productDays = dailyPrices(crop.product)
+                        val seedDays = if (surplus > 0) dailyPrices(crop.seed) else emptyMap()
+                        for ((day, dailyPrice) in productDays.toSortedMap()) {
+                            active()
+                            val seedPrice = if (surplus > 0) seedDays[day] ?: continue else 0.0
+                            val dailyProfit = (expectedOutput * dailyPrice + surplus * seedPrice) * (1.0 - saleTax - setupFee) - replacementCost
+                            if (dailyProfit.isFinite() && kotlin.math.abs(dailyProfit) <= 9e15)
+                                points.put(JSONArray().put(day).put(kotlin.math.round(dailyProfit * 100.0) / 100.0))
+                        }
+                    }
+                    row.put("profit_history", points)
+                }
                 resultRows.add(row)
             }
             resultRows.sortWith(compareByDescending<JSONObject> { !it.isNull("estimated_profit_per_cycle") }
@@ -194,6 +233,7 @@ object IslandCropComparison {
                 .put("premium", premium).put("focus_budget", focusBudget).put("focus_defaulted", p.isNull("focus_budget"))
                 .put("focus_per_plant", focusCost).put("focus_cost_assumption", if (p.isNull("focus_per_plant")) "base cost without specialization; actual costs vary by character" else "user supplied cost per plant")
                 .put("history_days", days).put("history_days_defaulted", p.isNull("history_days"))
+                .put("chart_requested", showChart)
                 .put("selection", if (selected == null) "all_matching_category" else "explicit_crops_only")
                 .put("ranked_available_count", resultRows.count { !it.isNull("estimated_profit_per_cycle") })
                 .put("missing_count", missingResults).put("ranking_scope", if (missingResults == 0) "all_requested_crops" else "available_crops_only")
@@ -203,6 +243,7 @@ object IslandCropComparison {
                     .put("Harvest estimate uses the midpoint of 3–6 units per seed, doubled with Premium and adjusted for the island's 10% local bonus where applicable.")
                     .put("Seed returns and merchant prices are game-data references, not guaranteed current in-game values. All initial seeds are assumed purchased for the upfront cost.")
                     .put("Sale estimates use historical reported sell-order averages, 4%/8% sales tax and a 2.5% sell-order fee. They do not represent guaranteed fills or current executable prices.")
+                    .put("Graph points estimate per-harvest profit using each day's observed product price with the same reference seed costs and current scenario assumptions; they are not realized historical profits.")
                     .put("Expected seed replacement and surplus use differences of mean flows, not a probability distribution. Missing seed-market history leaves surplus and total profit unknown.")
                     .put("Construction, travel, equipment, labor, actual sale timing and byproducts are excluded; growth time is about 22 hours. Profits are estimates per harvest, not realized cash."))
                 .put("reference_sources", JSONArray()

@@ -8,6 +8,7 @@ import * as Siwc from '../lib/siwc';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatReadingProvider, CHAT_TEXT_SCALE_KEY, validChatTextScale, nextChatTextScale } from '../components/chat/reading';
 import HistoryChartCard from '../components/chat/HistoryChartCard';
+import IslandProfitChartCard from '../components/chat/IslandProfitChartCard';
 import ChatMarkdown from '../components/chat/ChatMarkdown';
 import MapPreviewCard from '../components/chat/MapPreviewCard';
 import FlipComparisonCard from '../components/chat/FlipComparisonCard';
@@ -286,6 +287,7 @@ export default function OpenAIChatScreen({ lang, server, active, onBack, compact
             </TouchableOpacity>
             {tool.name==='compare_flip_routes'&&tool.status==='running'&&<View style={styles.analysisProgress}><ActivityIndicator size="small" color={COLORS.primary}/><Text style={styles.analysisProgressText}>{tr('Analyse des prix, frais et trajets en cours…','Analyzing prices, fees and routes…','Analizando precios, comisiones y rutas…')}</Text></View>}
             {tool.name==='compare_island_crops'&&tool.status==='running'&&<View style={styles.analysisProgress}><ActivityIndicator size="small" color={COLORS.primary}/><Text style={styles.analysisProgressText}>{tr('Comparaison des cultures et de leur historique…','Comparing crops and their price history…','Comparando cultivos y su historial…')}</Text></View>}
+            {tool.name==='compare_island_crops'&&tool.status==='completed'&&<IslandProfitChartCard name={tool.name} result={tool.result} lang={lang}/>}
             {expanded[tool.callId] && <>{tool.status === 'completed' && <><HistoryChartCard name={tool.name} result={tool.result}/><MapPreviewCard name={tool.name} result={tool.result}/><FlipComparisonCard name={tool.name} result={tool.result}/></>}<Text style={styles.toolName}>{tool.name}</Text><Text selectable style={[styles.toolResult,{fontSize:12*textScale,lineHeight:18*textScale}]}>{tool.result ?? tr('Aucun résultat reçu.', 'No result received.', 'No se recibió ningún resultado.')}</Text></>}
           </View>)}
           {!!message.content && <ChatMarkdown content={message.content} />}

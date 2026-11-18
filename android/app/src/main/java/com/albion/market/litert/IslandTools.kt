@@ -72,6 +72,7 @@ object IslandTools {
    .put("history_days",scalarSchema("integer","Requested history window: 7, 30, 60 or 90 complete UTC days; null defaults to 7."))
    .put("category",scalarSchema("string","farm, herbgarden, or null to compare both."))
    .put("crop_ids",arraySchema(scalarSchema("string","Exact seed ID or harvested product ID. Include every explicitly requested crop; null compares all relevant crops.",false)))
+   .put("show_chart",scalarSchema("boolean","True if the user asks for a graph or chart of profitability; otherwise false or null."))
   else JSONObject().put("server",scalarSchema("string","Active server americas, europe or asia; null uses the app server."))
    .put("islands",arraySchema(island(),false)).put("premium",scalarSchema("boolean","Whether the user has Premium; null if unknown."))
    .put("focus_available",scalarSchema("integer","Available focus; null if unknown."))
@@ -81,7 +82,7 @@ object IslandTools {
    .put("price_days",scalarSchema("integer","Historical price window 7, 30, 60 or 90 complete UTC days; null uses an explicitly disclosed 7-day window."))
    .put("objective",scalarSchema("string","profit, focus, liquidity or compare; null if unknown."))
   val desc=if(action=="get_island_economy_data") "List catalogue identifiers and bounded historical market observations. Catalogue entries are candidates; never treat unverified raw game data as yields or prices. Historical averages are not executable prices. Ask for a market city and period when needed."
-   else if(action=="compare_island_crops") "Compare farm crops and herb-garden crops over the requested historical window, fetching every selected product together. With no crop named use null crop_ids to compare all, or filter the explicitly requested category; if one or several crops are named, pass only those exact IDs. Compare the same available empty building plots for each option. This returns per-crop observed 90/60/30/7-day coverage, assumptions, reference seed costs and estimated profit; never describe history as a current guaranteed price. Ask for island city, sale city or Premium if unknown."
+   else if(action=="compare_island_crops") "Compare farm crops and herb-garden crops over the requested historical window, fetching every selected product together. With no crop named use null crop_ids to compare all, or filter the explicitly requested category; if one or several crops are named, pass only those exact IDs. Compare the same available empty building plots for each option. Set show_chart true when a profitability graph is requested. This returns per-crop observed 90/60/30/7-day coverage, assumptions, reference seed costs and estimated profit; never describe history as a current guaranteed price. Ask for island city, sale city or Premium if unknown."
    else "Analyze only explicit island capacities and crop choices using the deterministic engine. A farm plot has nine planting slots; eight plots differ from eight slots. Ask for missing island city, capacity, occupation, focus and crop choice; never invent them. Do not replace a user's crop with another. Use NPC purchases by default; select market only when explicitly requested, never substitute market for unknown NPC prices. Animals, prices and yields remain unknown unless returned by this tool. Never claim a profit or ranking when unavailable."
   return JSONObject().put("name",action).put("description",desc).put("parameters",objectSchema(props))
  }
@@ -95,9 +96,9 @@ object IslandTools {
    val q=int(p,"quality",5);require(q==null || q>=1) { "INVALID_ARGUMENT" };return
   }
   if(action=="compare_island_crops") {
-   fields(p,setOf("server","island_city","market_city","plot_count","premium","focus_budget","focus_per_plant","history_days","category","crop_ids"))
+   fields(p,setOf("server","island_city","market_city","plot_count","premium","focus_budget","focus_per_plant","history_days","category","crop_ids","show_chart"))
    val server=string(p,"server",20,true);require(server==null || server in servers && (expectedServer==null || server==expectedServer)) { "SERVER_MISMATCH" }
-   city(p,"island_city");city(p,"market_city");bool(p,"premium")
+   city(p,"island_city");city(p,"market_city");bool(p,"premium");bool(p,"show_chart")
    val plots=int(p,"plot_count",1000);require(plots==null || plots>0) { "INVALID_ARGUMENT" }
    int(p,"focus_budget",10_000_000);val focusCost=int(p,"focus_per_plant",10_000);require(focusCost==null || focusCost>0) { "INVALID_ARGUMENT" }
    val days=int(p,"history_days",90);require(days==null || days in setOf(7,30,60,90)) { "INVALID_ARGUMENT" }

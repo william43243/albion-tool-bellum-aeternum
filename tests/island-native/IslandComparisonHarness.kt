@@ -11,7 +11,7 @@ import kotlin.math.abs
 private fun request() = JSONObject("""{
  "server":"americas","island_city":"Fort Sterling","market_city":"Fort Sterling",
  "plot_count":9,"premium":true,"focus_budget":0,"focus_per_plant":null,
- "history_days":90,"category":null,"crop_ids":null
+ "history_days":90,"category":null,"crop_ids":null,"show_chart":false
 }""")
 private fun source() = JSONObject(File("assets/island/farmables.json").readText())
 private fun prices() = JSONObject(File("assets/island/npc-prices.json").readText())
@@ -31,7 +31,9 @@ fun main() {
    for (i in 0 until ids.length()) {
     val id = ids.getString(i)
     if (id != missingId) data.put(JSONObject().put("item_id", id).put("status", "ok").put("average", 400 + i)
-      .put("usable_days", 88).put("missing_days", 2).put("last_observed", "2026-11-16T00:00:00Z"))
+      .put("usable_days", 88).put("missing_days", 2).put("last_observed", "2026-11-16T00:00:00Z")
+      .put("observations", JSONArray().put(JSONArray().put(0).put(400 + i).put(10))
+       .put(JSONArray().put(1).put(420 + i).put(10)).put(JSONArray().put(3).put(430 + i).put(10))))
    }
    JSONObject().put("status", "ok").put("server", "americas").put("source", "https://west.albion-online-data.com/api/v2/stats")
     .put("city", q.getString("city")).put("quality", 1).put("requested_days", q.getInt("days")).put("results", data)
@@ -91,6 +93,18 @@ fun main() {
  val focus = run(request().put("crop_ids", JSONArray().put("T1_CARROT")).put("focus_budget", 81_000))
  check(countQuery() == 2 && rows(focus).single().getInt("watered_positions") == 81)
  check(rows(focus).single().getDouble("mean_surplus_seeds") == 81.0)
+ val graph = run(subset.put("show_chart", true))
+ check(graph.getBoolean("chart_requested") && rows(graph).size == 3)
+ val graphTurnip = rows(graph).single { selected(it) == "T4_TURNIP" }
+ val graphPoints = graphTurnip.getJSONArray("profit_history")
+ check(graphPoints.length() == 3 && graphPoints.getJSONArray(0).getInt(0) == 0 && graphPoints.getJSONArray(2).getInt(0) == 3)
+ check(abs(graphPoints.getJSONArray(0).getDouble(1) - (801.9 * 400 * .935 - 81 * (1 - .7333) * 7500)) < .01)
+ missingId = "T1_FARM_CARROT_SEED"
+ val missingSeedGraph = run(request().put("crop_ids", JSONArray().put("T1_CARROT")).put("focus_budget", 81_000).put("show_chart", true))
+ check(rows(missingSeedGraph).single().getJSONArray("profit_history").length() == 0)
+ missingId = null
+ val focusGraph = run(request().put("crop_ids", JSONArray().put("T1_CARROT")).put("focus_budget", 81_000).put("show_chart", true))
+ check(rows(focusGraph).single().getJSONArray("profit_history").length() == 3)
  val fixture = System.getenv("ISLAND_HISTORY_FIXTURE")
  if (!fixture.isNullOrBlank()) {
   val raw = File(fixture).readText(); var liveCalls = 0
@@ -98,10 +112,11 @@ fun main() {
   val batch = IslandHistoryBatch("americas", { liveCalls++; raw }, { LocalDateTime.parse(it).toInstant(ZoneOffset.UTC).toEpochMilli() }, { replayNow })
   val liveTool = IslandTools.all(::source, ::prices, { _, _ -> error("unexpected legacy history") }, "americas", { false }, { q, stop -> batch.get(q, stop) })
    .first { JSONObject(it.getToolDescriptionJsonString()).getString("name") == "compare_island_crops" }
-  val liveText = liveTool.execute(request().toString()); val liveResult = JSONObject(liveText)
+  val liveText = liveTool.execute(request().put("show_chart", true).toString()); val liveResult = JSONObject(liveText)
   check(liveCalls == 1 && liveResult.getString("status") == "ok" && liveResult.getInt("ranked_available_count") == 15)
   check(liveResult.getJSONObject("history").getInt("requested_days") == 90 && liveText.length < 120_000)
   check(rows(liveResult).all { it.getInt("history_usable_days") in 1..90 })
+  check(rows(liveResult).all { it.getJSONArray("profit_history").length() in 1..90 })
   println("LIVE COMPARISON REPLAY: 15 real Fort Sterling histories compared in one request, ${liveText.length} characters")
  }
  println("ISLAND COMPARISON JVM: all 15, 90 days, one and multiple explicit crops, fees, missing data and focus passed")
